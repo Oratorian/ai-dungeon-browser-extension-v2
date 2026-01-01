@@ -1,3 +1,5 @@
-# Placeholder
+![Extension Icon](public/icon/128.png)
 
-Yeah I still need to write this README file.
+# Dungeon Extension v2
+
+Placeholder, coming soon...
