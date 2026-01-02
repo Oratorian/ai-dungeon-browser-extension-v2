@@ -10,9 +10,7 @@
   import Tabs from "@/components/tabs.svelte";
   import { Tab } from "@/utils/types";
   import Adventure from "./editor/adventure.svelte";
-  import StoryCard from "./editor/story_card.svelte";
   import ScrollArea from "@/components/scroll_area.svelte";
-  import Select from "@/components/select.svelte";
   import { fade, fly } from "svelte/transition";
 
   /* Editor */

@@ -24,7 +24,7 @@ export class DOM {
     for (const response of responses) {
       if (response.hasAttribute(Config.ATTRIBUTE_ALTERED)) continue;
       const label = response.getAttribute("aria-label") || "";
-      if (label && label.startsWith("Last action:")) {
+      if (label.startsWith("Last action:")) {
         Debug.log("Response HTML: " + response.getHTML());
 
         const original = response.firstElementChild as HTMLElement;

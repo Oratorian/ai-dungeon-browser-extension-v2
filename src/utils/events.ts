@@ -13,7 +13,7 @@ export class Events {
     Debug.log("Storage loaded!");
 
     Storage.selectedAdventureId.subscribe((adventureId) => {
-      this.onInvalidate();
+      extensionState.focusCardId = null;
     });
 
     Debug.log("Creating observers...");

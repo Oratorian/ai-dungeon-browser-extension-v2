@@ -14,7 +14,10 @@ export default defineContentScript({
     style.textContent = contentStyle;
     style.id = "de-content";
     document.head.appendChild(style);
+
+    // Do the startup events.
     await Events.onStart();
+
     Debug.log("Creating shadow root UI...");
     const ui = await createShadowRootUi(ctx, {
       name: "de-editor-anchor",
