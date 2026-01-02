@@ -1,6 +1,6 @@
 import { Debug } from "#imports";
-import appCss from "@/app.css?inline";
-import highlightCss from "@/content.css?inline";
+import appStyle from "@/app.css?inline";
+import contentStyle from "@/content.css?inline";
 import Editor from "@/routes/editor.svelte";
 import { Events } from "@/utils/events";
 import { mount, unmount } from "svelte";
@@ -9,23 +9,23 @@ export default defineContentScript({
   matches: ["*://*.play.aidungeon.com/*"],
   cssInjectionMode: "ui",
   async main(ctx) {
+    // Inject content styles omitting the base overrides stuff.
     const style = document.createElement("style");
-    style.textContent = highlightCss;
+    style.textContent = contentStyle;
     style.id = "de-content";
     document.head.appendChild(style);
-
     await Events.onStart();
     Debug.log("Creating shadow root UI...");
     const ui = await createShadowRootUi(ctx, {
       name: "de-editor-anchor",
       position: "inline",
       anchor: "body",
-      css: appCss,
+      css: appStyle,
 
       onMount(uiContainer) {
+        // Inject custom fonts in to the shadow root.
         const plexFont = browser.runtime.getURL("/fonts/plex_sans.ttf");
         const symbolFont = browser.runtime.getURL("/fonts/material_symbols.ttf");
-
         const fontStyle = document.createElement("style");
         fontStyle.textContent = `
           @font-face {
@@ -41,6 +41,7 @@ export default defineContentScript({
         `;
         document.head.appendChild(fontStyle);
 
+        // Mount Svelte stuff.
         const app = mount(Editor, { target: uiContainer });
         return app;
       },

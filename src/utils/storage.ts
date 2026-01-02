@@ -9,7 +9,9 @@ const defaultSettings = {
   iconColor: "#f8ae2c",
 
   highlightBold: false,
-  highlightUnderline: false,
+  highlightLookback: 0,
+  highlightMarkdown: true,
+  highlightFocus: false,
 
   tooltipWidth: 512,
   tooltipHeight: 512,

@@ -1,4 +1,6 @@
 import { TextChunk } from "./types";
+import { get } from "svelte/store";
+import { settings } from "./storage";
 
 export function parseResponse(text: string, cardMap: Map<string, StoryCard>): TextChunk[] {
   if (!text) return [];
@@ -47,20 +49,23 @@ export function parseResponse(text: string, cardMap: Map<string, StoryCard>): Te
 }
 
 function categorizeMatch(match: string, cardMap: Map<string, StoryCard>): TextChunk {
-  if ((match.startsWith("**") && match.endsWith("**")) || (match.startsWith("__") && match.endsWith("__"))) {
-    return { type: "bold", content: match.slice(2, -2) };
-  }
+  const currentSettings = get(settings);
+  if (currentSettings.highlightMarkdown) {
+    if ((match.startsWith("**") && match.endsWith("**")) || (match.startsWith("__") && match.endsWith("__"))) {
+      return { type: "bold", content: match.slice(2, -2) };
+    }
 
-  if (match.startsWith("~~") && match.endsWith("~~")) {
-    return { type: "strikethrough", content: match.slice(2, -2) };
-  }
+    if (match.startsWith("~~") && match.endsWith("~~")) {
+      return { type: "strikethrough", content: match.slice(2, -2) };
+    }
 
-  if ((match.startsWith("*") && match.endsWith("*")) || (match.startsWith("_") && match.endsWith("_"))) {
-    return { type: "italic", content: match.slice(1, -1) };
-  }
+    if ((match.startsWith("*") && match.endsWith("*")) || (match.startsWith("_") && match.endsWith("_"))) {
+      return { type: "italic", content: match.slice(1, -1) };
+    }
 
-  if (match.startsWith("~") && match.endsWith("~")) {
-    return { type: "underline", content: match.slice(1, -1) };
+    if (match.startsWith("~") && match.endsWith("~")) {
+      return { type: "underline", content: match.slice(1, -1) };
+    }
   }
 
   const card = cardMap.get(match.toLowerCase());

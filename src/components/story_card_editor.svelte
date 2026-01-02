@@ -80,7 +80,6 @@
     }
   });
 
-  // Stop audio when editor closes
   onDestroy(() => {
     AudioManager.stop();
   });

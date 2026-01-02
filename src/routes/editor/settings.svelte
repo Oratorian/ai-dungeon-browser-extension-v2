@@ -13,24 +13,42 @@
 
 <Field label="Icons, Text & Tooltips">
   <Item foldout icon="sticker" label="Icons">
-    <Field label="Size" info="Customize the size <u>(px)</u> of the inline icons!">
+    <Field label="Size" info="This is a placeholder!">
       <Slider bind:value={$settings.iconSize} min={0} max={40} />
     </Field>
 
-    <Field label="Roundness" info="Customize the roundness <u>(%)</u> of the inline icons!">
+    <Field label="Roundness" info="This is a placeholder!">
       <Slider bind:value={$settings.iconRoundness} />
     </Field>
 
-    <Field label="Thickness" info="Customize the thickness <u>(px)</u> of the icon borders!">
+    <Field label="Thickness" info="This is a placeholder!">
       <Slider bind:value={$settings.iconThickness} min={0} max={16} />
     </Field>
+  </Item>
 
-    <Field label="Color" info="Customize the color of the text and their icons!">
+  <Item foldout icon="text_fields" label="Text">
+    <Field label="Bold Names" info="This is a placeholder!">
+      <Switch bind:checked={$settings.highlightBold} />
+    </Field>
+
+    <Field label="Markdown Formatting" info="This is a placeholder!">
+      <Switch bind:checked={$settings.highlightMarkdown} />
+    </Field>
+
+    <Field label="Lookback" info="This is a placeholder!">
+      <Slider bind:value={$settings.highlightLookback} min={0} max={32} />
+    </Field>
+
+    <Field label="Color" info="This is a placeholder!">
       <Color bind:value={$settings.iconColor} />
     </Field>
   </Item>
 
   <Item foldout icon="tooltip" label="Tooltip">
+    <Field label="Allow Focus" info="This is a placeholder!">
+      <Switch bind:checked={$settings.highlightFocus} />
+    </Field>
+
     <Field label="Hide Delay" info="This is a placeholder!">
       <Slider bind:value={$settings.tooltipDelay} min={0} max={2000} step={25} />
     </Field>
@@ -51,31 +69,5 @@
       <Slider bind:value={$settings.volume} />
     </Field>
     <AudioLibrary />
-  </Item>
-</Field>
-
-<Field label="Other Features">
-  <Item foldout icon="markdown" label="Markdown">
-    <Field
-      label="Enabled"
-      info="Toggle whether Markdown formatting is applied, with rules for:<br>- <b>Bold</b>:(`**` or `__`)<br>- <i>Italic</i>: (`*` or `_`)<br>- <s>Strikethrough</s>: (`~~`)<br>- <u>Underline</u>: (`~`)"
-    >
-      <Switch />
-    </Field>
-  </Item>
-
-  <Item foldout icon="visibility" label="Focus">
-    <Field
-      label="Enabled"
-      info="Toggle whether the focus feature is active, which:<br>- Allows you to pin <u>Graphics</u><br>- Enables <u>SFX</u> playback"
-    >
-      <Switch />
-    </Field>
-  </Item>
-
-  <Item foldout icon="art_track" label="Image Gen">
-    <Field label="Enabled" info="">
-      <Switch />
-    </Field>
   </Item>
 </Field>

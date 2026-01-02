@@ -77,7 +77,6 @@
     if (card && card.audioClips) {
       const validated = AudioManager.validateClipIds(card.audioClips);
 
-      // Only update if the clips actually changed
       if (JSON.stringify(validated) !== JSON.stringify(validAudioClips)) {
         validAudioClips = validated;
 
@@ -167,7 +166,7 @@
     tabindex="0"
     onkeydown={() => {}}
     class="group flex aspect-3/2 w-full bg-cover rounded-xl relative group"
-    style="background-image: url({graphic});"
+    style="background-image: url({graphic}); cursor: {card.graphics.length <= 1 ? 'default' : 'pointer'};"
   >
     <div class="flex gap-3 justify-end relative w-full h-fit mt-auto p-3 transition opacity-0 group-hover:opacity-100">
       {#if validAudioClips.length > 0}
@@ -295,7 +294,7 @@
             extensionState.focusCardId = null;
           }
         }}
-        class="font-symbol text-3xl text-shadow-lg hover:text-pretty-red opacity-50 hover:opacity-100 transition-colors cursor-pointer"
+        class="font-symbol text-3xl text-shadow-lg hover:text-pretty-red opacity-50 hover:opacity-100 transition-colors cursor-pointer select-none"
       >
         close
       </span>

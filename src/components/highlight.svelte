@@ -36,6 +36,7 @@
   let toolTipWidth = $derived(`${$settings.tooltipWidth}px`);
   let tooltipHeight = $derived(`${$settings.tooltipHeight}px`);
   let adventureId = $derived(Storage.selectedAdventureId);
+  let bold = $derived($settings.highlightBold);
 </script>
 
 <span
@@ -44,6 +45,7 @@
   onmouseenter={handleEnter}
   onmouseleave={handleLeave}
   class="relative inline-flex items-baseline whitespace-nowrap gap-2"
+  style:font-weight={bold ? "bold" : "inherit"}
 >
   {#if graphic && hovering}
     <div
@@ -67,14 +69,20 @@
         style:border-radius={"5%"}
         style="display: block; width: max-content; max-width: {toolTipWidth}; max-height: {tooltipHeight};"
       />
-      <button
-        onclick={(event: MouseEvent) => {
-          event.stopPropagation();
-          extensionState.focusCardId = card.id;
-        }}
-      >
-        <span class="font-symbol text-shadow-lg text-3xl">eye_tracking</span>
-      </button>
+      {#if $settings.highlightFocus}
+        <button
+          onclick={(event: MouseEvent) => {
+            event.stopPropagation();
+            extensionState.focusCardId = card.id;
+            hovering = false;
+          }}
+          class="absolute! top-3! right-3!"
+        >
+          <span class="font-symbol text-shadow-lg transition text-white opacity-50 hover:opacity-100 font-normal text-3xl"
+            >eye_tracking</span
+          >
+        </button>
+      {/if}
     </div>
   {/if}
 
