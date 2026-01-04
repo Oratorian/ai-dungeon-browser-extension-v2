@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Storage } from "@/utils/storage";
-  import type { StoryCard } from "@/utils/types";
+  import { ResponseType, StoryCard } from "@/utils/types";
   import DOMPurify from "dompurify";
   import { parseResponse, buildCardMap } from "@/utils/parser";
   import Highlight from "./highlight.svelte";
@@ -8,9 +8,10 @@
 
   type Props = {
     rawHtml: string;
+    type: ResponseType;
   };
 
-  let { rawHtml }: Props = $props();
+  let { rawHtml, type }: Props = $props();
 
   let text = $derived(DOMPurify.sanitize(rawHtml));
   let map = $state(new Map<string, StoryCard>());
@@ -37,17 +38,15 @@
   });
 
   let chunks = $derived(parseResponse(text, map));
-  $effect(() => {
-    if (extensionState.focusCardId && chunks.length > 0 && chunks[0].content.startsWith(" ")) {
-      chunks[0].content = chunks[0].content.trimStart();
-    }
-  });
 </script>
 
-<Focus /><span>
+{#if type === ResponseType.LastAction}
+  <Focus />{/if}<span>
   {#each chunks as chunk, i (i)}
     {#if chunk.type === "card"}
-      <Highlight card={chunk.card} text={chunk.content} />
+      {#if chunk.card.limit === "none" || (type === ResponseType.Action && chunk.card.limit === "action_only") || (type !== ResponseType.Action && chunk.card.limit === "story_only")}
+        <Highlight card={chunk.card} text={chunk.content} />
+      {/if}
     {:else if chunk.type === "bold"}
       <b>{chunk.content}</b>
     {:else if chunk.type === "italic"}

@@ -35,10 +35,6 @@
       <Switch bind:checked={$settings.highlightMarkdown} />
     </Field>
 
-    <Field label="Lookback" info="This is a placeholder!">
-      <Slider bind:value={$settings.highlightLookback} min={0} max={32} />
-    </Field>
-
     <Field label="Color" info="This is a placeholder!">
       <Color bind:value={$settings.iconColor} />
     </Field>

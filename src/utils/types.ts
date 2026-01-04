@@ -43,3 +43,14 @@ export type TextChunk =
   | { type: "underline"; content: string }
   | { type: "strikethrough"; content: string }
   | { type: "card"; card: StoryCard; content: string };
+
+export enum ResponseType {
+  LastAction = "LastAction",
+  Action = "Action",
+  Story = "Story",
+}
+
+export enum ContainerType {
+  StorySection = "StorySection",
+  Action = "Action",
+}

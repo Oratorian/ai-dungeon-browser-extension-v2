@@ -165,7 +165,7 @@
     role="toolbar"
     tabindex="0"
     onkeydown={() => {}}
-    class="group flex aspect-3/2 w-full bg-cover rounded-xl relative group"
+    class="group flex aspect-3/2 w-full bg-center bg-cover bg-no-repeat rounded-xl relative group"
     style="background-image: url({graphic}); cursor: {card.graphics.length <= 1 ? 'default' : 'pointer'};"
   >
     <div class="flex gap-3 justify-end relative w-full h-fit mt-auto p-3 transition opacity-0 group-hover:opacity-100">
