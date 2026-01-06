@@ -6,10 +6,20 @@
 
 ## How to install?
 
+### Chrome
+
 1. Download the latest release from the [Releases](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/releases) page.
 2. Open your browser's extensions page (e.g., `chrome://extensions/` for Chrome).
 3. Enable "Developer mode" (usually found in the top right corner).
 4. Click on "Load unpacked" and select the downloaded extension folder.
+5. The extension should now be installed and visible in your browser's toolbar.
+
+### Firefox
+
+1. Download the latest release from the [Releases](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/releases) page.
+2. Open your browser's add-ons page (e.g., `about:addons` for Firefox).
+3. Click on the gear icon and select "Install Add-on From File..."
+4. Choose the downloaded extension file (unpacked).
 5. The extension should now be installed and visible in your browser's toolbar.
 
 ## Features
