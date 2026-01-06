@@ -20,7 +20,7 @@ export function parseResponse(text: string, cardMap: Map<string, StoryCard>): Te
   ];
 
   if (escapedKeys.length > 0) {
-    patterns.push(`\\b(${escapedKeys.join("|")})\\b`);
+    patterns.push(`\\b(${escapedKeys.join("|")})(?:'s|'s)?\\b`);
   }
 
   const combinedPattern = new RegExp(patterns.join("|"), "gi");
@@ -68,7 +68,8 @@ function categorizeMatch(match: string, cardMap: Map<string, StoryCard>): TextCh
     }
   }
 
-  const card = cardMap.get(match.toLowerCase());
+  const lookupMatch = match.replace(/('s|'s)$/, "");
+  const card = cardMap.get(lookupMatch.toLowerCase());
   if (card) {
     return { type: "card", card, content: match };
   }
