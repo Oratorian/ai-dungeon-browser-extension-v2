@@ -2,7 +2,7 @@
   import { Storage } from "@/utils/storage";
   import { ResponseType, StoryCard } from "@/utils/types";
   import DOMPurify from "dompurify";
-  import { parseResponse, buildCardMap } from "@/utils/parser";
+  import { parseResponse } from "@/utils/parser";
   import Highlight from "./highlight.svelte";
   import Focus from "./focus.svelte";
 
@@ -16,25 +16,8 @@
   let text = $derived(DOMPurify.sanitize(rawHtml));
   let map = $state(new Map<string, StoryCard>());
 
-  $effect(() => {
-    const updateCardMap = () => {
-      const adventure = Storage.getSelectedAdventure();
-      if (adventure) {
-        map = buildCardMap(adventure.storyCards);
-      } else {
-        map = new Map();
-      }
-    };
-
-    updateCardMap();
-
-    const unsubAdventure = Storage.selectedAdventureId.subscribe(() => updateCardMap());
-    const unsubAdventures = Storage.adventures.subscribe(() => updateCardMap());
-
-    return () => {
-      unsubAdventure();
-      unsubAdventures();
-    };
+  Storage.cardMap.subscribe((value) => {
+    map = value;
   });
 
   let chunks = $derived(parseResponse(text, map));
@@ -46,6 +29,8 @@
     {#if chunk.type === "card"}
       {#if chunk.card.limit === "none" || (type === ResponseType.Action && chunk.card.limit === "action_only") || (type !== ResponseType.Action && chunk.card.limit === "story_only")}
         <Highlight card={chunk.card} text={chunk.content} />
+      {:else}
+        {chunk.content}
       {/if}
     {:else if chunk.type === "bold"}
       <b>{chunk.content}</b>
