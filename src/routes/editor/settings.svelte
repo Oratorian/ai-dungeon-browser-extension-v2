@@ -58,7 +58,7 @@
   </Item>
 </Field>
 
-<Item foldout>
+<Item foldout icon="eye_tracking" label="Focus">
   <Field
     label="Allow Focus"
     info="Whether to enable the focus system which allows you to:<br>- Hover over a highlighted text thingy<br>- See the <span class='de-icon-tip'>eye_tracking</span> in the upper right corner<br>- Click it to pin its graphic to the last response<br>- <em>Also enables the SFX feature for ambience</em>"
