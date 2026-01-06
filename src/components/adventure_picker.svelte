@@ -17,10 +17,13 @@
   let isCreateDialogOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
   let isRenameDialogOpen = $state(false);
+  let isImportDialogOpen = $state(false);
   let newAdventureName = $state("");
   let adventureToDelete = $state<Adventure | null>(null);
   let adventureToRename = $state<Adventure | null>(null);
   let renameValue = $state("");
+  let importError = $state<string | null>(null);
+  let fileInput: HTMLInputElement;
 
   const adventureList = $derived(Object.values(adventures).sort((a, b) => b.createdAt - a.createdAt));
 
@@ -49,6 +52,48 @@
     isRenameDialogOpen = false;
   }
 
+  function handleExport(adventure: Adventure) {
+    const json = Storage.exportAdventure(adventure.id);
+    if (!json) return;
+
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${adventure.name.replace(/[^a-z0-9]/gi, "_")}_adventure.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImportClick() {
+    fileInput?.click();
+  }
+
+  async function handleFileSelect(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const result = Storage.importAdventure(text);
+
+      if (result.success && result.adventure) {
+        Storage.selectAdventure(result.adventure.id);
+        isImportDialogOpen = false;
+        importError = null;
+      } else {
+        importError = result.error ?? "Unknown error";
+      }
+    } catch {
+      importError = "Failed to read file";
+    }
+
+    input.value = "";
+  }
+
   function openDeleteDialog(adventure: Adventure) {
     adventureToDelete = adventure;
     isDeleteDialogOpen = true;
@@ -68,6 +113,8 @@
     });
   }
 </script>
+
+<input bind:this={fileInput} type="file" accept=".json" onchange={handleFileSelect} class="hidden" />
 
 <div class="flex flex-col gap-2 w-full">
   <div class="flex items-center gap-2">
@@ -118,6 +165,24 @@
                     tabindex="0"
                     onclick={(e) => {
                       e.stopPropagation();
+                      handleExport(adventure);
+                    }}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        handleExport(adventure);
+                      }
+                    }}
+                    class="p-1 hover:bg-theme-neutral-500 rounded-md transition-colors cursor-pointer"
+                    title="Export adventure"
+                  >
+                    <span class="font-symbol text-base">upload</span>
+                  </div>
+                  <div
+                    role="button"
+                    tabindex="0"
+                    onclick={(e) => {
+                      e.stopPropagation();
                       openRenameDialog(adventure);
                     }}
                     onkeydown={(e) => {
@@ -160,6 +225,14 @@
           >
             <span class="font-symbol text-lg">add</span>
             <span class="text-sm">Create New Adventure</span>
+          </DropdownMenu.Item>
+
+          <DropdownMenu.Item
+            class="flex items-center gap-2 p-2 rounded-lg hover:bg-theme-neutral-400 cursor-pointer transition-colors"
+            onSelect={() => (isImportDialogOpen = true)}
+          >
+            <span class="font-symbol text-lg">download</span>
+            <span class="text-sm">Import Adventure</span>
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -270,6 +343,50 @@
           class="px-4 py-2 bg-pretty-theme text-theme-neutral-0 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           Save
+        </button>
+      </div>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
+
+<Dialog.Root bind:open={isImportDialogOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="fixed inset-0 bg-black/60 z-50 animate-in fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+    />
+    <Dialog.Content
+      trapFocus={false}
+      class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-theme-neutral-200 rounded-2xl p-6 shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-bottom-4"
+    >
+      <Dialog.Title class="text-lg font-bold mb-4">Import Adventure</Dialog.Title>
+      <Dialog.Description class="text-sm text-theme-neutral-700 mb-4">
+        Select a previously exported adventure file (.json) to import.
+      </Dialog.Description>
+
+      {#if importError}
+        <div class="flex items-center gap-2 p-3 mb-4 bg-pretty-red/20 text-pretty-red rounded-lg">
+          <span class="font-symbol">error</span>
+          <span class="text-sm">{importError}</span>
+        </div>
+      {/if}
+
+      <button
+        onclick={handleImportClick}
+        class="flex items-center justify-center gap-2 w-full h-24 border-2 border-dashed border-theme-neutral-400 hover:border-pretty-theme rounded-xl transition-colors mb-4"
+      >
+        <span class="font-symbol text-2xl text-theme-neutral-700">upload_file</span>
+        <span class="text-theme-neutral-700">Click to select file</span>
+      </button>
+
+      <div class="flex gap-2 justify-end">
+        <button
+          onclick={() => {
+            isImportDialogOpen = false;
+            importError = null;
+          }}
+          class="px-4 py-2 rounded-lg hover:bg-theme-neutral-300 transition-colors"
+        >
+          Cancel
         </button>
       </div>
     </Dialog.Content>
