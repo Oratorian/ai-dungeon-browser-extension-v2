@@ -2,65 +2,80 @@
 
 # Dungeon Extension v2
 
-> **⚠️ Development Notice**: This extension is currently in active development. Features, functionality, and documentation are subject to change. Nothing is fixed in stone yet, and breaking changes may occur between updates.
+A browser extension that enhances your AI Dungeon experience with story cards, visual overlays, audio effects, and text formatting.
 
-## How to install?
+## Installation
 
 ### Chrome
 
 1. Download the latest release from the [Releases](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/releases) page.
-2. Open your browser's extensions page (e.g., `chrome://extensions/` for Chrome).
-3. Enable "Developer mode" (usually found in the top right corner).
-4. Click on "Load unpacked" and select the downloaded extension folder.
-5. The extension should now be installed and visible in your browser's toolbar.
+2. Extract the downloaded zip file.
+3. Open `chrome://extensions/` in Chrome.
+4. Enable "Developer mode" in the top right corner.
+5. Click "Load unpacked" and select the extracted folder.
 
 ### Firefox
 
 1. Download the latest release from the [Releases](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/releases) page.
-2. Open your browser's add-ons page (e.g., `about:addons` for Firefox).
-3. Click on the gear icon and select "Install Add-on From File..."
-4. Choose the downloaded extension file (unpacked).
-5. The extension should now be installed and visible in your browser's toolbar.
+2. Open `about:addons` in Firefox.
+3. Click the gear icon and select "Install Add-on From File..."
+4. Select the manifest of the downloaded folder.
 
 ## Features
 
-### Story Cards
+### Adventures & Story Cards
 
-- Create and manage custom story cards for characters, locations, items, factions, events, and races
-- Organize cards by adventure with support for multiple adventures
-- Add custom icons and graphics to your story cards
-- Set custom colors for text highlighting (global or per-card)
-- Configure trigger words to automatically detect and highlight story elements
+- **Adventure Management**: Create, rename, delete, import, and export adventures
+- **Story Card Types**: Characters, locations, items, factions, events, and races
+- **Trigger Words**: Define words or phrases that automatically highlight matching text in the story
+- **Import/Export**: Share adventures between devices or with other users via JSON files
 
 ### Visual Enhancements
 
-- Inline icons displayed directly in story text when triggers are detected
-- Hover tooltips showing full-size graphics
-- Focus mode to pin graphics and view larger images
-- Support for multiple icons and graphics per card with cycling capability
-- Customizable icon size, roundness, border thickness, and colors
+- **Inline Icons**: Small images displayed next to triggered text in the story
+- **Tooltips**: Hover over highlighted text to see larger graphics
+- **Focus Mode**: Pin a card's graphic to the screen for extended viewing
+- **Multiple Media**: Add up to 6 icons and 4 graphics per card with cycling support
+- **Customization Options**:
+  - Icon size, roundness, and border thickness
+  - Global or per-card custom colors
+  - Tooltip dimensions and hide delay
+  - Focus container height
 
 ### Audio Integration
 
-- Audio library for managing sound effects
-- Attach multiple audio clips to story cards
-- Automatic playback when cards are focused
-- Audio controls with play/pause, skip, and volume adjustment
-- Support for multiple audio tracks per card
+- **Audio Library**: Upload and manage sound effect files
+- **Card Audio**: Attach up to 4 audio clips per story card
+- **Playback Controls**: Play/pause, skip tracks, and adjust volume
+- **Auto-play**: Audio automatically plays when a card enters focus mode
 
-### Markdown Support
+### Text Formatting
 
-- Format text with **bold** (`**` or `__`)
-- Format text with _italic_ (`*` or `_`)
-- Format text with <u>underline</u> (`~`)
-- Format text with ~~strikethrough~~ (`~~`)
+When enabled, the extension parses and renders markdown-style formatting in story text:
 
-### Settings & Customization
+| Format        | Syntax                   | Example           |
+| ------------- | ------------------------ | ----------------- |
+| Bold          | `**text**` or `__text__` | **bold text**     |
+| Italic        | `*text*` or `_text_`     | _italic text_     |
+| Underline     | `~text~`                 | <u>underlined</u> |
+| Strikethrough | `~~text~~`               | ~~strikethrough~~ |
 
-- Adjustable tooltip delays and dimensions
-- Icon appearance customization (size, roundness, thickness, color)
-- Volume controls for audio playback
-- Per-adventure configuration support
+### Settings
+
+- **Icons**: Size, roundness, border thickness
+- **Text**: Bold highlighting toggle, markdown formatting toggle, default color
+- **Tooltips**: Hide delay, max width, max height
+- **Focus**: Enable/disable focus mode, max height
+- **Audio**: Global volume control, audio library management
+
+## Usage
+
+1. Open any adventure in AI Dungeon.
+2. Enter the in-game menu by clicking on the flamey thing in the top left corner.
+3. Click the **Editor** button (wrench icon).
+4. Create a new adventure or select an existing one.
+5. Add story cards with names, trigger words, icons, graphics, and audio.
+6. Play your adventure - triggered words will automatically highlight with your configured visuals and sounds.
 
 ## Technology Stack
 
@@ -75,14 +90,24 @@
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (with hot reload)
 npm run dev
 
 # Build for production
 npm run build
 
-# Create distributable zip
+# Create distributable zip files
 npm run zip
+```
+
+### Project Structure
+
+```
+src/
+├── components/     # Reusable Svelte components
+├── entrypoints/    # Extension entry points (content script)
+├── routes/         # Main UI routes (editor, settings)
+└── utils/          # Storage, parsing, DOM manipulation, events
 ```
 
 ## License
@@ -91,4 +116,10 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Note**: This extension is designed specifically for use with [AI Dungeon](https://play.aidungeon.com/).
+<div align="center">
+
+**Made with ❤️ for the AI Dungeon community**
+
+[Report Bug](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/issues) · [Request Feature](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/issues)
+
+</div>
