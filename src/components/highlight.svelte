@@ -48,41 +48,43 @@
   style:font-weight={bold ? "bold" : "inherit"}
 >
   {#if graphic && hovering}
-    <div
-      transition:fly={{ duration: 200, y: 16, delay: 20 }}
-      onmouseenter={handleEnter}
-      onclick={(event: MouseEvent) => {
-        event.stopPropagation();
-        if (card.graphics.length <= 1) return;
-        const nextIndex = (card.graphicIndex + 1) % card.graphics.length;
-        Storage.updateStoryCard($adventureId!, card.id, { graphicIndex: nextIndex });
-      }}
-      style="position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); border-radius: 8px;"
-      tabindex="-1"
-      role="button"
-      class="transition hover:brightness-110 z-10"
-      onkeydown={() => {}}
-    >
-      <img
-        src={graphic}
-        alt="Highlight graphic"
-        style:border-radius={"5%"}
-        style="display: block; width: max-content; max-width: {toolTipWidth}; max-height: {tooltipHeight};"
-      />
-      {#if $settings.highlightFocus}
-        <button
-          onclick={(event: MouseEvent) => {
-            event.stopPropagation();
-            extensionState.focusCardId = card.id;
-            hovering = false;
-          }}
-          class="absolute! top-3! right-3!"
-        >
-          <span class="font-symbol text-shadow-lg transition text-white opacity-50 hover:opacity-100 font-normal text-3xl"
-            >eye_tracking</span
+    <div style="position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 10;">
+      <div
+        transition:fly={{ duration: 200, y: 16, delay: 20 }}
+        onmouseenter={handleEnter}
+        onclick={(event: MouseEvent) => {
+          event.stopPropagation();
+          if (card.graphics.length <= 1) return;
+          const nextIndex = (card.graphicIndex + 1) % card.graphics.length;
+          Storage.updateStoryCard($adventureId!, card.id, { graphicIndex: nextIndex });
+        }}
+        style="position: relative; border-radius: 8px;"
+        tabindex="-1"
+        role="button"
+        class="transition hover:brightness-110"
+        onkeydown={() => {}}
+      >
+        <img
+          src={graphic}
+          alt="Highlight graphic"
+          style:border-radius={"5%"}
+          style="display: block; max-width: {toolTipWidth}; max-height: {tooltipHeight}; width: auto; height: auto;"
+        />
+        {#if $settings.highlightFocus}
+          <button
+            onclick={(event: MouseEvent) => {
+              event.stopPropagation();
+              extensionState.focusCardId = card.id;
+              hovering = false;
+            }}
+            class="absolute! top-3! right-3!"
           >
-        </button>
-      {/if}
+            <span class="font-symbol text-shadow-lg transition text-white opacity-50 hover:opacity-100 font-normal text-3xl"
+              >eye_tracking</span
+            >
+          </button>
+        {/if}
+      </div>
     </div>
   {/if}
 
