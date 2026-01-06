@@ -1,4 +1,4 @@
-import { TextChunk } from "./types";
+import type { TextChunk, StoryCard } from "./types";
 import { get } from "svelte/store";
 import { settings } from "./storage";
 
