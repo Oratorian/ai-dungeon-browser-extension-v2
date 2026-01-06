@@ -34,6 +34,10 @@
   --shadow-date-field-focus: 0px 0px 0px 3px rgba(24, 24, 27, 0.17);
 }
 
+.de-icon-tip {
+  font-family: var(--font-symbol);
+}
+
 @layer base {
   :host,
   button,
