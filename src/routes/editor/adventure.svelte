@@ -4,35 +4,24 @@
   import AdventurePicker from "@/components/adventure_picker.svelte";
   import StoryCardEditor from "@/components/story_card_editor.svelte";
   import { Storage } from "@/utils/storage";
-  import type { Adventure, StoryCard } from "@/utils/types";
+  import type { Adventure } from "@/utils/types";
   import Field from "@/components/field.svelte";
+  import { get } from "svelte/store";
 
-  let selectedAdventure = $state<Adventure | null>(null);
+  let adventures = $state<Record<string, Adventure>>({});
+  let selectedId = $state<string | null>(null);
 
-  Storage.selectedAdventureId.subscribe((id) => {
-    if (id) {
-      const unsub = Storage.adventures.subscribe((adventures) => {
-        selectedAdventure = adventures[id] ?? null;
-      });
-    } else {
-      selectedAdventure = null;
-    }
-  });
+  Storage.adventures.subscribe((a) => (adventures = a));
+  Storage.selectedAdventureId.subscribe((id) => (selectedId = id));
 
-  Storage.adventures.subscribe((adventures) => {
-    const id = selectedAdventure?.id;
-    if (id && adventures[id]) {
-      selectedAdventure = adventures[id];
-    }
-  });
-
+  const selectedAdventure = $derived(selectedId ? (adventures[selectedId] ?? null) : null);
   const storyCards = $derived(selectedAdventure ? Object.values(selectedAdventure.storyCards) : []);
 
   function handleAddStoryCard() {
-    if (!selectedAdventure) return;
-    const card = Storage.createStoryCard(selectedAdventure.id, "New Story Card");
+    if (!selectedId) return;
+    const card = Storage.createStoryCard(selectedId, "New Story Card");
     if (card) {
-      Storage.openStoryCardEditor(selectedAdventure.id, card.id);
+      Storage.openStoryCardEditor(selectedId, card.id);
     }
   }
 </script>
