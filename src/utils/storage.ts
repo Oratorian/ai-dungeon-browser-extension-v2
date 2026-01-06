@@ -76,6 +76,7 @@ export class Storage {
   public static audioLibrary: Writable<AudioClip[]> = writable([]);
   public static selectedAdventureId: Writable<string | null> = writable(null);
   public static editingStoryCard: Writable<{ adventureId: string; storyCardId: string } | null> = writable(null);
+  public static cardMap: Writable<Map<string, StoryCard>> = writable(new Map());
 
   static getAdventureById(adventureId: string): Adventure | null {
     return get(this.adventures)[adventureId] ?? null;
@@ -236,6 +237,20 @@ export class Storage {
     this.editingStoryCard.set(null);
   }
 
+  private static mapCards() {
+    const update = () => {
+      const adventure = this.getSelectedAdventure();
+      if (adventure) {
+        this.cardMap.set(buildCardMap(adventure.storyCards));
+      } else {
+        this.cardMap.set(new Map());
+      }
+    };
+
+    this.selectedAdventureId.subscribe(() => update());
+    this.adventures.subscribe(() => update());
+  }
+
   static async load() {
     try {
       const result = await chrome.storage.local.get(["settings", "adventures", "audioLibrary", "selectedAdventureId"]);
@@ -255,6 +270,8 @@ export class Storage {
       if (Array.isArray(result.audioLibrary)) this.audioLibrary.set(result.audioLibrary);
       if (result.selectedAdventureId && typeof result.selectedAdventureId === "string")
         this.selectedAdventureId.set(result.selectedAdventureId);
+
+      this.mapCards();
     } catch (error) {
       Debug.log("ERROR: " + error);
     }
