@@ -126,7 +126,7 @@ export class DOM {
       }
 
       // Now also check the second last child, in case there is another story section before this one.
-      const secondLastChild = previousSibling.previousElementSibling as HTMLElement;
+      const secondLastChild = previousSibling?.previousElementSibling as HTMLElement;
       if (secondLastChild && this.isStoryContainer(secondLastChild)) {
         Debug.log("Second last child is also a story section!");
         const storyContainers = secondLastChild.querySelectorAll("span#transition-opacity:not([aria-label]):not(:has(span))");
