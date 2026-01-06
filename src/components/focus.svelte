@@ -2,10 +2,9 @@
   import { Popover, Slider } from "bits-ui";
   import { Storage, settings } from "@/utils/storage";
   import { AudioManager } from "@/utils/audio_manager";
-  import type { StoryCard } from "@/utils/types";
   import { onDestroy, onMount } from "svelte";
   import { focusAudioState } from "@/utils/audio_focus";
-  import { fade, fly, slide } from "svelte/transition";
+  import { fade } from "svelte/transition";
 
   let focusCardId = $derived(extensionState.focusCardId);
   let validAudioClips = $state<string[]>([]);
