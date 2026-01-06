@@ -24,7 +24,6 @@
         <div class="bg-theme-neutral-100 shadow-popover outline-hidden z-0 block text-start p-4 text-sm font-medium rounded-xl">
           {@html info}
         </div>
-        <Tooltip.Arrow class="text-theme-neutral-100" />
       {/if}
     </Tooltip.Content>
   </Tooltip.Root>
