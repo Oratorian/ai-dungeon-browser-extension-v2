@@ -112,7 +112,7 @@ export class DOM {
       });
 
       // For the other rules, let's just paint the action before this story section if it exists.
-      const previousSibling = lastChild.previousElementSibling as HTMLElement;
+      const previousSibling = lastChild?.previousElementSibling as HTMLElement;
       if (previousSibling) {
         Debug.log("The previous sibling is: " + previousSibling.outerHTML);
 
