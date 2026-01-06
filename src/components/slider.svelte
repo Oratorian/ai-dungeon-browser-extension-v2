@@ -15,7 +15,7 @@
   <input
     type="number"
     bind:value
-    class="aspect-square w-11 h-11 bg-theme-neutral-100 rounded-xl outline-0 justify-center place-items-center [&::-webkit-inner-spin-button]:appearance-none"
+    class="aspect-square w-11 h-11 bg-theme-neutral-100 rounded-xl outline-0 justify-center place-items-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield] text-center"
   />
   <Slider.Root type="single" bind:value {min} {max} {step} class="relative flex w-full touch-none select-none items-center">
     <span class="bg-theme-neutral-100 relative h-2 w-full grow cursor-pointer overflow-hidden rounded-full">
