@@ -3,17 +3,44 @@ import { settings, Storage } from "./storage";
 import type { AudioClip } from "./types";
 
 class AudioManagerClass {
-  private audioElement: HTMLAudioElement | null = null;
+  private audioContext: AudioContext | null = null;
+  private sourceNode: AudioBufferSourceNode | null = null;
+  private gainNode: GainNode | null = null;
+  private bufferCache = new Map<string, AudioBuffer>();
   private volumeUnsubscribe: (() => void) | null = null;
 
   public currentlyPlaying = writable<string | null>(null);
 
   constructor() {
     this.volumeUnsubscribe = settings.subscribe((s) => {
-      if (this.audioElement) {
-        this.audioElement.volume = s.volume / 100;
+      if (this.gainNode) {
+        this.gainNode.gain.value = s.volume / 100;
       }
     });
+  }
+
+  private getAudioContext(): AudioContext {
+    if (!this.audioContext) {
+      this.audioContext = new AudioContext();
+    }
+    return this.audioContext;
+  }
+
+  private async loadBuffer(clip: AudioClip): Promise<AudioBuffer | null> {
+    if (this.bufferCache.has(clip.id)) {
+      return this.bufferCache.get(clip.id)!;
+    }
+
+    try {
+      const response = await fetch(clip.data);
+      const arrayBuffer = await response.arrayBuffer();
+      const ctx = this.getAudioContext();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      this.bufferCache.set(clip.id, audioBuffer);
+      return audioBuffer;
+    } catch {
+      return null;
+    }
   }
 
   getClipById(id: string): AudioClip | null {
@@ -25,29 +52,47 @@ class AudioManagerClass {
     const clip = this.getClipById(clipId);
     if (!clip) return false;
 
-    this.stop();
+    // Prevent playing the same clip 12030123 times
+    if (get(this.currentlyPlaying) === clipId && this.sourceNode) {
+      return true;
+    }
 
-    this.audioElement = new Audio(clip.data);
-    this.audioElement.volume = get(settings).volume / 100;
-    this.audioElement.onended = () => {
-      this.currentlyPlaying.set(null);
-    };
-    this.audioElement.onerror = () => {
-      this.currentlyPlaying.set(null);
-    };
-    this.audioElement.play();
+    this.stop();
     this.currentlyPlaying.set(clipId);
+
+    this.loadBuffer(clip).then((buffer) => {
+      if (!buffer || get(this.currentlyPlaying) !== clipId) return;
+
+      const ctx = this.getAudioContext();
+      if (ctx.state === "suspended") ctx.resume();
+
+      this.gainNode = ctx.createGain();
+      this.gainNode.gain.value = get(settings).volume / 100;
+      this.gainNode.connect(ctx.destination);
+
+      this.sourceNode = ctx.createBufferSource();
+      this.sourceNode.buffer = buffer;
+      this.sourceNode.loop = true;
+      this.sourceNode.connect(this.gainNode);
+      this.sourceNode.start(0);
+    });
+
     return true;
   }
 
   stop(): void {
-    if (this.audioElement) {
-      this.audioElement.onended = null;
-      this.audioElement.onerror = null;
-
-      this.audioElement.pause();
-      this.audioElement.src = "";
-      this.audioElement = null;
+    if (this.sourceNode) {
+      try {
+        this.sourceNode.stop();
+      } catch {
+        // Already stopped
+      }
+      this.sourceNode.disconnect();
+      this.sourceNode = null;
+    }
+    if (this.gainNode) {
+      this.gainNode.disconnect();
+      this.gainNode = null;
     }
     this.currentlyPlaying.set(null);
   }
@@ -89,6 +134,11 @@ class AudioManagerClass {
 
   destroy(): void {
     this.stop();
+    this.bufferCache.clear();
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
     if (this.volumeUnsubscribe) {
       this.volumeUnsubscribe();
     }
