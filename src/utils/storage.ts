@@ -1,6 +1,7 @@
 import { Adventure, AudioClip, StoryCard } from "./types";
 import { get, writable, Writable } from "svelte/store";
 import { Debug } from "./debug";
+import { untrack } from "svelte";
 
 const defaultSettings = {
   iconSize: 28,
@@ -79,6 +80,58 @@ export class Storage {
   public static selectedAdventureId: Writable<string | null> = writable(null);
   public static editingStoryCard: Writable<{ adventureId: string; storyCardId: string } | null> = writable(null);
   public static cardMap: Writable<Map<string, StoryCard>> = writable(new Map());
+
+  static exportAdventure(adventureId: string): string | null {
+    const adventure = this.getAdventureById(adventureId);
+    if (!adventure) return null;
+
+    const exportData = {
+      version: 1,
+      exportedAt: Date.now(),
+      adventure: adventure,
+    };
+
+    return JSON.stringify(exportData, null, 2);
+  }
+
+  static importAdventure(jsonString: string): { success: boolean; error?: string; adventure?: Adventure } {
+    try {
+      const data = JSON.parse(jsonString);
+
+      if (!data.adventure || typeof data.adventure !== "object") {
+        return { success: false, error: "Invalid adventure data" };
+      }
+
+      const normalized = normalizeAdventure(data.adventure);
+      if (!normalized) {
+        return { success: false, error: "Failed to parse adventure" };
+      }
+
+      const newId = crypto.randomUUID();
+      const importedAdventure: Adventure = {
+        ...normalized,
+        id: newId,
+        name: `${normalized.name} (Imported)`,
+        createdAt: Date.now(),
+      };
+
+      const newStoryCards: Record<string, StoryCard> = {};
+      for (const card of Object.values(normalized.storyCards)) {
+        const newCardId = crypto.randomUUID();
+        newStoryCards[newCardId] = { ...card, id: newCardId };
+      }
+      importedAdventure.storyCards = newStoryCards;
+
+      this.adventures.update((adventures) => ({
+        ...adventures,
+        [newId]: importedAdventure,
+      }));
+
+      return { success: true, adventure: importedAdventure };
+    } catch (e) {
+      return { success: false, error: "Invalid JSON format" };
+    }
+  }
 
   static getAdventureById(adventureId: string): Adventure | null {
     return get(this.adventures)[adventureId] ?? null;
@@ -281,19 +334,19 @@ export class Storage {
 
   static async listen() {
     this.settings.subscribe((value) => {
-      chrome.storage.local.set({ settings: value });
+      chrome.storage.local.set({ settings: JSON.parse(JSON.stringify(value)) });
     });
 
     let adventureTimeout: ReturnType<typeof setTimeout>;
     this.adventures.subscribe((value) => {
       clearTimeout(adventureTimeout);
       adventureTimeout = setTimeout(() => {
-        chrome.storage.local.set({ adventures: value });
+        chrome.storage.local.set({ adventures: JSON.parse(JSON.stringify(value)) });
       }, 200);
     });
 
     this.audioLibrary.subscribe((value) => {
-      chrome.storage.local.set({ audioLibrary: value });
+      chrome.storage.local.set({ audioLibrary: JSON.parse(JSON.stringify(value)) });
     });
 
     this.selectedAdventureId.subscribe((value) => {
