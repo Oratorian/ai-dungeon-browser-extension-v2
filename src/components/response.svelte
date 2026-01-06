@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Storage } from "@/utils/storage";
-  import { ResponseType, StoryCard } from "@/utils/types";
+  import { ResponseType, type StoryCard } from "@/utils/types";
   import DOMPurify from "dompurify";
   import { parseResponse } from "@/utils/parser";
   import Highlight from "./highlight.svelte";
