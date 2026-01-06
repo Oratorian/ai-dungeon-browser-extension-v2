@@ -17,6 +17,8 @@ const defaultSettings = {
   tooltipHeight: 512,
   tooltipDelay: 200,
 
+  focusHeight: 384,
+
   volume: 100,
 };
 
