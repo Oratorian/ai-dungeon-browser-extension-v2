@@ -6,7 +6,7 @@ import { Events } from "@/utils/events";
 import { mount, unmount } from "svelte";
 
 export default defineContentScript({
-  matches: ["*://*.play.aidungeon.com/*"],
+  matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
   cssInjectionMode: "ui",
   async main(ctx) {
     // Inject content styles omitting the base overrides stuff.

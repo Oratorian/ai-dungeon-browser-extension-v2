@@ -97,7 +97,7 @@ export class DOM {
 
     // The "Story Section" are spans with an aria-label that starts with "Story section:", they contain multiple paragraphs and possibly the last action.
     if (lastChild instanceof HTMLSpanElement && lastChild.getAttribute("aria-label")?.startsWith("Story section:")) {
-      Debug.log("Last child is a story section!");
+      // Debug.log("Last child is a story section!");
 
       // Now, sometimes the last action is inside this story section, so we need to find it.
       const lastAction = lastChild.querySelector(Config.SELECTOR_LAST_ACTION) as HTMLElement;
@@ -128,7 +128,7 @@ export class DOM {
       // Now also check the second last child, in case there is another story section before this one.
       const secondLastChild = previousSibling?.previousElementSibling as HTMLElement;
       if (secondLastChild && this.isStoryContainer(secondLastChild)) {
-        Debug.log("Second last child is also a story section!");
+        // Debug.log("Second last child is also a story section!");
         const storyContainers = secondLastChild.querySelectorAll("span#transition-opacity:not([aria-label]):not(:has(span))");
 
         // Also paint those extra story containers.
