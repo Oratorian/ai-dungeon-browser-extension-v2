@@ -32,6 +32,13 @@ export class DOM {
       const original = element.firstElementChild as HTMLElement;
 
       if (original) {
+        if (original.querySelector(".word-fade")) {
+          console.warn(
+            "[Dungeon Extension v2] Detected text animation... skipping for now... this might cause issues in the future.\n\nTo disable text animations navigate to: Gameplay > Appearance > Accessibility > Text Animation"
+          );
+          return;
+        }
+
         // Clone the original first before hiding it.
         const originalClone = original.cloneNode(true) as HTMLElement;
         original.style.display = "none";
@@ -94,7 +101,6 @@ export class DOM {
     if (!lastChild) return;
 
     // Okay, so I am gonna put some detailed comments here because my mind hurts with every AI Dungeon site update. Apparently there are now 3 distinct types of children, you either have the "Story Sections", "Actions", and sometimes the "Last Action" is outside of those two and other times it's inside a "Story Section". Really fun stuff.
-
     // The "Story Section" are spans with an aria-label that starts with "Story section:", they contain multiple paragraphs and possibly the last action.
     if (lastChild instanceof HTMLSpanElement && lastChild.getAttribute("aria-label")?.startsWith("Story section:")) {
       // Debug.log("Last child is a story section!");
