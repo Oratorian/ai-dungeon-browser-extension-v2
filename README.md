@@ -1,6 +1,9 @@
-![Extension Icon](public/icon/128.png)
+<div align="center">
 
-# Dungeon Extension v2
+<img src="public/icon/128.png" alt="Icon"/>
+<h1>Dungeon Extension v2</h1>
+
+</div>
 
 A browser extension that enhances your AI Dungeon experience with story cards, visual overlays, audio effects, and text formatting.
 
@@ -118,7 +121,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 <div align="center">
 
-**Made with ❤️ for the AI Dungeon community**
+**Made with 💙 for the AI Dungeon community**
 
 [Report Bug](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/issues) · [Request Feature](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/issues)
 
