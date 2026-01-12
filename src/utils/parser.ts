@@ -7,7 +7,7 @@ export function parseResponse(text: string, cardMap: Map<string, StoryCard>): Te
 
   const chunks: TextChunk[] = [];
 
-  const cardKeys = Array.from(cardMap.keys());
+  const cardKeys = Array.from(cardMap.keys()).sort((a, b) => b.length - a.length);
   const escapedKeys = cardKeys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 
   const patterns: string[] = [

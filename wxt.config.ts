@@ -8,7 +8,7 @@ export default defineConfig({
     name: "Dungeon Extension v2",
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
     permissions: ["storage", "unlimitedStorage"],
-    version: "1.0.0",
+    version: "1.0.1",
     web_accessible_resources: [
       {
         resources: ["fonts/*"],
