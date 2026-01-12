@@ -15,6 +15,15 @@ export default defineConfig({
         matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
       },
     ],
+    browser_specific_settings: {
+      gecko: {
+        id: "dungeon-extension-v2@clauds-clauds",
+        // @ts-expect-error
+        data_collection_permissions: {
+          required: ["none"],
+        },
+      },
+    },
   },
   vite: () => ({
     plugins: [tailwindcss()],
