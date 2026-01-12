@@ -67,7 +67,7 @@
   </Field>
 
   <Field label="Max Height" info="Maximum height of the focus container">
-    <Slider bind:value={$settings.focusHeight} max={1280} />
+    <Slider bind:value={$settings.focusHeight} max={1280} step={32} />
   </Field>
 </Item>
 
