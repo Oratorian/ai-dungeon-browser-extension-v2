@@ -20,10 +20,10 @@ export function parseResponse(text: string, cardMap: Map<string, StoryCard>): Te
   ];
 
   if (escapedKeys.length > 0) {
-    patterns.push(`\\b(${escapedKeys.join("|")})(?:'s|'s)?\\b`);
+    patterns.push(`(?<=^|\\s|[^\\p{L}\\p{N}])(${escapedKeys.join("|")})(?:'s|'s)?(?=$|\\s|[^\\p{L}\\p{N}])`);
   }
 
-  const combinedPattern = new RegExp(patterns.join("|"), "gi");
+  const combinedPattern = new RegExp(patterns.join("|"), "giu");
 
   let lastIndex = 0;
 
