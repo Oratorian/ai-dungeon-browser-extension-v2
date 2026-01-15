@@ -31,6 +31,47 @@ function ensureArray(value: unknown): string[] {
   return [];
 }
 
+function normalizeLegacyStoryCard(card: Record<string, unknown>): StoryCard {
+  const triggers = Array.isArray(card.triggers) ? card.triggers.join(", ") : "";
+  const icons = Array.isArray(card.icons)
+    ? card.icons
+        .map((i: unknown) => (typeof i === "object" && i !== null && "url" in i ? (i as { url: string }).url : ""))
+        .filter(Boolean)
+    : [];
+  const graphics = Array.isArray(card.graphics)
+    ? card.graphics
+        .map((g: unknown) => (typeof g === "object" && g !== null && "url" in g ? (g as { url: string }).url : ""))
+        .filter(Boolean)
+    : [];
+
+  const colorMode = typeof card.colorMode === "string" ? card.colorMode : "shared";
+  const restriction = typeof card.restriction === "string" ? card.restriction : "unrestricted";
+
+  let limit = "none";
+  if (restriction === "story_only") limit = "story_only";
+  else if (restriction === "action_only") limit = "action_only";
+
+  return {
+    id: crypto.randomUUID(),
+    name: typeof card.name === "string" ? card.name : "Untitled Card",
+    triggers,
+    type: typeof card.category === "string" ? card.category : "character",
+    icons,
+    iconIndex: 0,
+    graphics,
+    graphicIndex: 0,
+    useCustomColor: colorMode === "custom",
+    color: typeof card.color === "string" ? card.color : "#f8ae2c",
+    limit,
+    preset: "default",
+    audioClips: [],
+  };
+}
+
+function isLegacyFormat(data: unknown): data is Record<string, unknown>[] {
+  return Array.isArray(data) && data.length > 0 && typeof data[0] === "object" && data[0] !== null && "category" in data[0];
+}
+
 function normalizeStoryCard(card: unknown): StoryCard | null {
   if (!card || typeof card !== "object") return null;
   const c = card as Record<string, unknown>;
@@ -94,9 +135,41 @@ export class Storage {
     return JSON.stringify(exportData, null, 2);
   }
 
+  private static importLegacyAdventure(cards: Record<string, unknown>[]): {
+    success: boolean;
+    error?: string;
+    adventure?: Adventure;
+  } {
+    const newId = crypto.randomUUID();
+    const storyCards: Record<string, StoryCard> = {};
+
+    for (const card of cards) {
+      const normalized = normalizeLegacyStoryCard(card);
+      storyCards[normalized.id] = normalized;
+    }
+
+    const importedAdventure: Adventure = {
+      id: newId,
+      name: "Legacy Import",
+      createdAt: Date.now(),
+      storyCards,
+    };
+
+    this.adventures.update((adventures) => ({
+      ...adventures,
+      [newId]: importedAdventure,
+    }));
+
+    return { success: true, adventure: importedAdventure };
+  }
+
   static importAdventure(jsonString: string): { success: boolean; error?: string; adventure?: Adventure } {
     try {
       const data = JSON.parse(jsonString);
+
+      if (isLegacyFormat(data)) {
+        return this.importLegacyAdventure(data);
+      }
 
       if (!data.adventure || typeof data.adventure !== "object") {
         return { success: false, error: "Invalid adventure data" };
