@@ -27,7 +27,7 @@
   <Focus />{/if}<span>
   {#each chunks as chunk, i (i)}
     {#if chunk.type === "card"}
-      {#if chunk.card.limit === "none" || (type === ResponseType.Action && chunk.card.limit === "action_only") || (type !== ResponseType.Action && chunk.card.limit === "story_only")}
+      {#if chunk.card.limit === "none" || (type === ResponseType.Action && (chunk.card.limit === "action_only" || (chunk.card.limit === "protagonist" && i === 0))) || (type !== ResponseType.Action && chunk.card.limit === "story_only")}
         <Highlight card={chunk.card} text={chunk.content} />
       {:else}
         {@html chunk.content}

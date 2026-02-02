@@ -234,6 +234,7 @@
                   { value: "none", label: "None" },
                   { value: "story_only", label: "Story" },
                   { value: "action_only", label: "Action" },
+                  { value: "protagonist", label: "Protagonist" },
                 ]}
               />
             </Field>
