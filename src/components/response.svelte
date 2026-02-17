@@ -6,6 +6,9 @@
   import Highlight from "./highlight.svelte";
   import Focus from "./focus.svelte";
 
+  /* Storage */
+  import { settings } from "@/utils/storage";
+
   type Props = {
     rawHtml: string;
     type: ResponseType;
@@ -24,7 +27,7 @@
 </script>
 
 {#if type === ResponseType.LastAction}
-  <Focus />{/if}<span>
+  <Focus />{/if}<span style="color: {$settings.customTextColor ? $settings.textColor : 'inherit'}">
   {#each chunks as chunk, i (i)}
     {#if chunk.type === "card"}
       {#if chunk.card.limit === "none" || (type === ResponseType.Action && (chunk.card.limit === "action_only" || (chunk.card.limit === "protagonist" && i === 0))) || (type !== ResponseType.Action && chunk.card.limit === "story_only")}

@@ -8,6 +8,9 @@ const defaultSettings = {
   iconRoundness: 0,
   iconThickness: 1,
   iconColor: "#f8ae2c",
+  textColor: "#000000",
+
+  customTextColor: false,
 
   highlightBold: false,
   highlightLookback: 0,

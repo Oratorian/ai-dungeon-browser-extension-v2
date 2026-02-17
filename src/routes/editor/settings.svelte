@@ -38,9 +38,19 @@
       <Switch bind:checked={$settings.highlightMarkdown} />
     </Field>
 
-    <Field label="Color" info="Default color value for new cards">
+    <Field label="Custom Text Color" info="Whether to use a custom text color">
+      <Switch bind:checked={$settings.customTextColor} />
+    </Field>
+
+    <Field label="Highlight Color" info="Default color value for new cards">
       <Color bind:value={$settings.iconColor} />
     </Field>
+
+    {#if $settings.customTextColor}
+      <Field label="Text Color" info="Color of the normal, non-highlighted text">
+        <Color bind:value={$settings.textColor} />
+      </Field>
+    {/if}
   </Item>
 
   <Item foldout icon="tooltip" label="Tooltip">
