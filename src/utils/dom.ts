@@ -14,8 +14,8 @@ export class DOM {
 
     const button = baseButton.cloneNode(true) as HTMLElement;
     button.id = Config.ID_EDITOR_BUTTON;
-    (button.querySelector("p") as HTMLElement).innerText = "w_wrench";
-    (button.querySelector("span") as HTMLElement).innerText = "Editor";
+    (button.querySelector("div > span") as HTMLElement).innerText = "w_wrench";
+    (button.querySelector(":scope > span") as HTMLElement).innerText = "Editor";
     button.addEventListener("click", (e) => {
       extensionState.isEditorOpen = true;
     });
