@@ -1,0 +1,64 @@
+name: Release
+
+# Builds debug-installable zips for Chrome and Firefox and attaches them to a
+# GitHub Release when a version tag (e.g. v1.0.7) is pushed.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build zips
+        run: |
+          npm run zip
+          npm run zip:firefox
+
+      - name: Collect artifacts
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+
+          # wxt zip emits <pkg-name>-<version>-<browser>.zip for the installable extension
+          # (plus a <pkg-name>-<version>-sources.zip AMO bundle we do not ship). Match on the
+          # exact version + browser suffix so stray artifacts can never be picked up.
+          shopt -s nullglob
+          chrome_zip=( .output/*-"${version}"-chrome.zip )
+          firefox_zip=( .output/*-"${version}"-firefox.zip )
+
+          if [ ${#chrome_zip[@]} -ne 1 ] || [ ${#firefox_zip[@]} -ne 1 ]; then
+            echo "::error::Expected exactly one chrome and one firefox zip for v${version}"
+            ls -la .output/*.zip || true
+            exit 1
+          fi
+
+          cp "${chrome_zip[0]}"  "dist/dungeon-extension-v2-resurrected-${version}-chrome.zip"
+          cp "${firefox_zip[0]}" "dist/dungeon-extension-v2-resurrected-${version}-firefox.zip"
+
+          echo "Release artifacts:"
+          ls -la dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true

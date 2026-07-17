@@ -1,6 +1,6 @@
 export class Debug {
   static log(message: string, ...optionalParams: any[]) {
-    console.log(`[Dungeon Extension v2] ${message}`, ...optionalParams);
+    console.log(`[Dungeon Extension v2 Resurrected] ${message}`, ...optionalParams);
   }
 
   static getAdventureId() {

@@ -14,6 +14,10 @@ stats-*.json
 .wxt
 web-ext.config.ts
 
+# Local signing secrets and web-ext artifacts
+.hidden
+web-ext-artifacts
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

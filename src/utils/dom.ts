@@ -33,7 +33,7 @@ export class DOM {
       if (original) {
         if (original.querySelector(".word-fade")) {
           console.warn(
-            "[Dungeon Extension v2] Detected text animation... skipping for now... this might cause issues in the future.\n\nTo disable text animations navigate to: Gameplay > Appearance > Accessibility > Text Animation"
+            "[Dungeon Extension v2 Resurrected] Detected text animation... skipping for now... this might cause issues in the future.\n\nTo disable text animations navigate to: Gameplay > Appearance > Accessibility > Text Animation"
           );
           return;
         }

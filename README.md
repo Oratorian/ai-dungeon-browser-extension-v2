@@ -1,17 +1,19 @@
 <div align="center">
 
 <img src="public/icon/128.png" alt="Icon"/>
-<h1>Dungeon Extension v2</h1>
+<h1>Dungeon Extension v2 Resurrected</h1>
 
 </div>
 
 A browser extension that enhances your AI Dungeon experience with story cards, visual overlays, audio effects, and text formatting.
 
+> **Resurrected fork.** Originally created by [clauds-clauds](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2) (MIT). This fork revives the project and keeps it working against AI Dungeon's ongoing site changes, maintained by [Oratorian](https://github.com/Oratorian).
+
 ## Installation
 
 ### Chrome
 
-1. Download the latest release from the [Releases](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/releases) page.
+1. Download the latest release from the [Releases](https://github.com/Oratorian/ai-dungeon-browser-extension-v2/releases) page.
 2. Extract the downloaded zip file.
 3. Open `chrome://extensions/` in Chrome.
 4. Enable "Developer mode" in the top right corner.
@@ -19,7 +21,7 @@ A browser extension that enhances your AI Dungeon experience with story cards, v
 
 ### Firefox
 
-1. Download the latest release from the [Releases](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/releases) page.
+1. Download the latest release from the [Releases](https://github.com/Oratorian/ai-dungeon-browser-extension-v2/releases) page.
 2. Open `about:addons` in Firefox.
 3. Click the gear icon and select "Install Add-on From File..."
 4. Select the manifest of the downloaded folder.
@@ -117,12 +119,14 @@ src/
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
+Original work © 2026 Claudia. Resurrected fork © 2026 Oratorian.
+
 ---
 
 <div align="center">
 
 **Made with 💙 for the AI Dungeon community**
 
-[Report Bug](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/issues) · [Request Feature](https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2/issues)
+[Report Bug](https://github.com/Oratorian/ai-dungeon-browser-extension-v2/issues) · [Request Feature](https://github.com/Oratorian/ai-dungeon-browser-extension-v2/issues)
 
 </div>
