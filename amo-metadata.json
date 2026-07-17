@@ -1,0 +1,11 @@
+{
+  "summary": {
+    "en-US": "Enhance AI Dungeon with story-card highlighting, inline icons, portraits, audio effects, and markdown-style text formatting."
+  },
+  "categories": {
+    "firefox": ["games-entertainment"]
+  },
+  "version": {
+    "license": "MIT"
+  }
+}

@@ -115,6 +115,38 @@ src/
 └── utils/          # Storage, parsing, DOM manipulation, events
 ```
 
+## Releasing
+
+### GitHub release zips
+
+Pushing a version tag builds the Chrome and Firefox debug-installable zips and
+attaches them to a GitHub Release (see [.github/workflows/release.yml](.github/workflows/release.yml)).
+The tag version must match the `version` in `wxt.config.ts`:
+
+```bash
+git tag v1.0.9
+git push origin v1.0.9
+```
+
+### Publishing to Firefox Add-ons (AMO)
+
+Listed submissions require listing metadata that `web-ext sign` reads from a
+JSON file (the manifest `license` field alone is not enough). [amo-metadata.json](amo-metadata.json)
+holds the license (SPDX slug), category, and summary. Provide your AMO API
+credentials via env vars (never commit them) and run:
+
+```bash
+npm run build:firefox
+web-ext sign \
+  --source-dir=.output/firefox-mv2 \
+  --channel=listed \
+  --amo-metadata=amo-metadata.json \
+  --api-key="$WEB_EXT_API_KEY" \
+  --api-secret="$WEB_EXT_API_SECRET"
+```
+
+Use `--channel=unlisted` for a self-hosted signed `.xpi` instead of a public listing.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
