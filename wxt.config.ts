@@ -9,6 +9,8 @@ export default defineConfig({
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
     permissions: ["storage", "unlimitedStorage"],
     version: "1.0.9",
+    // Required by AMO for listed (public) versions. SPDX identifier matching the LICENSE file.
+    license: "MIT",
     web_accessible_resources: [
       {
         resources: ["fonts/*"],
