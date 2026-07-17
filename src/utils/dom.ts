@@ -89,6 +89,11 @@ export class DOM {
     // "span#transition-opacity" element that has an element first child holding the actual text.
     // We simply find all of them anywhere under #gameplay-output and mount on each. mountResponseOn
     // is idempotent (guarded by ATTRIBUTE_ALTERED), so re-running on every mutation is safe and cheap.
+
+    // AI Dungeon virtualizes the story list: older sections get removed from the DOM as you scroll.
+    // Drop any component whose element is no longer connected before mounting the current ones.
+    this.pruneDetached();
+
     const containers = gameplayOutput.querySelectorAll<HTMLElement>(Config.SELECTOR_RESPONSE);
 
     containers.forEach((container) => {
@@ -104,6 +109,19 @@ export class DOM {
 
       this.mountResponseOn(container, type);
     });
+  }
+
+  // Unmounts and drops any tracked component whose element has been detached from the document
+  // (e.g. AI Dungeon virtualized away an old story section). Prevents a session-long memory leak
+  // of detached DOM nodes and their Svelte components.
+  static pruneDetached() {
+    for (const [element, component] of this.mountedComponents.entries()) {
+      if (element.isConnected) continue;
+      unmount(component);
+      // Clear the altered marker so this node is re-mounted cleanly if it ever reconnects.
+      element.removeAttribute(Config.ATTRIBUTE_ALTERED);
+      this.mountedComponents.delete(element);
+    }
   }
 
   static cleanup() {
