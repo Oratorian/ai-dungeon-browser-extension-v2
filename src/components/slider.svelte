@@ -9,12 +9,25 @@
   };
 
   let { value = $bindable(), min = 0, max = 100, step }: Props = $props();
+
+  // The number box and the slider bind the same value. Clearing the box makes Svelte write null,
+  // and typing can land outside [min,max]; either way an out-of-range/empty value would persist
+  // (and, being present, override the stored default on reload). Clamp on blur so the box, the
+  // slider thumb, and what gets saved always agree and stay in range.
+  function clampValue() {
+    const n = Number(value);
+    value = Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
+  }
 </script>
 
 <div class="flex flex-row gap-2 justify-center place-items-center w-full">
   <input
     type="number"
+    {min}
+    {max}
+    {step}
     bind:value
+    onblur={clampValue}
     class="aspect-square w-11 h-11 bg-theme-neutral-100 rounded-xl outline-0 justify-center place-items-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield] text-center"
   />
   <Slider.Root type="single" bind:value {min} {max} {step} class="relative flex w-full touch-none select-none items-center">
