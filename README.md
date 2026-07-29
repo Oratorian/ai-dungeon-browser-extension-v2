@@ -153,18 +153,17 @@ The extension stores all of your data (adventures, story cards, settings, upload
 images) locally in your browser via `chrome.storage.local`. Nothing is sent anywhere
 by default.
 
-The optional **Trinetra image** feature is the only part that contacts an external
-service, and only when you choose to use it:
+The only external hosts the extension can access are declared as named host permissions,
+and none is contacted unless you use its optional feature:
 
-- The only external host the extension can access is `trinetra.mahesvara.cloud`
-  (declared as a single named host permission). No host is contacted unless you use the
-  Trinetra feature; nothing else is requested.
-- Images added by Trinetra URL/ID or via **Browse Trinetra** are downloaded once and
-  stored inline in the card (base64), so they are self-contained and are not re-fetched
-  on every render.
-- If you use **Browse Trinetra**, your Trinetra API key is stored locally (in
-  `chrome.storage.local`, unencrypted like all extension data) so you don't have to
-  re-enter it. You can remove it any time with **Sign out** in the picker.
+- **Trinetra images** (`trinetra.mahesvara.cloud`): images added by URL/ID or via **Browse
+  Trinetra** are downloaded once and stored inline in the card (base64), so they are
+  self-contained and not re-fetched on every render. If you use **Browse Trinetra**, your
+  Trinetra API key is stored locally (in `chrome.storage.local`, unencrypted like all
+  extension data) so you don't have to re-enter it, remove it any time with **Sign out**.
+- **Pixabay audio** (`pixabay.com`, `cdn.pixabay.com`): a pasted Pixabay sound-effect page
+  URL is fetched once to read its public audio link, and the royalty-free audio is streamed
+  from Pixabay's CDN when the clip plays.
 
 No analytics, tracking, or telemetry are included.
 

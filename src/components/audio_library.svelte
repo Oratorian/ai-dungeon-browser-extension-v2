@@ -3,10 +3,17 @@
   import type { AudioClip } from "@/utils/types";
   import { Storage } from "@/utils/storage";
   import { AudioManager } from "@/utils/audio_manager";
+  import { classifyPixabayInput, resolvePixabayPage, nameFromCdnUrl } from "@/utils/audio_url";
   import { onDestroy } from "svelte";
 
   let fileInput: HTMLInputElement;
   let currentlyPlaying = $state<string | null>(null);
+
+  // Add flow: null = closed, "menu" = choose source, "url" = paste a Pixabay URL.
+  let addMode = $state<null | "menu" | "url">(null);
+  let urlValue = $state("");
+  let urlError = $state("");
+  let urlBusy = $state(false);
 
   let audioFiles = $state<AudioClip[]>([]);
   Storage.audioLibrary.subscribe((value) => {
@@ -37,8 +44,75 @@
     return audioFiles.reduce((acc, file) => acc + file.size, 0);
   }
 
-  function handleAddClick() {
+  function openMenu() {
+    addMode = "menu";
+  }
+
+  function closeAdd() {
+    addMode = null;
+    urlValue = "";
+    urlError = "";
+  }
+
+  function startUpload() {
+    closeAdd();
     fileInput?.click();
+  }
+
+  function startUrl() {
+    addMode = "url";
+    urlValue = "";
+    urlError = "";
+  }
+
+  // Streams a remote Pixabay clip: we store the URL (not the bytes). A pasted sound-effect PAGE
+  // url is resolved to its direct audio link via the page's JSON-LD; a direct cdn.pixabay.com url
+  // is used as-is. We fetch + decode once here to capture accurate duration/size and to confirm
+  // it plays; AudioManager later streams it via the same fetch.
+  async function addUrl() {
+    if (urlBusy) return;
+    const input = classifyPixabayInput(urlValue);
+    if (input.kind === "error") {
+      urlError = input.error;
+      return;
+    }
+    urlBusy = true;
+    urlError = "";
+    let ctx: AudioContext | null = null;
+    try {
+      let audioUrl: string;
+      let name: string;
+      if (input.kind === "page") {
+        const resolved = await resolvePixabayPage(input.url);
+        audioUrl = resolved.url;
+        name = resolved.name;
+      } else {
+        audioUrl = input.url;
+        name = nameFromCdnUrl(input.url);
+      }
+
+      const res = await fetch(audioUrl);
+      if (!res.ok) throw new Error(`Couldn't download the audio (${res.status}).`);
+      const arrayBuffer = await res.arrayBuffer();
+      const size = arrayBuffer.byteLength;
+      ctx = new AudioContext();
+      const decoded = await ctx.decodeAudioData(arrayBuffer);
+
+      const clip: AudioClip = {
+        id: crypto.randomUUID(),
+        name,
+        size,
+        duration: decoded.duration,
+        data: audioUrl,
+      };
+      Storage.audioLibrary.update((files) => [...files, clip]);
+      closeAdd();
+    } catch (e) {
+      urlError = e instanceof Error && e.message ? e.message : "Couldn't load that audio.";
+    } finally {
+      ctx?.close();
+      urlBusy = false;
+    }
   }
 
   async function handleFileSelect(e: Event) {
@@ -92,13 +166,78 @@
       {audioFiles.length} file{audioFiles.length !== 1 ? "s" : ""} • {formatSize(getTotalSize())}
     </span>
     <button
-      onclick={handleAddClick}
+      onclick={openMenu}
       class="flex items-center gap-1 px-3 py-1.5 bg-pretty-theme/20 hover:bg-pretty-theme/30 text-pretty-theme rounded-lg transition-colors text-sm"
     >
       <span class="font-symbol text-base text-pretty-theme">add</span>
       Add Audio
     </button>
   </div>
+
+  {#if addMode === "menu"}
+    <div class="flex flex-wrap gap-2 px-2">
+      <button
+        onclick={startUpload}
+        class="flex items-center gap-2 px-3 py-2 text-sm text-theme-neutral-800 bg-theme-neutral-100 hover:bg-theme-neutral-300 rounded-lg transition-colors"
+      >
+        <span class="font-symbol text-base">upload</span>
+        Upload file
+      </button>
+      <button
+        onclick={startUrl}
+        class="flex items-center gap-2 px-3 py-2 text-sm text-theme-neutral-800 bg-theme-neutral-100 hover:bg-theme-neutral-300 rounded-lg transition-colors"
+      >
+        <span class="font-symbol text-base">link</span>
+        Pixabay URL
+      </button>
+    </div>
+  {/if}
+
+  {#if addMode === "url"}
+    <div class="flex flex-col gap-1 px-2">
+      <div class="flex gap-2">
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          bind:value={urlValue}
+          onkeydown={(e) => {
+            if (e.key === "Enter") addUrl();
+            if (e.key === "Escape") closeAdd();
+          }}
+          oninput={() => (urlError = "")}
+          disabled={urlBusy}
+          autofocus
+          placeholder="Paste a Pixabay sound-effect page URL"
+          class="flex-1 min-w-0 bg-theme-neutral-100 h-9 px-3 rounded-lg outline-0 text-sm disabled:opacity-50"
+        />
+        <button
+          onclick={addUrl}
+          disabled={urlBusy}
+          class="px-3 py-1.5 bg-pretty-theme text-theme-neutral-0 rounded-lg hover:opacity-90 disabled:opacity-50 transition-all text-sm"
+        >
+          {urlBusy ? "Adding..." : "Add"}
+        </button>
+        <button
+          onclick={closeAdd}
+          class="px-3 py-1.5 rounded-lg hover:bg-theme-neutral-300 transition-colors text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+      {#if urlError}
+        <span class="text-xs text-pretty-red px-1">{urlError}</span>
+      {/if}
+      <span class="text-xs text-theme-neutral-700 px-1">
+        Open a track on
+        <a
+          href="https://pixabay.com/sound-effects/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-pretty-theme hover:underline">Pixabay</a
+        >
+        and paste its page URL, the direct download link works too.
+      </span>
+    </div>
+  {/if}
 
   <div class="scrollable-content flex flex-col gap-1 max-h-48 overflow-y-auto">
     {#if audioFiles.length === 0}
@@ -122,7 +261,12 @@
           </button>
 
           <div class="flex flex-col flex-1 min-w-0">
-            <span class="text-sm truncate" title={file.name}>{file.name}</span>
+            <span class="flex items-center gap-1 text-sm truncate" title={file.name}>
+              {#if file.data.startsWith("http")}
+                <span class="font-symbol text-sm text-theme-neutral-700 shrink-0" title="Streamed from a URL">link</span>
+              {/if}
+              <span class="truncate">{file.name}</span>
+            </span>
             <span class="text-xs text-theme-neutral-700">
               {formatDuration(file.duration)} • {formatSize(file.size)}
             </span>
