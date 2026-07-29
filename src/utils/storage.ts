@@ -24,6 +24,8 @@ const defaultSettings = {
   focusHeight: 384,
 
   volume: 100,
+
+  trinetraApiKey: "",
 };
 
 export type Settings = typeof defaultSettings;

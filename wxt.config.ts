@@ -8,9 +8,11 @@ export default defineConfig({
     name: "Dungeon Extension v2 Resurrected",
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
     permissions: ["storage", "unlimitedStorage"],
-    version: "1.0.9",
-    // Required by AMO for listed (public) versions. SPDX identifier matching the LICENSE file.
-    license: "MIT",
+    // Needed for the optional Trinetra image feature (API + image downloads). A single named,
+    // self-owned host; requested here rather than at runtime because the UI runs in a content
+    // script, where Firefox does not allow permissions.request().
+    host_permissions: ["https://trinetra.mahesvara.cloud/*"],
+    version: "1.1.0",
     web_accessible_resources: [
       {
         resources: ["fonts/*"],
@@ -20,7 +22,6 @@ export default defineConfig({
     browser_specific_settings: {
       gecko: {
         id: "dungeon-extension-v2@oratorian",
-        // @ts-expect-error
         data_collection_permissions: {
           required: ["none"],
         },

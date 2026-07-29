@@ -147,6 +147,27 @@ web-ext sign \
 
 Use `--channel=unlisted` for a self-hosted signed `.xpi` instead of a public listing.
 
+## Privacy
+
+The extension stores all of your data (adventures, story cards, settings, uploaded
+images) locally in your browser via `chrome.storage.local`. Nothing is sent anywhere
+by default.
+
+The optional **Trinetra image** feature is the only part that contacts an external
+service, and only when you choose to use it:
+
+- The only external host the extension can access is `trinetra.mahesvara.cloud`
+  (declared as a single named host permission). No host is contacted unless you use the
+  Trinetra feature; nothing else is requested.
+- Images added by Trinetra URL/ID or via **Browse Trinetra** are downloaded once and
+  stored inline in the card (base64), so they are self-contained and are not re-fetched
+  on every render.
+- If you use **Browse Trinetra**, your Trinetra API key is stored locally (in
+  `chrome.storage.local`, unencrypted like all extension data) so you don't have to
+  re-enter it. You can remove it any time with **Sign out** in the picker.
+
+No analytics, tracking, or telemetry are included.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
