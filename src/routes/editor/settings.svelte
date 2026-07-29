@@ -86,6 +86,12 @@
     <Field label="Volume">
       <Slider bind:value={$settings.volume} />
     </Field>
+    <Field
+      label="Loop Crossfade"
+      info="How much each loop overlaps the previous one, in milliseconds.<br>A longer crossfade hides the <b>fade-out</b> that many clips have at their end.<br>Set to <b>0</b> for a plain gapless loop. Takes effect the next time a clip starts."
+    >
+      <Slider bind:value={$settings.audioCrossfade} min={0} max={3000} step={50} />
+    </Field>
     <AudioLibrary />
   </Item>
 </Field>

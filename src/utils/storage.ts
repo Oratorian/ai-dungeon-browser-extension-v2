@@ -24,6 +24,9 @@ const defaultSettings = {
   focusHeight: 384,
 
   volume: 100,
+  // Loop crossfade in milliseconds: how much the next pass overlaps the previous one to hide a
+  // clip's fade-out tail at the seam. 0 = plain gapless native loop. See AudioManager.
+  audioCrossfade: 1500,
 
   trinetraApiKey: "",
 };
