@@ -4,6 +4,8 @@
 // targets public repos and uses the anonymous GitHub REST API (60 req/hr per IP) for listing plus
 // raw.githubusercontent.com (a CDN, not rate-limited) for file bytes.
 
+import { bgFetch } from "./bg_fetch";
+
 const API_BASE = "https://api.github.com";
 const RAW_BASE = "https://raw.githubusercontent.com";
 
@@ -28,7 +30,10 @@ export type GitHubFile = {
   /** basename, e.g. "thing.json". */
   filename: string;
   size: number;
+  /** URL to fetch the bytes: a raw.githubusercontent URL for tree files, a release download URL otherwise. */
   rawUrl: string;
+  /** true for a GitHub release asset, fetched via the background proxy (its CDN has no CORS). */
+  release: boolean;
 };
 
 export type GitHubListing = {
@@ -136,9 +141,10 @@ async function resolveBranch(parsed: ParsedRepo): Promise<string> {
 }
 
 /**
- * Lists every .json file in the repo tree. When the tree has none (and only on Firefox), it falls
- * back to the .json files attached to the repo's latest release, which are direct downloads (up to
- * 2 GB, no Git LFS needed).
+ * Lists every .json file in the repo tree, plus the .json files attached to the repo's latest
+ * release (direct downloads, up to 2 GB, no Git LFS), so a large release-hosted adventure isn't
+ * hidden just because the tree also has some .json. Release assets are skipped when a subpath is
+ * set, since their names are flat and can't honor a folder filter.
  */
 export async function listJsonFiles(parsed: ParsedRepo): Promise<GitHubListing> {
   const branch = await resolveBranch(parsed);
@@ -160,13 +166,17 @@ export async function listJsonFiles(parsed: ParsedRepo): Promise<GitHubListing> 
       filename: e.path.split("/").pop() || e.path,
       size: e.size ?? 0,
       rawUrl: `${RAW_BASE}/${parsed.owner}/${parsed.repo}/${encodeURIComponent(branch)}/${encodePath(e.path)}`,
+      release: false,
     }));
 
-  // Fallback (Firefox only): when the tree has no .json files, use the latest release's .json
-  // assets. Release-asset hosts send no CORS headers, so Chrome content scripts can't fetch them,
-  // and their host permissions are Firefox-only (see wxt.config.ts).
-  if (files.length === 0 && import.meta.env.BROWSER === "firefox") {
-    files.push(...(await listReleaseJsonAssets(parsed)));
+  // Merge in the latest release's .json assets (deduped by filename, tree wins), so a large
+  // release-hosted adventure shows up even when the tree also has some .json (e.g. a package.json).
+  // Skipped when a subpath is set: release-asset names are flat and can't honor a folder filter.
+  if (!parsed.subpath) {
+    const treeNames = new Set(files.map((f) => f.filename.toLowerCase()));
+    for (const asset of await listReleaseJsonAssets(parsed)) {
+      if (!treeNames.has(asset.filename.toLowerCase())) files.push(asset);
+    }
   }
 
   files.sort((a, b) => a.path.localeCompare(b.path));
@@ -188,6 +198,7 @@ async function listReleaseJsonAssets(parsed: ParsedRepo): Promise<GitHubFile[]> 
       filename: a.name,
       size: a.size ?? 0,
       rawUrl: a.browser_download_url,
+      release: true,
     }));
 }
 
@@ -219,7 +230,7 @@ async function readHead(rawUrl: string, maxBytes = NAME_HEAD_BYTES): Promise<str
 export async function fetchAdventureName(file: GitHubFile): Promise<string | null> {
   let head: string;
   try {
-    head = await readHead(file.rawUrl);
+    head = file.release ? await bgFetch(file.rawUrl, { head: true }) : await readHead(file.rawUrl);
   } catch {
     return null;
   }
@@ -242,6 +253,16 @@ function isLfsPointer(text: string): boolean {
 
 /** Downloads a file's full contents as text (used at import time). */
 export async function fetchFileText(file: GitHubFile): Promise<string> {
+  // Release assets are proxied through the background (their CDN has no CORS); tree files come
+  // straight from raw.githubusercontent.com, which is CORS-enabled.
+  if (file.release) {
+    try {
+      return await bgFetch(file.rawUrl);
+    } catch {
+      throw new GitHubError("Couldn't download the file.");
+    }
+  }
+
   let res: Response;
   try {
     res = await fetch(file.rawUrl);

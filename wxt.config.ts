@@ -9,7 +9,7 @@ export default defineConfig({
     artifactTemplate: "DExtV2-Resurrect-{{browser}}-{{version}}.zip",
     sourcesTemplate: "DExtV2-Resurrect-{{version}}-sources.zip",
   },
-  manifest: ({ browser }) => ({
+  manifest: {
     name: "Dungeon Extension v2 Resurrected",
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
     permissions: ["storage", "unlimitedStorage"],
@@ -18,7 +18,10 @@ export default defineConfig({
     //  - pixabay.com: resolve a sound-effect page URL to its direct audio link (JSON-LD)
     //  - cdn.pixabay.com: stream the royalty-free ambient audio
     //  - api.github.com: list a scenario repo's .json files (git tree + latest release assets)
-    //  - raw.githubusercontent.com: fetch a scenario/adventure file's contents (and its name head)
+    //  - raw.githubusercontent.com: fetch a tree-hosted scenario/adventure file (and its name head)
+    //  - github.com/.../releases/download + release-assets.githubusercontent.com: download an
+    //    adventure attached to a GitHub release. That CDN sends no CORS headers, so the background
+    //    script does the fetch (a content script would be blocked under Chrome MV3).
     // Declared here (not requested at runtime) because the UI runs in a content script, where
     // Firefox does not allow permissions.request().
     host_permissions: [
@@ -27,15 +30,10 @@ export default defineConfig({
       "https://cdn.pixabay.com/*",
       "https://api.github.com/*",
       "https://raw.githubusercontent.com/*",
-      // Firefox only: importing an adventure attached to a GitHub release downloads it from these
-      // hosts, which send no CORS headers, so it only works where the content script has
-      // host-permission privilege (Firefox MV2), not in Chrome MV3. Omitted on Chrome so we don't
-      // request a permission the build can't use.
-      ...(browser === "firefox"
-        ? ["https://github.com/*/releases/download/*", "https://release-assets.githubusercontent.com/*"]
-        : []),
+      "https://github.com/*/releases/download/*",
+      "https://release-assets.githubusercontent.com/*",
     ],
-    version: "1.2.1",
+    version: "1.2.2",
     web_accessible_resources: [
       {
         resources: ["fonts/*"],
@@ -50,7 +48,7 @@ export default defineConfig({
         },
       },
     },
-  }),
+  },
   vite: () => ({
     plugins: [tailwindcss()],
   }),
