@@ -29,6 +29,9 @@ const defaultSettings = {
   audioCrossfade: 1500,
 
   trinetraApiKey: "",
+  // GitHub repos to browse for shared adventure/scenario exports in the import dialog. Each entry
+  // is a "owner/repo" or a github.com URL (optionally a /tree/<branch>/<subpath> URL). See github.ts.
+  scenarioRepos: [] as string[],
 };
 
 export type Settings = typeof defaultSettings;

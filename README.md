@@ -34,6 +34,7 @@ A browser extension that enhances your AI Dungeon experience with story cards, v
 - **Story Card Types**: Characters, locations, items, factions, events, and races
 - **Trigger Words**: Define words or phrases that automatically highlight matching text in the story
 - **Import/Export**: Share adventures between devices or with other users via JSON files
+- **Import from GitHub**: Add public GitHub repos under Settings, then browse and import shared adventure/scenario `.json` files straight from the import dialog
 
 ### Visual Enhancements
 
@@ -71,7 +72,8 @@ When enabled, the extension parses and renders markdown-style formatting in stor
 - **Text**: Bold highlighting toggle, markdown formatting toggle, default color
 - **Tooltips**: Hide delay, max width, max height
 - **Focus**: Enable/disable focus mode, max height
-- **Audio**: Global volume control, audio library management
+- **Audio**: Global volume control, loop crossfade, audio library management
+- **Scenarios**: Manage public GitHub repos to import shared adventures from
 
 ## Usage
 
@@ -164,6 +166,9 @@ and none is contacted unless you use its optional feature:
 - **Pixabay audio** (`pixabay.com`, `cdn.pixabay.com`): a pasted Pixabay sound-effect page
   URL is fetched once to read its public audio link, and the royalty-free audio is streamed
   from Pixabay's CDN when the clip plays.
+- **GitHub scenario import** (`api.github.com`, `raw.githubusercontent.com`): for each public repo
+  you add under **Settings → Scenarios**, the extension lists its `.json` files and downloads only
+  the ones you choose to import. No credentials are sent and only public repos are supported.
 
 No analytics, tracking, or telemetry are included.
 

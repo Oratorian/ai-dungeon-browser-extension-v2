@@ -2,6 +2,7 @@
   import { Dialog, DropdownMenu } from "bits-ui";
   import { Storage } from "@/utils/storage";
   import type { Adventure } from "@/utils/types";
+  import GithubImport from "@/components/github_import.svelte";
 
   let adventures = $state<Record<string, Adventure>>({});
   let selectedId = $state<string | null>(null);
@@ -23,6 +24,7 @@
   let adventureToRename = $state<Adventure | null>(null);
   let renameValue = $state("");
   let importError = $state<string | null>(null);
+  let importMode = $state<"local" | "github">("local");
   let fileInput: HTMLInputElement;
 
   const adventureList = $derived(Object.values(adventures).sort((a, b) => b.createdAt - a.createdAt));
@@ -229,7 +231,11 @@
 
           <DropdownMenu.Item
             class="flex items-center gap-2 p-2 rounded-lg hover:bg-theme-neutral-400 cursor-pointer transition-colors"
-            onSelect={() => (isImportDialogOpen = true)}
+            onSelect={() => {
+              importMode = "local";
+              importError = null;
+              isImportDialogOpen = true;
+            }}
           >
             <span class="font-symbol text-lg">download</span>
             <span class="text-sm">Import Adventure</span>
@@ -356,29 +362,61 @@
     />
     <Dialog.Content
       trapFocus={false}
-      class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-theme-neutral-200 rounded-2xl p-6 shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-bottom-4"
+      class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg bg-theme-neutral-200 rounded-2xl p-6 shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-bottom-4"
     >
-      <Dialog.Title class="text-lg font-bold mb-4">Import Adventure</Dialog.Title>
+      <Dialog.Title class="text-lg font-bold mb-2">Import Adventure</Dialog.Title>
       <Dialog.Description class="text-sm text-theme-neutral-700 mb-4">
-        Select a previously exported adventure file (.json) to import.
+        Import from a local file or a configured GitHub repo.
       </Dialog.Description>
 
-      {#if importError}
-        <div class="flex items-center gap-2 p-3 mb-4 bg-pretty-red/20 text-pretty-red rounded-lg">
-          <span class="font-symbol">error</span>
-          <span class="text-sm">{importError}</span>
-        </div>
+      <div class="flex gap-1 p-1 bg-theme-neutral-100 rounded-xl mb-4">
+        <button
+          onclick={() => (importMode = "local")}
+          class="flex items-center justify-center gap-1.5 flex-1 py-2 rounded-lg text-sm transition-colors {importMode ===
+          'local'
+            ? 'bg-theme-neutral-300'
+            : 'hover:bg-theme-neutral-200'}"
+        >
+          <span class="font-symbol text-base">upload_file</span>
+          Local file
+        </button>
+        <button
+          onclick={() => (importMode = "github")}
+          class="flex items-center justify-center gap-1.5 flex-1 py-2 rounded-lg text-sm transition-colors {importMode ===
+          'github'
+            ? 'bg-theme-neutral-300'
+            : 'hover:bg-theme-neutral-200'}"
+        >
+          <span class="font-symbol text-base">cloud_download</span>
+          From GitHub
+        </button>
+      </div>
+
+      {#if importMode === "local"}
+        {#if importError}
+          <div class="flex items-center gap-2 p-3 mb-4 bg-pretty-red/20 text-pretty-red rounded-lg">
+            <span class="font-symbol">error</span>
+            <span class="text-sm">{importError}</span>
+          </div>
+        {/if}
+
+        <button
+          onclick={handleImportClick}
+          class="flex items-center justify-center gap-2 w-full h-24 border-2 border-dashed border-theme-neutral-400 hover:border-pretty-theme rounded-xl transition-colors"
+        >
+          <span class="font-symbol text-2xl text-theme-neutral-700">upload_file</span>
+          <span class="text-theme-neutral-700">Click to select file</span>
+        </button>
+      {:else}
+        <GithubImport
+          onimported={() => {
+            isImportDialogOpen = false;
+            importError = null;
+          }}
+        />
       {/if}
 
-      <button
-        onclick={handleImportClick}
-        class="flex items-center justify-center gap-2 w-full h-24 border-2 border-dashed border-theme-neutral-400 hover:border-pretty-theme rounded-xl transition-colors mb-4"
-      >
-        <span class="font-symbol text-2xl text-theme-neutral-700">upload_file</span>
-        <span class="text-theme-neutral-700">Click to select file</span>
-      </button>
-
-      <div class="flex gap-2 justify-end">
+      <div class="flex gap-2 justify-end mt-4">
         <button
           onclick={() => {
             isImportDialogOpen = false;
@@ -386,7 +424,7 @@
           }}
           class="px-4 py-2 rounded-lg hover:bg-theme-neutral-300 transition-colors"
         >
-          Cancel
+          {importMode === "github" ? "Close" : "Cancel"}
         </button>
       </div>
     </Dialog.Content>

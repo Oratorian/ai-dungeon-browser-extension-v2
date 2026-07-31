@@ -6,6 +6,7 @@
   import Slider from "@/components/slider.svelte";
   import Switch from "@/components/switch.svelte";
   import AudioLibrary from "@/components/audio_library.svelte";
+  import ScenarioRepos from "@/components/scenario_repos.svelte";
 
   /* Storage */
   import { settings } from "@/utils/storage";
@@ -93,5 +94,11 @@
       <Slider bind:value={$settings.audioCrossfade} min={0} max={3000} step={50} />
     </Field>
     <AudioLibrary />
+  </Item>
+</Field>
+
+<Field label="Scenarios">
+  <Item foldout icon="folder_open" label="GitHub Repos">
+    <ScenarioRepos />
   </Item>
 </Field>
