@@ -1,7 +1,8 @@
 name: Publish to Firefox (AMO)
 
 # Manual only: builds the Firefox extension and submits it to addons.mozilla.org
-# via web-ext. There is no push/tag trigger, run it from the Actions tab.
+# via web-ext, then attaches the signed .xpi web-ext downloads to the latest GitHub
+# release. There is no push/tag trigger, run it from the Actions tab.
 #
 # Requires your AMO API credentials from https://addons.mozilla.org/developers/addon/api/key/,
 # set under Settings, Secrets and variables, Actions:
@@ -14,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       channel:
-        description: "AMO channel (listed = public listing, unlisted = self-hosted signed xpi)"
+        description: "AMO channel (listed = public AMO listing, unlisted = self-hosted only); either way the signed xpi is attached to the latest release"
         type: choice
         default: listed
         options:
@@ -22,7 +23,7 @@ on:
           - unlisted
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -63,10 +64,28 @@ jobs:
           fi
           npx --yes web-ext sign "${args[@]}"
 
-      - name: Upload signed XPI (unlisted only)
-        if: ${{ inputs.channel == 'unlisted' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: firefox-signed-xpi
-          path: web-ext-artifacts/*.xpi
-          if-no-files-found: ignore
+      - name: Attach signed XPI to the latest GitHub release
+        # web-ext downloads the signed .xpi for both channels. Rename it to the repo's artifact
+        # scheme (DExtV2-Resurrect-firefox-<version>.xpi, matching the zips) and attach it to the
+        # newest release for people who prefer to install from GitHub instead of AMO. --clobber
+        # lets a re-run replace an asset of the same name.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          xpis=( web-ext-artifacts/*.xpi )
+          if [ ${#xpis[@]} -eq 0 ]; then
+            echo "::warning::No signed .xpi was produced; nothing to attach."
+            exit 0
+          fi
+          version="$(jq -r .version .output/firefox-mv2/manifest.json)"
+          asset="DExtV2-Resurrect-firefox-${version}.xpi"
+          cp "${xpis[0]}" "$asset"
+          tag="$(gh release view --json tagName --jq .tagName 2>/dev/null || true)"
+          if [ -z "$tag" ]; then
+            echo "::error::No GitHub release found to attach the XPI to; create a release first."
+            exit 1
+          fi
+          echo "Attaching $asset to the latest release: $tag"
+          gh release upload "$tag" "$asset" --clobber
