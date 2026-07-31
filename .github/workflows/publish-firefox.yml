@@ -1,0 +1,72 @@
+name: Publish to Firefox (AMO)
+
+# Manual only: builds the Firefox extension and submits it to addons.mozilla.org
+# via web-ext. There is no push/tag trigger, run it from the Actions tab.
+#
+# Requires your AMO API credentials from https://addons.mozilla.org/developers/addon/api/key/,
+# set under Settings, Secrets and variables, Actions:
+#   WEB_EXT_API_KEY     as a repository VARIABLE (the issuer id)
+#   WEB_EXT_API_SECRET  as a repository SECRET
+#
+# It signs whatever version is in wxt.config.ts, so bump that before publishing a
+# new version (AMO rejects a version that already exists).
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "AMO channel (listed = public listing, unlisted = self-hosted signed xpi)"
+        type: choice
+        default: listed
+        options:
+          - listed
+          - unlisted
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Sign and submit to AMO
+        env:
+          # web-ext reads these WEB_EXT_* env vars automatically as --api-key / --api-secret.
+          # Key is a repo variable, secret is a repo secret.
+          WEB_EXT_API_KEY: ${{ vars.WEB_EXT_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEB_EXT_API_KEY:-}" ] || [ -z "${WEB_EXT_API_SECRET:-}" ]; then
+            echo "::error::Missing WEB_EXT_API_KEY / WEB_EXT_API_SECRET repo secrets."
+            exit 1
+          fi
+          args=(--source-dir=.output/firefox-mv2 --channel="$CHANNEL")
+          # Listing metadata (license/category/summary) is only needed for a listed submission.
+          if [ "$CHANNEL" = "listed" ]; then
+            args+=(--amo-metadata=amo-metadata.json)
+          fi
+          npx --yes web-ext sign "${args[@]}"
+
+      - name: Upload signed XPI (unlisted only)
+        if: ${{ inputs.channel == 'unlisted' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-signed-xpi
+          path: web-ext-artifacts/*.xpi
+          if-no-files-found: ignore
