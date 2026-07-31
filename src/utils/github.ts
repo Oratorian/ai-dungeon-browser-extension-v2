@@ -135,7 +135,11 @@ async function resolveBranch(parsed: ParsedRepo): Promise<string> {
   return info.default_branch || "main";
 }
 
-/** Lists every .json file in the repo tree (optionally under subpath), with raw download URLs. */
+/**
+ * Lists every .json file in the repo tree. When the tree has none (and only on Firefox), it falls
+ * back to the .json files attached to the repo's latest release, which are direct downloads (up to
+ * 2 GB, no Git LFS needed).
+ */
 export async function listJsonFiles(parsed: ParsedRepo): Promise<GitHubListing> {
   const branch = await resolveBranch(parsed);
   const tree = await api<{
@@ -156,10 +160,35 @@ export async function listJsonFiles(parsed: ParsedRepo): Promise<GitHubListing> 
       filename: e.path.split("/").pop() || e.path,
       size: e.size ?? 0,
       rawUrl: `${RAW_BASE}/${parsed.owner}/${parsed.repo}/${encodeURIComponent(branch)}/${encodePath(e.path)}`,
-    }))
-    .sort((a, b) => a.path.localeCompare(b.path));
+    }));
 
+  // Fallback (Firefox only): when the tree has no .json files, use the latest release's .json
+  // assets. Release-asset hosts send no CORS headers, so Chrome content scripts can't fetch them,
+  // and their host permissions are Firefox-only (see wxt.config.ts).
+  if (files.length === 0 && import.meta.env.BROWSER === "firefox") {
+    files.push(...(await listReleaseJsonAssets(parsed)));
+  }
+
+  files.sort((a, b) => a.path.localeCompare(b.path));
   return { files, truncated: Boolean(tree.truncated) };
+}
+
+/** The latest release's .json assets as direct-download files. Empty when there is no release. */
+async function listReleaseJsonAssets(parsed: ParsedRepo): Promise<GitHubFile[]> {
+  let release: { assets?: { name: string; size?: number; browser_download_url: string }[] };
+  try {
+    release = await api(`/repos/${parsed.owner}/${parsed.repo}/releases/latest`);
+  } catch {
+    return []; // no release (404) or unreachable; the tree listing stands on its own
+  }
+  return (release.assets ?? [])
+    .filter((a) => a.name.toLowerCase().endsWith(".json"))
+    .map((a) => ({
+      path: a.name,
+      filename: a.name,
+      size: a.size ?? 0,
+      rawUrl: a.browser_download_url,
+    }));
 }
 
 /** Reads at most `maxBytes` from the start of a raw URL, even if the CDN ignores the Range header. */
@@ -206,6 +235,11 @@ export async function fetchAdventureName(file: GitHubFile): Promise<string | nul
   }
 }
 
+/** Git LFS serves a small text pointer from raw instead of the file; detect it to warn the user. */
+function isLfsPointer(text: string): boolean {
+  return text.startsWith("version https://git-lfs.github.com/spec/v1");
+}
+
 /** Downloads a file's full contents as text (used at import time). */
 export async function fetchFileText(file: GitHubFile): Promise<string> {
   let res: Response;
@@ -215,5 +249,12 @@ export async function fetchFileText(file: GitHubFile): Promise<string> {
     throw new GitHubError("Couldn't download the file.");
   }
   if (!res.ok) throw new GitHubError(`Couldn't download the file (${res.status}).`, res.status);
-  return res.text();
+
+  const text = await res.text();
+  // A Git LFS file comes back as a pointer, not the file. We deliberately don't resolve it: fetching
+  // from GitHub's LFS media host bills the repo owner's LFS bandwidth. Steer them to release assets.
+  if (isLfsPointer(text)) {
+    throw new GitHubError("This file is stored with Git LFS. Attach it to a GitHub release instead.");
+  }
+  return text;
 }
