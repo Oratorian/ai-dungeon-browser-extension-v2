@@ -4,6 +4,11 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   srcDir: "src",
   modules: ["@wxt-dev/module-svelte"],
+  // Output zips as DExtV2-Resurrect-<browser>-<version>.zip (e.g. DExtV2-Resurrect-chrome-1.2.0.zip).
+  zip: {
+    artifactTemplate: "DExtV2-Resurrect-{{browser}}-{{version}}.zip",
+    sourcesTemplate: "DExtV2-Resurrect-{{version}}-sources.zip",
+  },
   manifest: {
     name: "Dungeon Extension v2 Resurrected",
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
