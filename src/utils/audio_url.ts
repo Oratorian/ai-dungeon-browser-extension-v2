@@ -5,6 +5,12 @@
 //  - a direct cdn.pixabay.com audio url (what the page resolves to), used as-is.
 // The resolved audio url is stored as the clip's `data`; AudioManager fetches + decodes it the
 // same way it handles an uploaded base64 clip, so playback needs no changes.
+//
+// The page fetch goes through the background proxy: pixabay.com sends no CORS headers, so a Chrome
+// MV3 content-script fetch is blocked. (The cdn.pixabay.com audio itself is CORS-enabled and plays
+// directly.)
+
+import { bgFetch, BgFetchError } from "./bg_fetch";
 
 export const PIXABAY_PAGE_HOST = "pixabay.com";
 export const PIXABAY_AUDIO_HOST = "cdn.pixabay.com";
@@ -87,17 +93,15 @@ export type ResolvedPixabayAudio = { url: string; name: string; duration: number
  * Requires the pixabay.com host permission. Throws with a friendly message on failure.
  */
 export async function resolvePixabayPage(pageUrl: string): Promise<ResolvedPixabayAudio> {
-  let res: Response;
+  let html: string;
   try {
-    res = await fetch(pageUrl, {
-      headers: { Accept: "text/html", "Accept-Language": "en-US,en;q=0.9" },
-    });
-  } catch {
+    html = await bgFetch(pageUrl, { headers: { Accept: "text/html", "Accept-Language": "en-US,en;q=0.9" } });
+  } catch (e) {
+    const status = e instanceof BgFetchError ? e.status : undefined;
+    if (status) throw new Error(`Pixabay returned ${status}. Try the direct CDN link instead.`);
     throw new Error("Couldn't reach Pixabay.");
   }
-  if (!res.ok) throw new Error(`Pixabay returned ${res.status}. Try the direct CDN link instead.`);
 
-  const html = await res.text();
   const blocks = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
 
   for (const block of blocks) {

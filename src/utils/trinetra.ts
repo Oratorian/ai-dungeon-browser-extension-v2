@@ -1,6 +1,11 @@
 // Client for the Trinetra image host API (https://trinetra.mahesvara.cloud/openapi.json).
 // Used by the image picker so users can browse and insert their own uploaded images by API key
 // instead of pasting individual IDs/URLs. We only read (folders + images); nothing is mutated.
+//
+// All requests go through the background proxy: Trinetra sends no CORS headers and the API needs an
+// X-API-Key header (which triggers a preflight), so a Chrome MV3 content-script fetch is blocked.
+
+import { bgFetch, BgFetchError } from "./bg_fetch";
 
 const API_BASE = "https://trinetra.mahesvara.cloud/api";
 
@@ -39,30 +44,20 @@ export class TrinetraError extends Error {
   }
 }
 
-function authHeaders(apiKey: string): HeadersInit {
-  return { "X-API-Key": apiKey };
-}
-
 async function request<T>(apiKey: string, path: string): Promise<T> {
-  let res: Response;
+  let text: string;
   try {
-    res = await fetch(`${API_BASE}${path}`, { headers: authHeaders(apiKey) });
-  } catch {
+    text = await bgFetch(`${API_BASE}${path}`, { headers: { "X-API-Key": apiKey } });
+  } catch (e) {
+    const status = e instanceof BgFetchError ? e.status : undefined;
+    if (status === 401 || status === 403) throw new TrinetraError("Invalid or unauthorized API key.", status);
+    if (status === 429) throw new TrinetraError("Too many requests, slow down a moment.", 429);
+    if (status) throw new TrinetraError(`Trinetra request failed (${status}).`, status);
     throw new TrinetraError("Couldn't reach Trinetra. Check your connection.");
   }
 
-  if (res.status === 401 || res.status === 403) {
-    throw new TrinetraError("Invalid or unauthorized API key.", res.status);
-  }
-  if (res.status === 429) {
-    throw new TrinetraError("Too many requests, slow down a moment.", 429);
-  }
-  if (!res.ok) {
-    throw new TrinetraError(`Trinetra request failed (${res.status}).`, res.status);
-  }
-
   try {
-    return (await res.json()) as T;
+    return JSON.parse(text) as T;
   } catch {
     throw new TrinetraError("Unexpected response from Trinetra.");
   }
@@ -101,21 +96,10 @@ export async function listImages(
  * The public /i/<id> URL needs no auth.
  */
 export async function fetchImageAsDataUri(url: string): Promise<string> {
-  let res: Response;
   try {
-    res = await fetch(url);
-  } catch {
-    throw new TrinetraError("Couldn't download the image.");
+    return await bgFetch(url, { dataUri: true });
+  } catch (e) {
+    const status = e instanceof BgFetchError ? e.status : undefined;
+    throw new TrinetraError(status ? `Couldn't download the image (${status}).` : "Couldn't download the image.", status);
   }
-  if (!res.ok) {
-    throw new TrinetraError(`Couldn't download the image (${res.status}).`, res.status);
-  }
-
-  const blob = await res.blob();
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new TrinetraError("Failed to read the downloaded image."));
-    reader.readAsDataURL(blob);
-  });
 }
