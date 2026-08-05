@@ -1,19 +1,11 @@
 <script lang="ts">
   import { settings } from "@/utils/storage";
-  import {
-    getMe,
-    listFolders,
-    listImages,
-    fetchImageAsDataUri,
-    TrinetraError,
-    type TrinetraFolder,
-    type TrinetraImage,
-  } from "@/utils/trinetra";
+  import { getMe, listFolders, listImages, TrinetraError, type TrinetraFolder, type TrinetraImage } from "@/utils/trinetra";
 
   type Props = {
-    // Called with the selected image encoded as a base64 data URI. Returns true if it was
-    // accepted (not over the limit) so the picker can reflect state.
-    onselect: (dataUri: string) => boolean;
+    // Called with the selected image's Trinetra URL. Returns true if it was accepted (not over the
+    // limit) so the picker can reflect state.
+    onselect: (url: string) => boolean;
     canAddMore?: boolean;
     onclose: () => void;
   };
@@ -22,8 +14,6 @@
 
   // Images picked this session (by Trinetra id), so we can show them as already-added.
   let addedIds = $state<Set<string>>(new Set());
-  // Id currently being downloaded/encoded, for per-tile loading feedback.
-  let pickingId = $state<string | null>(null);
 
   // API key lives in settings so it's entered once and remembered.
   let apiKey = $derived($settings.trinetraApiKey ?? "");
@@ -91,21 +81,12 @@
     keyInput = "";
   }
 
-  async function pick(img: TrinetraImage) {
-    if (!canAddMore || pickingId || addedIds.has(img.id)) return;
-    pickingId = img.id;
-    error = "";
-    try {
-      // Download the full-resolution image and store it inline (base64) so the card is
-      // self-contained and doesn't depend on Trinetra staying up.
-      const dataUri = await fetchImageAsDataUri(img.url);
-      const accepted = onselect(dataUri);
-      if (accepted) addedIds = new Set(addedIds).add(img.id);
-    } catch (e) {
-      error = e instanceof TrinetraError ? e.message : "Failed to add image.";
-    } finally {
-      pickingId = null;
-    }
+  // Store the image as a Trinetra link (not embedded) so adventure exports stay small; it loads
+  // live from Trinetra when the card renders.
+  function pick(img: TrinetraImage) {
+    if (!canAddMore || addedIds.has(img.id)) return;
+    const accepted = onselect(img.url);
+    if (accepted) addedIds = new Set(addedIds).add(img.id);
   }
 
   // If a key is already saved, connect immediately.
@@ -192,20 +173,15 @@
         <div class="grid grid-cols-4 gap-2">
           {#each images as img (img.id)}
             {@const added = addedIds.has(img.id)}
-            {@const busy = pickingId === img.id}
             <button
               onclick={() => pick(img)}
-              disabled={added || busy || !canAddMore || pickingId !== null}
+              disabled={added || !canAddMore}
               title={img.original_name}
               class="relative aspect-square rounded-lg overflow-hidden bg-theme-neutral-300 group disabled:cursor-not-allowed"
-              class:opacity-40={added || (!canAddMore && !busy)}
+              class:opacity-40={added || !canAddMore}
             >
               <img src={img.thumb_url} alt={img.original_name} class="w-full h-full object-cover" loading="lazy" />
-              {#if busy}
-                <div class="absolute inset-0 flex items-center justify-center bg-black/50">
-                  <span class="font-symbol text-xl text-white animate-spin">progress_activity</span>
-                </div>
-              {:else if added}
+              {#if added}
                 <div class="absolute inset-0 flex items-center justify-center bg-black/50">
                   <span class="font-symbol text-xl text-white">check</span>
                 </div>

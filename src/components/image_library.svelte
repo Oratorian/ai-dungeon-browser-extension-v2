@@ -1,6 +1,5 @@
 <script lang="ts">
   import { parseImageInput } from "@/utils/image_url";
-  import { fetchImageAsDataUri, TrinetraError } from "@/utils/trinetra";
   import TrinetraPicker from "./trinetra_picker.svelte";
 
   type Props = {
@@ -18,7 +17,6 @@
   let addMode = $state<null | "menu" | "url" | "trinetra">(null);
   let urlValue = $state("");
   let urlError = $state("");
-  let urlBusy = $state(false);
 
   let full = $derived(images.length >= maxImages);
 
@@ -48,10 +46,10 @@
     addMode = "trinetra";
   }
 
-  // Called by the picker with a base64 data URI. Returns whether it was added.
-  function addFromPicker(dataUri: string): boolean {
+  // Called by the picker with the image's Trinetra URL. Returns whether it was added.
+  function addFromPicker(url: string): boolean {
     if (images.length >= maxImages) return false;
-    addImage(dataUri);
+    addImage(url);
     return true;
   }
 
@@ -61,8 +59,7 @@
     onchange?.(images);
   }
 
-  async function submitUrl() {
-    if (urlBusy) return;
+  function submitUrl() {
     const parsed = parseImageInput(urlValue);
     if (!parsed.ok) {
       urlError = parsed.error;
@@ -72,18 +69,10 @@
       urlError = "Maximum number of images reached.";
       return;
     }
-    urlBusy = true;
-    urlError = "";
-    try {
-      // Download and store inline (base64) so the image is self-contained.
-      const dataUri = await fetchImageAsDataUri(parsed.url);
-      addImage(dataUri);
-      closeAdd();
-    } catch (e) {
-      urlError = e instanceof TrinetraError ? e.message : "Couldn't download that image.";
-    } finally {
-      urlBusy = false;
-    }
+    // Store the Trinetra URL as a link (not embedded) so adventure exports stay small; the image
+    // loads live from Trinetra when the card renders.
+    addImage(parsed.url);
+    closeAdd();
   }
 
   async function handleFileSelect(e: Event) {
@@ -169,17 +158,15 @@
             if (e.key === "Escape") closeAdd();
           }}
           oninput={() => (urlError = "")}
-          disabled={urlBusy}
           autofocus
           placeholder="Image ID or trinetra.mahesvara.cloud URL"
-          class="flex-1 min-w-0 bg-theme-neutral-100 h-9 px-3 rounded-lg outline-0 text-sm disabled:opacity-50"
+          class="flex-1 min-w-0 bg-theme-neutral-100 h-9 px-3 rounded-lg outline-0 text-sm"
         />
         <button
           onclick={submitUrl}
-          disabled={urlBusy}
-          class="px-3 py-1.5 bg-pretty-theme text-theme-neutral-0 rounded-lg hover:opacity-90 disabled:opacity-50 transition-all text-sm"
+          class="px-3 py-1.5 bg-pretty-theme text-theme-neutral-0 rounded-lg hover:opacity-90 transition-all text-sm"
         >
-          {urlBusy ? "Adding..." : "Add"}
+          Add
         </button>
         <button
           onclick={closeAdd}

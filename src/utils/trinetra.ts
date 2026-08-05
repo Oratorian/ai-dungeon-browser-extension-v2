@@ -90,16 +90,3 @@ export async function listImages(
   return request(apiKey, `/images?${params.toString()}`);
 }
 
-/**
- * Fetches a public image URL and returns it as a base64 data URI, so the image is stored
- * inline in the card (self-contained, like an uploaded file) instead of loaded live each render.
- * The public /i/<id> URL needs no auth.
- */
-export async function fetchImageAsDataUri(url: string): Promise<string> {
-  try {
-    return await bgFetch(url, { dataUri: true });
-  } catch (e) {
-    const status = e instanceof BgFetchError ? e.status : undefined;
-    throw new TrinetraError(status ? `Couldn't download the image (${status}).` : "Couldn't download the image.", status);
-  }
-}
