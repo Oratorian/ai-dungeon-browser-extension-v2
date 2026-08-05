@@ -77,8 +77,8 @@ export default defineBackground(() => {
         let res: Response;
         try {
           res = await fetch(req.url, reqHeaders ? { headers: reqHeaders } : undefined);
-        } catch {
-          send({ type: "error" });
+        } catch (e) {
+          send({ type: "error", error: e instanceof Error ? e.message : String(e) });
           return;
         }
         if (disconnected) return;
@@ -127,8 +127,8 @@ export default defineBackground(() => {
         }
         if (batch) send({ type: "chunk", data: batch });
         send({ type: "done" });
-      } catch {
-        send({ type: "error" });
+      } catch (e) {
+        send({ type: "error", error: e instanceof Error ? e.message : String(e) });
       } finally {
         stopKeepalive();
         activeReader = undefined;

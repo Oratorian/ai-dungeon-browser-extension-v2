@@ -6,6 +6,8 @@ import { browser } from "wxt/browser";
 // 100+ MB download doesn't travel as one oversized message. See src/entrypoints/background.ts.
 
 export class BgFetchError extends Error {
+  /** true when the port dropped before any reply, i.e. the background never handled the request. */
+  coldStart = false;
   constructor(
     message: string,
     public status?: number
@@ -25,12 +27,12 @@ export type BgFetchOptions = {
   maxBytes?: number;
 };
 
-/** Fetches `url` in the background and resolves with the body as text (or a `data:` URI). */
-export function bgFetch(url: string, opts: BgFetchOptions = {}): Promise<string> {
+function bgFetchOnce(url: string, opts: BgFetchOptions): Promise<string> {
   return new Promise((resolve, reject) => {
     const port = browser.runtime.connect({ name: "bg-fetch" });
     let out = "";
     let settled = false;
+    let replied = false;
     const finish = (fn: () => void) => {
       if (settled) return;
       settled = true;
@@ -42,13 +44,29 @@ export function bgFetch(url: string, opts: BgFetchOptions = {}): Promise<string>
       fn();
     };
     port.onMessage.addListener((raw) => {
-      const msg = raw as { type?: string; data?: string; status?: number };
+      replied = true;
+      const msg = raw as { type?: string; data?: string; status?: number; error?: string };
       if (msg.type === "chunk") out += msg.data ?? "";
       else if (msg.type === "done") finish(() => resolve(out));
       else if (msg.type === "error")
-        finish(() => reject(new BgFetchError(msg.status ? `Request failed (${msg.status}).` : "Request failed.", msg.status)));
+        finish(() =>
+          reject(
+            new BgFetchError(
+              msg.status ? `Request failed (${msg.status}).` : msg.error ? `Fetch failed: ${msg.error}` : "Request failed.",
+              msg.status
+            )
+          )
+        );
     });
-    port.onDisconnect.addListener(() => finish(() => reject(new BgFetchError("Background request failed."))));
+    port.onDisconnect.addListener(() =>
+      finish(() => {
+        const err = new BgFetchError(
+          replied ? "Background request disconnected (service worker may have stopped)." : "Background service worker did not respond."
+        );
+        err.coldStart = !replied;
+        reject(err);
+      })
+    );
     port.postMessage({
       url,
       headers: opts.headers ?? null,
@@ -57,4 +75,16 @@ export function bgFetch(url: string, opts: BgFetchOptions = {}): Promise<string>
       maxBytes: opts.maxBytes ?? null,
     });
   });
+}
+
+/** Fetches `url` in the background and resolves with the body as text (or a `data:` URI). */
+export async function bgFetch(url: string, opts: BgFetchOptions = {}): Promise<string> {
+  try {
+    return await bgFetchOnce(url, opts);
+  } catch (e) {
+    // A cold Chrome MV3 service worker can drop the very first connection before it registers its
+    // listener; retry once now that the worker has spun up.
+    if (e instanceof BgFetchError && e.coldStart) return bgFetchOnce(url, opts);
+    throw e;
+  }
 }

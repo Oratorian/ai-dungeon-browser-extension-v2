@@ -258,8 +258,8 @@ export async function fetchFileText(file: GitHubFile): Promise<string> {
   if (file.release) {
     try {
       return await bgFetch(file.rawUrl);
-    } catch {
-      throw new GitHubError("Couldn't download the file.");
+    } catch (e) {
+      throw new GitHubError(e instanceof Error && e.message ? e.message : "Couldn't download the file.");
     }
   }
 
