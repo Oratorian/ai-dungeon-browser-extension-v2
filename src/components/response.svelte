@@ -16,7 +16,18 @@
 
   let { rawHtml, type }: Props = $props();
 
-  let text = $derived(DOMPurify.sanitize(rawHtml));
+  // AI Dungeon injects transparent theme/spacer <img> elements whose class is atomic-CSS soup full
+  // of underscores (e.g. "_View _pos-relative _fd-column ..."). Our markdown parser treats those
+  // underscores as italic/bold markers and shreds the tags, leaking raw class/src/style text into
+  // the story. So we sanitize down to plain text plus inline formatting and line breaks, dropping
+  // every attribute and the spacer images before anything reaches the parser. This also keeps us
+  // resilient to AID reshuffling its presentational markup.
+  const SANITIZE_CONFIG = {
+    ALLOWED_TAGS: ["b", "strong", "i", "em", "u", "s", "strike", "del", "mark", "sup", "sub", "code", "span", "p", "br"],
+    ALLOWED_ATTR: [],
+  };
+
+  let text = $derived(DOMPurify.sanitize(rawHtml, SANITIZE_CONFIG));
   let map = $state(new Map<string, StoryCard>());
 
   Storage.cardMap.subscribe((value) => {
