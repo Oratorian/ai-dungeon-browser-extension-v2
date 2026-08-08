@@ -21,14 +21,40 @@ export class DOM {
     baseButton.parentElement?.insertBefore(button, baseButton);
   }
 
+  // AI Dungeon doesn't keep the response text in a fixed position: story paragraphs and the last
+  // action hold it in the first child, but a player action now leads with an empty spacer <span>
+  // and pushes the real text into a later sibling, past layout spacers and an icon glyph. Return the
+  // child that actually carries the prose so our render/highlight lands on the right node instead of
+  // assuming child-zero. Falls back to the first child so we never mount on nothing.
+  private static pickTextHost(container: HTMLElement): HTMLElement | null {
+    const first = container.firstElementChild as HTMLElement | null;
+    // Common case (story text, last action): the first child already holds the text.
+    if (first?.textContent?.trim()) return first;
+
+    // Player-action shape: skip the empty leading span and zero-size layout spacers (no text), and
+    // the single icon ligature (AID renders icons as "w_*" tokens, e.g. "w_run"), then take the
+    // child with the most prose.
+    let best: HTMLElement | null = null;
+    let bestLen = 0;
+    for (const child of Array.from(container.children) as HTMLElement[]) {
+      const text = (child.textContent ?? "").trim();
+      if (!text || /^w_[\w-]+$/.test(text)) continue;
+      if (text.length > bestLen) {
+        best = child;
+        bestLen = text.length;
+      }
+    }
+    return best ?? first;
+  }
+
   static mountResponseOn(element: HTMLElement, type: ResponseType) {
     // Check if the elemnt is already altered.
     if (element.hasAttribute(Config.ATTRIBUTE_ALTERED)) return;
 
     // Handling for the last actions:
     if (type === ResponseType.LastAction) {
-      // The last action always has a span inside it with the actual text.
-      const original = element.firstElementChild as HTMLElement;
+      // Usually the first child, but pick the real text host in case AID buries it (see pickTextHost).
+      const original = this.pickTextHost(element);
 
       if (original) {
         if (original.querySelector(".word-fade")) {
@@ -65,7 +91,7 @@ export class DOM {
     }
 
     if (type === ResponseType.Action) {
-      const original = element.firstElementChild as HTMLElement;
+      const original = this.pickTextHost(element);
       if (original) {
         // Clone the original first before hiding it.
         const originalClone = original.cloneNode(true) as HTMLElement;
