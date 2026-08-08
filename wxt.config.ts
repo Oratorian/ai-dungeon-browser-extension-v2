@@ -33,7 +33,7 @@ export default defineConfig({
       "https://github.com/*/releases/download/*",
       "https://release-assets.githubusercontent.com/*",
     ],
-    version: "1.2.5",
+    version: "1.2.6",
     web_accessible_resources: [
       {
         resources: ["fonts/*"],

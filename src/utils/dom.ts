@@ -93,13 +93,17 @@ export class DOM {
     if (type === ResponseType.Action) {
       const original = this.pickTextHost(element);
       if (original) {
-        // Clone the original first before hiding it.
-        const originalClone = original.cloneNode(true) as HTMLElement;
+        // Render into a shallow clone of the text host (same tag + classes) placed where it sits,
+        // then hide the original. AID sometimes carries the font size/family/color on the text node
+        // itself (player actions) rather than the row container, so mounting into the bare container
+        // would drop that styling and shrink the text. Cloning the host preserves its text context.
+        const rawHtml = original.innerHTML;
+        const host = original.cloneNode(false) as HTMLElement;
         original.style.display = "none";
+        original.insertAdjacentElement("beforebegin", host);
         const component = mount(Response, {
-          target: element,
-          anchor: original,
-          props: { rawHtml: originalClone.innerHTML, type: type },
+          target: host,
+          props: { rawHtml, type: type },
         });
         this.mountedComponents.set(element, component);
       }
