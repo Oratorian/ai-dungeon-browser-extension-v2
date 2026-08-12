@@ -16,6 +16,11 @@
       tab: Tab.Adventure,
     },
     {
+      icon: "download",
+      label: "Import",
+      tab: Tab.Import,
+    },
+    {
       icon: "discover_tune",
       label: "Settings",
       tab: Tab.Settings,

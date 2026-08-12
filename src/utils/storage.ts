@@ -324,6 +324,67 @@ export class Storage {
     return storyCard;
   }
 
+  /**
+   * Bulk-imports story cards captured from AI Dungeon into an adventure. Only name/type/triggers are
+   * set (the rest get the usual card defaults). Cards whose name already exists in the target are
+   * skipped (case-insensitive), as are duplicate names within the incoming batch. Returns how many
+   * were added and how many were skipped.
+   */
+  static importStoryCards(
+    adventureId: string,
+    cards: { name: string; type: string; triggers: string }[]
+  ): { imported: number; skipped: number } {
+    const adventure = this.getAdventureById(adventureId);
+    if (!adventure) return { imported: 0, skipped: 0 };
+
+    const existingNames = new Set(Object.values(adventure.storyCards).map((c) => c.name.trim().toLowerCase()));
+
+    const additions: Record<string, StoryCard> = {};
+    let imported = 0;
+    let skipped = 0;
+
+    for (const card of cards) {
+      const name = card.name.trim();
+      const key = name.toLowerCase();
+      if (!name || existingNames.has(key)) {
+        skipped++;
+        continue;
+      }
+      existingNames.add(key); // also de-dupe within this batch
+
+      const id = crypto.randomUUID();
+      additions[id] = {
+        id,
+        name,
+        triggers: card.triggers ?? "",
+        type: card.type || "character",
+        icons: [],
+        iconIndex: 0,
+        graphics: [],
+        graphicIndex: 0,
+        useCustomColor: false,
+        color: "#f8ae2c",
+        limit: "none",
+        preset: "default",
+        audioClips: [],
+      };
+      imported++;
+    }
+
+    if (imported > 0) {
+      this.adventures.update((adventures) => {
+        const adv = adventures[adventureId];
+        if (!adv) return adventures;
+        return {
+          ...adventures,
+          [adventureId]: { ...adv, storyCards: { ...adv.storyCards, ...additions } },
+        };
+      });
+    }
+
+    return { imported, skipped };
+  }
+
   static updateStoryCard(adventureId: string, storyCardId: string, updates: Partial<Omit<StoryCard, "id">>): boolean {
     const adventure = this.getAdventureById(adventureId);
     if (!adventure) return false;

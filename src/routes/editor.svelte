@@ -10,6 +10,7 @@
   import Tabs from "@/components/tabs.svelte";
   import { Tab } from "@/utils/types";
   import Adventure from "./editor/adventure.svelte";
+  import Import from "./editor/import.svelte";
   import ScrollArea from "@/components/scroll_area.svelte";
   import { fade, fly } from "svelte/transition";
 
@@ -31,6 +32,10 @@
         <ScrollArea>
           {#if extensionState.editorTab === Tab.Adventure}
             <Adventure />
+          {/if}
+
+          {#if extensionState.editorTab === Tab.Import}
+            <Import />
           {/if}
 
           {#if extensionState.editorTab === Tab.Settings}

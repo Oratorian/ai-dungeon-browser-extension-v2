@@ -1,5 +1,6 @@
 export enum Tab {
   Adventure = "Adventure",
+  Import = "Import",
   Settings = "Settings",
   Developer = "Developer",
   StoryCard = "StoryCard",
