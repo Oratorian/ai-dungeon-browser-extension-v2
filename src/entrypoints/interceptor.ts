@@ -12,15 +12,42 @@ import { AID_MSG, sanitizeCards, type AidCard, type AidMessage } from "@/utils/a
 export default defineUnlistedScript(() => {
   const isGql = (u: unknown) => typeof u === "string" && /graphql/i.test(u);
 
-  // Last capture, kept so a late-loading content script can ask for it (see the request handler).
-  let latest: { shortId: string | null; title: string | null; cards: AidCard[] } | null = null;
+  // Current adventure's captured cards, keyed by id so live edits upsert instead of replacing the
+  // whole set. Kept so a late-loading content script can ask for it (see the request handler).
+  let latest: { shortId: string | null; title: string | null; byId: Map<string, AidCard> } | null = null;
 
-  function emit(shortId: string | null, title: string | null, cards: AidCard[]) {
+  function post() {
+    if (!latest) return;
+    const cards = [...latest.byId.values()];
     if (!cards.length) return;
-    latest = { shortId, title, cards };
     // Handy manual verification hook: type `__deAidCards` in the page console.
-    (window as any).__deAidCards = latest;
-    window.postMessage({ source: AID_MSG.SOURCE, kind: AID_MSG.UPDATE, shortId, title, cards } as AidMessage, "*");
+    (window as any).__deAidCards = { shortId: latest.shortId, title: latest.title, cards };
+    window.postMessage(
+      { source: AID_MSG.SOURCE, kind: AID_MSG.UPDATE, shortId: latest.shortId, title: latest.title, cards } as AidMessage,
+      "*"
+    );
+  }
+
+  // Merge a capture into the current adventure's set.
+  //  - `full` = an authoritative complete list (a fetch response, which also reflects deletions):
+  //    replace the set, but never with an empty list (guards against a stray query wiping a good
+  //    capture).
+  //  - otherwise the cards are a live WS delta and are upserted, so editing one card in AID does not
+  //    wipe the rest.
+  // A new shortId resets the set (the user switched adventures).
+  function capture(shortId: string | null, title: string | null, cards: AidCard[], full: boolean) {
+    if (!cards.length && !full) return;
+    if (!latest || (shortId && shortId !== latest.shortId)) {
+      latest = { shortId: shortId ?? null, title: title ?? null, byId: new Map() };
+    }
+    if (shortId) latest.shortId = shortId;
+    if (title) latest.title = title;
+    if (full) {
+      if (cards.length) latest.byId = new Map(cards.map((c) => [c.id, c]));
+    } else {
+      for (const c of cards) latest.byId.set(c.id, c);
+    }
+    post();
   }
 
   // Find adventure.storyCards anywhere in a parsed GraphQL response (single object or batch array).
@@ -30,16 +57,17 @@ export default defineUnlistedScript(() => {
       const adv =
         it?.data?.adventure ?? it?.data?.updateAdventurePlot?.adventure ?? it?.data?.updateAdventureState?.adventure;
       if (adv && Array.isArray(adv.storyCards)) {
-        emit(
+        capture(
           adv.shortId != null ? String(adv.shortId) : null,
           typeof adv.title === "string" ? adv.title : null,
-          sanitizeCards(adv.storyCards)
+          sanitizeCards(adv.storyCards),
+          true
         );
       }
     }
   }
 
-  // --- fetch (initial + refetched adventure loads) ---
+  // --- fetch (initial + refetched adventure loads: authoritative full sets) ---
   const _fetch = window.fetch.bind(window);
   window.fetch = function (...args: any[]) {
     const p = _fetch(...(args as [any, any]));
@@ -53,7 +81,7 @@ export default defineUnlistedScript(() => {
     return p;
   };
 
-  // --- graphql-ws WebSocket (live card edits in AID's UI) ---
+  // --- graphql-ws WebSocket (live card edits in AID's UI: deltas, upserted) ---
   const _WS = window.WebSocket;
   class WSProxy extends _WS {
     constructor(url: string | URL, protocols?: string | string[]) {
@@ -69,18 +97,16 @@ export default defineUnlistedScript(() => {
           if (frame?.type !== "next") return;
           const data = frame?.payload?.data;
           const sc = data?.adventureStoryCardsUpdate?.storyCards ?? data?.adventure?.storyCards;
-          if (Array.isArray(sc)) emit(latest?.shortId ?? null, latest?.title ?? null, sanitizeCards(sc));
+          if (Array.isArray(sc)) capture(latest?.shortId ?? null, latest?.title ?? null, sanitizeCards(sc), false);
         });
       }
     }
   }
   window.WebSocket = WSProxy as any;
 
-  // Replay the last capture when the content script (which loads after us) asks for it.
+  // Replay the current set when the content script (which loads after us) asks for it.
   window.addEventListener("message", (ev) => {
     const d = ev.data;
-    if (d && d.source === AID_MSG.SOURCE && d.kind === AID_MSG.REQUEST && latest) {
-      window.postMessage({ source: AID_MSG.SOURCE, kind: AID_MSG.UPDATE, ...latest } as AidMessage, "*");
-    }
+    if (d && d.source === AID_MSG.SOURCE && d.kind === AID_MSG.REQUEST) post();
   });
 });
