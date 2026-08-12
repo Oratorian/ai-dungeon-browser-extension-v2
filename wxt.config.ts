@@ -36,7 +36,8 @@ export default defineConfig({
     version: "1.2.6",
     web_accessible_resources: [
       {
-        resources: ["fonts/*"],
+        // interceptor.js is the page-world GraphQL tap, injected by aid-inject.content.ts.
+        resources: ["fonts/*", "interceptor.js"],
         matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
       },
     ],

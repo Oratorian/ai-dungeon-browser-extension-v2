@@ -3,12 +3,16 @@ import appStyle from "@/app.css?inline";
 import contentStyle from "@/content.css?inline";
 import Editor from "@/routes/editor.svelte";
 import { Events } from "@/utils/events";
+import { connectAidBridge } from "@/utils/aid_import";
 import { mount, unmount } from "svelte";
 
 export default defineContentScript({
   matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
   cssInjectionMode: "ui",
   async main(ctx) {
+    // Listen for story cards the page-world interceptor detects, and ask for any already captured.
+    connectAidBridge();
+
     // Inject content styles omitting the base overrides stuff.
     const style = document.createElement("style");
     style.textContent = contentStyle;
