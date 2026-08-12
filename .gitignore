@@ -28,3 +28,6 @@ web-ext-artifacts
 *.njsproj
 *.sln
 *.sw?
+
+# Local scratch files that must never be committed
+*do-not-commit*
