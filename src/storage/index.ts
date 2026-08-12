@@ -178,15 +178,23 @@ export class Storage {
   }
 
   static importAdventure(jsonString: string): { success: boolean; error?: string; adventure?: Adventure } {
+    let data: any;
     try {
-      const data = JSON.parse(jsonString);
+      data = JSON.parse(jsonString);
+    } catch {
+      // Report length + start so a truncated download (huge release asset cut short) or a wrong
+      // payload (HTML error page, LFS pointer) is obvious instead of a bare "invalid JSON".
+      const snippet = jsonString.slice(0, 60).replace(/\s+/g, " ").trim();
+      return { success: false, error: `Not valid JSON (${jsonString.length} chars${snippet ? `, starts "${snippet}..."` : ""}).` };
+    }
 
+    try {
       if (isLegacyFormat(data)) {
         return this.importLegacyAdventure(data);
       }
 
-      if (!data.adventure || typeof data.adventure !== "object") {
-        return { success: false, error: "Invalid adventure data" };
+      if (!data || typeof data !== "object" || !data.adventure || typeof data.adventure !== "object") {
+        return { success: false, error: "No 'adventure' object found in the file." };
       }
 
       const normalized = normalizeAdventure(data.adventure);
@@ -216,7 +224,7 @@ export class Storage {
 
       return { success: true, adventure: importedAdventure };
     } catch (e) {
-      return { success: false, error: "Invalid JSON format" };
+      return { success: false, error: `Import failed: ${e instanceof Error ? e.message : String(e)}` };
     }
   }
 

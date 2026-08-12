@@ -253,14 +253,32 @@ function isLfsPointer(text: string): boolean {
 
 /** Downloads a file's full contents as text (used at import time). */
 export async function fetchFileText(file: GitHubFile): Promise<string> {
-  // Release assets are proxied through the background (their CDN has no CORS); tree files come
-  // straight from raw.githubusercontent.com, which is CORS-enabled.
+  // Release assets live on a CDN that sends no CORS headers. On Firefox (MV2) a content script can
+  // still fetch it directly (host_permissions grant cross-origin), which streams even huge files
+  // straight into a string without the background message-port hop. On Chrome MV3 that direct fetch
+  // is CORS-blocked, so we fall back to the background proxy.
   if (file.release) {
     try {
-      return await bgFetch(file.rawUrl);
+      const res = await fetch(file.rawUrl);
+      if (res.ok) return await res.text();
+    } catch {
+      // CORS-blocked (Chrome) or a network error; fall through to the background proxy below.
+    }
+
+    let text: string;
+    try {
+      text = await bgFetch(file.rawUrl);
     } catch (e) {
       throw new GitHubError(e instanceof Error && e.message ? e.message : "Couldn't download the file.");
     }
+    // A very large asset can come back short if the background transfer was cut off; catch that here
+    // so it surfaces as a clear error rather than a cryptic "invalid JSON" at parse time.
+    if (file.size && text.length < file.size * 0.9) {
+      throw new GitHubError(
+        `The download came back incomplete (${text.length} of ~${file.size} bytes), the file may be too large to import on Chrome.`
+      );
+    }
+    return text;
   }
 
   let res: Response;
