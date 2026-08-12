@@ -71,6 +71,19 @@
 
   const selectedCards = $derived(detected.cards.filter((c) => selectedTypes.has(c.type || "other")));
 
+  // Explain, in plain language, what the toggle will do and why it defaulted the way it did.
+  const checkboxHint = $derived.by(() => {
+    const targetName = target?.name ?? "the selected adventure";
+    if (createScenario) {
+      if (!target) return `A new adventure "${newAdventureName}" will be created and linked to this AI Dungeon adventure.`;
+      if (targetMatches) return `"${targetName}" already matches this adventure, but a separate new one will be created.`;
+      return `The selected "${targetName}" is a different adventure, so a new one is created and linked, keeping cards out of the wrong one.`;
+    }
+    if (targetMatches) return `"${targetName}" is already linked to this adventure, so cards will merge into it.`;
+    if (target) return `Cards will merge into the selected "${targetName}", which is not linked to this AI Dungeon adventure.`;
+    return `No adventure is selected, so a new one will be created anyway.`;
+  });
+
   function toggleType(type: string) {
     const next = new Set(selectedTypes);
     if (next.has(type)) next.delete(type);
@@ -150,10 +163,7 @@
           </span>
           <span class="flex flex-col">
             <span class="text-sm text-theme-neutral-800">Create new adventure</span>
-            <span class="text-xs text-theme-neutral-700">
-              Recommended. Imports into a fresh adventure linked to this AI Dungeon adventure, instead of the one
-              currently selected.
-            </span>
+            <span class="text-xs text-theme-neutral-700">{checkboxHint}</span>
           </span>
         </button>
 
