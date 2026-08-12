@@ -1,6 +1,7 @@
 <script lang="ts">
   import Field from "@/ui/components/field.svelte";
   import { aidDetected } from "@/aid/bridge";
+  import { playedShortId } from "@/aid/adventure";
   import { Storage } from "@/storage";
   import type { Adventure } from "@/shared/types";
   import type { AidCard, AidDetected } from "@/aid/protocol";
@@ -67,6 +68,12 @@
       adventure = Storage.createAdventure(newAdventureName);
       Storage.selectAdventure(adventure.id);
     }
+
+    // Bind this adventure to the AI Dungeon adventure the cards came from, so it auto-selects when
+    // that adventure is played (see aid/adventure.ts). Prefer the URL shortId (what auto-select
+    // compares against) and fall back to the captured id.
+    const aidShortId = playedShortId() ?? detected.shortId;
+    if (aidShortId) Storage.updateAdventure(adventure.id, { aidShortId });
 
     const res = Storage.importStoryCards(
       adventure.id,

@@ -4,6 +4,7 @@ import contentStyle from "@/content.css?inline";
 import Editor from "@/ui/routes/editor.svelte";
 import { Events } from "@/shared/events";
 import { connectAidBridge } from "@/aid/bridge";
+import { autoSelectPlayedAdventure } from "@/aid/adventure";
 import { mount, unmount } from "svelte";
 
 export default defineContentScript({
@@ -12,6 +13,11 @@ export default defineContentScript({
   async main(ctx) {
     // Listen for story cards the page-world interceptor detects, and ask for any already captured.
     connectAidBridge();
+
+    // Follow the played adventure: auto-select its imported card set as the URL changes (AI Dungeon
+    // routes client-side, so poll). ctx.setInterval is cleared automatically if the context dies.
+    autoSelectPlayedAdventure();
+    ctx.setInterval(autoSelectPlayedAdventure, 1000);
 
     // Inject content styles omitting the base overrides stuff.
     const style = document.createElement("style");

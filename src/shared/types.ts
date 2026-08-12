@@ -35,6 +35,9 @@ export type Adventure = {
   name: string;
   createdAt: number;
   storyCards: Record<string, StoryCard>;
+  /** AI Dungeon adventure shortId this was imported from; lets the extension auto-select this
+   *  card set when that adventure is played (see aid/adventure.ts). */
+  aidShortId?: string;
 };
 
 export type TextChunk =

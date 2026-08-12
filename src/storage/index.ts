@@ -289,6 +289,19 @@ export class Storage {
     }
   }
 
+  /**
+   * Selects the adventure that was imported from the given AI Dungeon shortId, if one exists, so its
+   * story cards (and highlighting) apply automatically. Non-destructive: if nothing matches, the
+   * current selection is left untouched. Returns whether a match was selected.
+   */
+  static selectAdventureByAidId(shortId: string): boolean {
+    if (!shortId) return false;
+    const match = Object.values(get(this.adventures)).find((a) => a.aidShortId === shortId);
+    if (!match) return false;
+    if (get(this.selectedAdventureId) !== match.id) this.selectAdventure(match.id);
+    return true;
+  }
+
   /** The cosmetic/default field block shared by every newly created or imported story card. */
   private static defaultStoryCardFields(): Omit<StoryCard, "id" | "name" | "type" | "triggers"> {
     return {
