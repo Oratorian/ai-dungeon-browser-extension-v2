@@ -4,6 +4,11 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   srcDir: "src",
   modules: ["@wxt-dev/module-svelte"],
+  // Auto-import project symbols (Storage, Config, Debug, DOM, Events, extensionState, ...) from the
+  // domain folders. WXT auto-imports from "utils" by default; we moved that code into these folders.
+  imports: {
+    dirs: ["aid", "storage", "media", "audio", "rendering", "shared"],
+  },
   // Output zips as DExtV2-Resurrect-<browser>-<version>.zip (e.g. DExtV2-Resurrect-chrome-1.2.0.zip).
   zip: {
     artifactTemplate: "DExtV2-Resurrect-{{browser}}-{{version}}.zip",

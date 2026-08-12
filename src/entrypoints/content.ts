@@ -1,9 +1,9 @@
 import { Debug } from "#imports";
 import appStyle from "@/app.css?inline";
 import contentStyle from "@/content.css?inline";
-import Editor from "@/routes/editor.svelte";
-import { Events } from "@/utils/events";
-import { connectAidBridge } from "@/utils/aid_import";
+import Editor from "@/ui/routes/editor.svelte";
+import { Events } from "@/shared/events";
+import { connectAidBridge } from "@/aid/bridge";
 import { mount, unmount } from "svelte";
 
 export default defineContentScript({

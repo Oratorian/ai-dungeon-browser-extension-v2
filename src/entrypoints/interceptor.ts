@@ -1,4 +1,4 @@
-import { AID_MSG, sanitizeCards, type AidCard, type AidMessage } from "@/utils/aid_protocol";
+import { AID_MSG, sanitizeCards, type AidCard, type AidMessage } from "@/aid/protocol";
 
 // Page-world (MAIN) script. It is injected as a <script> tag by aid-inject.content.ts at
 // document_start, so it patches window.fetch and window.WebSocket before AI Dungeon's own bundle
