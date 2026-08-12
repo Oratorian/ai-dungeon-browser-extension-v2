@@ -38,7 +38,7 @@ export default defineConfig({
       "https://github.com/*/releases/download/*",
       "https://release-assets.githubusercontent.com/*",
     ],
-    version: "1.2.6",
+    version: "1.3.0",
     web_accessible_resources: [
       {
         // interceptor.js is the page-world GraphQL tap, injected by aid-inject.content.ts.
