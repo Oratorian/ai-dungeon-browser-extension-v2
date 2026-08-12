@@ -1,7 +1,7 @@
 <script lang="ts">
   import Field from "@/ui/components/field.svelte";
   import { aidDetected } from "@/aid/bridge";
-  import { playedAdventureId } from "@/aid/adventure";
+  import { playedAdventureId, playedShortId } from "@/aid/adventure";
   import { Storage } from "@/storage";
   import type { Adventure } from "@/shared/types";
   import type { AidCard, AidDetected } from "@/aid/protocol";
@@ -71,6 +71,17 @@
 
   const selectedCards = $derived(detected.cards.filter((c) => selectedTypes.has(c.type || "other")));
 
+  // Passive capture only sees what AI Dungeon fetches over the network, so a cached adventure switch
+  // can leave the last capture pointing at a different adventure than the one now on screen. Gate on
+  // the URL id so we never show (or import) another adventure's cards. Read the URL fresh (with
+  // playedId as the reactive trigger) so a normal switch converges the moment the capture lands,
+  // instead of briefly hiding valid cards while the 1s poll catches up.
+  const detectedMatchesPlayed = $derived.by(() => {
+    void playedId; // recompute when the URL poll changes (covers a cached switch with no new capture)
+    const url = playedShortId();
+    return !url || !detected.shortId || detected.shortId === url;
+  });
+
   // Explain, in plain language, what the toggle will do and why it defaulted the way it did.
   const checkboxHint = $derived.by(() => {
     const targetName = target?.name ?? "the selected adventure";
@@ -125,13 +136,21 @@
     info="Reads the story cards from the adventure you have open in AI Dungeon and adds them to the selected adventure (a new one is created if none is selected). Only name, type, and triggers are imported; cards that already exist by name are skipped."
   >
     <div class="flex flex-col gap-3 bg-theme-neutral-100 rounded-xl p-3">
-      {#if detected.cards.length === 0}
+      {#if detected.cards.length === 0 || !detectedMatchesPlayed}
         <div class="flex flex-col items-center justify-center py-10 text-theme-neutral-700 gap-2">
-          <span class="font-symbol text-5xl">download</span>
-          <span class="text-sm font-bold">No story cards detected</span>
-          <span class="text-xs text-center max-w-xs">
-            Open an adventure in AI Dungeon (or refresh it) and its story cards will show up here, ready to import.
-          </span>
+          <span class="font-symbol text-5xl">{detectedMatchesPlayed ? "download" : "sync_problem"}</span>
+          {#if !detectedMatchesPlayed}
+            <span class="text-sm font-bold">Cards are for a different adventure</span>
+            <span class="text-xs text-center max-w-xs">
+              The detected cards belong to another adventure (AI Dungeon likely loaded this one from cache). Reload the
+              page to detect the adventure you're playing now.
+            </span>
+          {:else}
+            <span class="text-sm font-bold">No story cards detected</span>
+            <span class="text-xs text-center max-w-xs">
+              Open an adventure in AI Dungeon (or refresh it) and its story cards will show up here, ready to import.
+            </span>
+          {/if}
         </div>
       {:else}
         <!-- Source + target -->
