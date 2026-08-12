@@ -12,6 +12,9 @@
   let selectedId = $state<string | null>(null);
   let selectedTypes = $state<Set<string>>(new Set());
   let result = $state<{ imported: number; skipped: number; adventureName: string } | null>(null);
+  // Import into a fresh adventure (default) rather than whatever is currently selected, so switching
+  // AI Dungeon adventures never dumps cards into the wrong extension adventure.
+  let createScenario = $state(true);
 
   aidDetected.subscribe((v) => {
     detected = v;
@@ -23,6 +26,23 @@
   // Import target: the adventure selected on the Adventure tab, or null (we create one on import).
   const target = $derived(selectedId ? (adventures[selectedId] ?? null) : null);
   const newAdventureName = $derived(detected.title?.trim() || "Imported Adventure");
+
+  // The shortId of the adventure being imported (URL first, captured id as fallback).
+  const importedShortId = $derived(playedShortId() ?? detected.shortId);
+  // True when the currently selected adventure is already the one bound to that adventure.
+  const targetMatches = $derived(!!target?.aidShortId && !!importedShortId && target.aidShortId === importedShortId);
+
+  // Default the "Create new adventure" toggle: create a fresh one UNLESS the selected adventure is
+  // already the match for what's being imported (then merging into it is the whole point, so leave
+  // it unchecked). Recomputed when that context changes; a manual toggle sticks until then.
+  let scenarioKey = "";
+  $effect(() => {
+    const key = `${target?.id ?? ""}|${target?.aidShortId ?? ""}|${importedShortId ?? ""}`;
+    if (key !== scenarioKey) {
+      scenarioKey = key;
+      createScenario = !targetMatches;
+    }
+  });
 
   // Group detected cards by type for the filter.
   const groups = $derived.by(() => {
@@ -62,18 +82,18 @@
   function doImport() {
     if (selectedCards.length === 0) return;
 
-    // If no adventure is selected yet, create one named after the AI Dungeon adventure and select it.
-    let adventure = target;
-    if (!adventure) {
+    // With "Create new adventure" on (default), or when nothing is selected, make a fresh adventure
+    // named after the AI Dungeon adventure and bind it to that adventure's shortId, so it auto-loads
+    // on play and the import never lands in a previously-selected (wrong) adventure. Otherwise merge
+    // into the selected adventure, leaving its existing link untouched.
+    let adventure;
+    if (createScenario || !target) {
       adventure = Storage.createAdventure(newAdventureName);
       Storage.selectAdventure(adventure.id);
+      if (importedShortId) Storage.updateAdventure(adventure.id, { aidShortId: importedShortId });
+    } else {
+      adventure = target;
     }
-
-    // Bind this adventure to the AI Dungeon adventure the cards came from, so it auto-selects when
-    // that adventure is played (see aid/adventure.ts). Prefer the URL shortId (what auto-select
-    // compares against) and fall back to the captured id.
-    const aidShortId = playedShortId() ?? detected.shortId;
-    if (aidShortId) Storage.updateAdventure(adventure.id, { aidShortId });
 
     const res = Storage.importStoryCards(
       adventure.id,
@@ -106,14 +126,33 @@
               ({detected.cards.length} card{detected.cards.length !== 1 ? "s" : ""})
             </span>
           </div>
-          {#if target}
-            <div class="text-theme-neutral-800">Into <span class="font-bold">{target.name}</span></div>
-          {:else}
+          {#if createScenario || !target}
             <div class="text-theme-neutral-700 text-xs">
-              Into a new adventure <span class="font-bold text-theme-neutral-800">{newAdventureName}</span> (created on import)
+              Into a new adventure <span class="font-bold text-theme-neutral-800">{newAdventureName}</span>
             </div>
+          {:else}
+            <div class="text-theme-neutral-800">Into <span class="font-bold">{target.name}</span></div>
           {/if}
         </div>
+
+        <!-- Create-new-adventure toggle: keeps an import from landing in a previously-selected set -->
+        <button
+          onclick={() => (createScenario = !createScenario)}
+          class="flex items-start gap-2 p-2 rounded-lg text-left transition-colors {createScenario
+            ? 'bg-theme-neutral-300'
+            : 'bg-theme-neutral-200 hover:bg-theme-neutral-300'}"
+        >
+          <span class="font-symbol text-lg mt-0.5 {createScenario ? 'text-pretty-theme' : 'text-theme-neutral-700'}">
+            {createScenario ? "check_box" : "check_box_outline_blank"}
+          </span>
+          <span class="flex flex-col">
+            <span class="text-sm text-theme-neutral-800">Create new adventure</span>
+            <span class="text-xs text-theme-neutral-700">
+              Recommended. Imports into a fresh adventure linked to this AI Dungeon adventure, instead of the one
+              currently selected.
+            </span>
+          </span>
+        </button>
 
         <!-- Type filter -->
         <div class="flex items-center justify-between">
