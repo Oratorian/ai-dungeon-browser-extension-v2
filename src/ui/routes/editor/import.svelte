@@ -1,7 +1,7 @@
 <script lang="ts">
   import Field from "@/ui/components/field.svelte";
   import { aidDetected } from "@/aid/bridge";
-  import { playedShortId } from "@/aid/adventure";
+  import { playedAdventureId } from "@/aid/adventure";
   import { Storage } from "@/storage";
   import type { Adventure } from "@/shared/types";
   import type { AidCard, AidDetected } from "@/aid/protocol";
@@ -12,6 +12,9 @@
   let selectedId = $state<string | null>(null);
   let selectedTypes = $state<Set<string>>(new Set());
   let result = $state<{ imported: number; skipped: number; adventureName: string } | null>(null);
+  // AI Dungeon adventure currently in the URL (reactive), used for the match check and binding.
+  let playedId = $state<string | null>(null);
+  playedAdventureId.subscribe((v) => (playedId = v));
   // Import into a fresh adventure (default) rather than whatever is currently selected, so switching
   // AI Dungeon adventures never dumps cards into the wrong extension adventure.
   let createScenario = $state(true);
@@ -28,7 +31,7 @@
   const newAdventureName = $derived(detected.title?.trim() || "Imported Adventure");
 
   // The shortId of the adventure being imported (URL first, captured id as fallback).
-  const importedShortId = $derived(playedShortId() ?? detected.shortId);
+  const importedShortId = $derived(playedId ?? detected.shortId);
   // True when the currently selected adventure is already the one bound to that adventure.
   const targetMatches = $derived(!!target?.aidShortId && !!importedShortId && target.aidShortId === importedShortId);
 
@@ -90,7 +93,7 @@
     if (createScenario || !target) {
       adventure = Storage.createAdventure(newAdventureName);
       Storage.selectAdventure(adventure.id);
-      if (importedShortId) Storage.updateAdventure(adventure.id, { aidShortId: importedShortId });
+      if (importedShortId) Storage.setAidShortId(adventure.id, importedShortId);
     } else {
       adventure = target;
     }

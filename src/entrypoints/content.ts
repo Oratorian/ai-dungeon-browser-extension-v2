@@ -14,19 +14,20 @@ export default defineContentScript({
     // Listen for story cards the page-world interceptor detects, and ask for any already captured.
     connectAidBridge();
 
-    // Follow the played adventure: auto-select its imported card set as the URL changes (AI Dungeon
-    // routes client-side, so poll). ctx.setInterval is cleared automatically if the context dies.
-    autoSelectPlayedAdventure();
-    ctx.setInterval(autoSelectPlayedAdventure, 1000);
-
     // Inject content styles omitting the base overrides stuff.
     const style = document.createElement("style");
     style.textContent = contentStyle;
     style.id = "de-content";
     document.head.appendChild(style);
 
-    // Do the startup events.
+    // Do the startup events (loads storage).
     await Events.onStart();
+
+    // Follow the played adventure: auto-select its imported card set as the URL changes (AI Dungeon
+    // routes client-side, so poll). Must run after Events.onStart() so storage is loaded first;
+    // ctx.setInterval is cleared automatically if the context dies.
+    autoSelectPlayedAdventure();
+    ctx.setInterval(autoSelectPlayedAdventure, 1000);
 
     Debug.log("Creating shadow root UI...");
     const ui = await createShadowRootUi(ctx, {

@@ -6,21 +6,21 @@
   import { Storage } from "@/storage";
   import type { Adventure } from "@/shared/types";
   import Field from "@/ui/components/field.svelte";
-  import { playedShortId } from "@/aid/adventure";
+  import { playedAdventureId } from "@/aid/adventure";
   import { get } from "svelte/store";
 
   let adventures = $state<Record<string, Adventure>>({});
   let selectedId = $state<string | null>(null);
+  // The AI Dungeon adventure currently in the URL (reactive, so the button tracks navigation). Used
+  // to retro-link an older card set to the adventure being played (see aid/adventure.ts).
+  let playedId = $state<string | null>(null);
 
   Storage.adventures.subscribe((a) => (adventures = a));
   Storage.selectedAdventureId.subscribe((id) => (selectedId = id));
+  playedAdventureId.subscribe((v) => (playedId = v));
 
   const selectedAdventure = $derived(selectedId ? (adventures[selectedId] ?? null) : null);
   const storyCards = $derived(selectedAdventure ? Object.values(selectedAdventure.storyCards) : []);
-
-  // The AI Dungeon adventure open in the URL when this tab mounts. Used to retro-link an older card
-  // set to the adventure being played so it auto-loads next time (see aid/adventure.ts).
-  const playedId = playedShortId();
 
   function handleAddStoryCard() {
     if (!selectedId) return;
@@ -31,14 +31,13 @@
   }
 
   function stampAdventureId() {
-    const sid = playedShortId();
-    if (!selectedAdventure || !sid) return;
-    Storage.updateAdventure(selectedAdventure.id, { aidShortId: sid });
+    if (!selectedAdventure || !playedId) return;
+    Storage.setAidShortId(selectedAdventure.id, playedId);
   }
 
   function unbindAdventureId() {
     if (!selectedAdventure) return;
-    Storage.updateAdventure(selectedAdventure.id, { aidShortId: undefined });
+    Storage.setAidShortId(selectedAdventure.id, null);
   }
 </script>
 

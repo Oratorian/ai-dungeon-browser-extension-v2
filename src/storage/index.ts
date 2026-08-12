@@ -122,6 +122,9 @@ function normalizeAdventure(adventure: unknown): Adventure | null {
     name: typeof a.name === "string" ? a.name : "Untitled Adventure",
     createdAt: typeof a.createdAt === "number" ? a.createdAt : Date.now(),
     storyCards,
+    // Preserve the played-adventure link across reloads (dropping it here made the binding vanish
+    // on every F5, so the "Stamp" button kept reappearing).
+    aidShortId: typeof a.aidShortId === "string" ? a.aidShortId : undefined,
   };
 }
 
@@ -300,6 +303,26 @@ export class Storage {
     if (!match) return false;
     if (get(this.selectedAdventureId) !== match.id) this.selectAdventure(match.id);
     return true;
+  }
+
+  /**
+   * Binds an adventure to an AI Dungeon shortId (or clears it with null). Keeps the binding unique:
+   * any other adventure carrying the same shortId is unbound, so selectAdventureByAidId is
+   * deterministic.
+   */
+  static setAidShortId(adventureId: string, shortId: string | null): void {
+    this.adventures.update((advs) => {
+      const target = advs[adventureId];
+      if (!target) return advs;
+      const next: Record<string, Adventure> = { ...advs };
+      if (shortId) {
+        for (const [id, a] of Object.entries(next)) {
+          if (id !== adventureId && a.aidShortId === shortId) next[id] = { ...a, aidShortId: undefined };
+        }
+      }
+      next[adventureId] = { ...target, aidShortId: shortId ?? undefined };
+      return next;
+    });
   }
 
   /** The cosmetic/default field block shared by every newly created or imported story card. */
