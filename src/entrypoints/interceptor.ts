@@ -73,8 +73,27 @@ export default defineUnlistedScript(() => {
     const p = _fetch(...(args as [any, any]));
     try {
       const input = args[0];
-      const url = typeof input === "string" ? input : input?.url;
-      if (isGql(url)) p.then((r: Response) => r.clone().json().then(scan).catch(() => {})).catch(() => {});
+      // input may be a string, a Request (has .url), or a URL (String() gives its href).
+      const url = typeof input === "string" ? input : (input?.url ?? String(input ?? ""));
+      if (isGql(url)) {
+        p.then((r: Response) =>
+          r
+            .clone()
+            .text()
+            .then((t) => {
+              // Cheap pre-filter: only parse responses that actually carry cards, not every
+              // action/streaming response during play.
+              if (t.includes('"storyCards"')) {
+                try {
+                  scan(JSON.parse(t));
+                } catch {
+                  /* not JSON we can use */
+                }
+              }
+            })
+            .catch(() => {})
+        ).catch(() => {});
+      }
     } catch {
       /* never let interception break the real request */
     }

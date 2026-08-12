@@ -289,6 +289,21 @@ export class Storage {
     }
   }
 
+  /** The cosmetic/default field block shared by every newly created or imported story card. */
+  private static defaultStoryCardFields(): Omit<StoryCard, "id" | "name" | "type" | "triggers"> {
+    return {
+      icons: [],
+      iconIndex: 0,
+      graphics: [],
+      graphicIndex: 0,
+      useCustomColor: false,
+      color: "#f8ae2c",
+      limit: "none",
+      preset: "default",
+      audioClips: [],
+    };
+  }
+
   static createStoryCard(adventureId: string, name: string): StoryCard | null {
     const adventure = this.getAdventureById(adventureId);
     if (!adventure) return null;
@@ -299,15 +314,7 @@ export class Storage {
       name: name.trim() || "Untitled Card",
       triggers: "",
       type: "character",
-      icons: [],
-      iconIndex: 0,
-      graphics: [],
-      graphicIndex: 0,
-      useCustomColor: false,
-      color: "#f8ae2c",
-      limit: "none",
-      preset: "default",
-      audioClips: [],
+      ...this.defaultStoryCardFields(),
     };
 
     this.adventures.update((adventures) => ({
@@ -358,15 +365,7 @@ export class Storage {
         name,
         triggers: card.triggers ?? "",
         type: card.type || "character",
-        icons: [],
-        iconIndex: 0,
-        graphics: [],
-        graphicIndex: 0,
-        useCustomColor: false,
-        color: "#f8ae2c",
-        limit: "none",
-        preset: "default",
-        audioClips: [],
+        ...this.defaultStoryCardFields(),
       };
       imported++;
     }

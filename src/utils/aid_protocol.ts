@@ -50,7 +50,9 @@ export function sanitizeCards(raw: unknown): AidCard[] {
     if (!c || typeof c !== "object") continue;
     const name = typeof c.title === "string" ? c.title.trim() : "";
     const triggers = typeof c.keys === "string" ? c.keys : "";
-    const type = typeof c.type === "string" ? c.type : "";
+    // Normalize a missing type to "other" here so the import filter (which groups by type) and the
+    // stored card agree; an empty type would otherwise display as "other" but save as "character".
+    const type = typeof c.type === "string" && c.type.trim() ? c.type : "other";
     if (!name && !triggers.trim()) continue; // nothing to match on
     const id = c.id != null ? String(c.id) : `${type}:${name}`;
     out.push({ id, type, name, triggers });
