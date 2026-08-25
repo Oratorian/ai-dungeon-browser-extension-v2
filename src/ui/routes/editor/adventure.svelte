@@ -7,6 +7,7 @@
   import type { Adventure } from "@/shared/types";
   import Field from "@/ui/components/field.svelte";
   import { playedAdventureId } from "@/aid/adventure";
+  import { versionInfo, checkForUpdate, RELEASES_URL, type VersionInfo } from "@/shared/version";
   import { get } from "svelte/store";
 
   let adventures = $state<Record<string, Adventure>>({});
@@ -14,10 +15,16 @@
   // The AI Dungeon adventure currently in the URL (reactive, so the button tracks navigation). Used
   // to retro-link an older card set to the adventure being played (see aid/adventure.ts).
   let playedId = $state<string | null>(null);
+  // Installed version + whether GitHub has a newer release (see shared/version.ts).
+  let vinfo = $state<VersionInfo>({ current: "", latest: null, updateAvailable: false });
 
   Storage.adventures.subscribe((a) => (adventures = a));
   Storage.selectedAdventureId.subscribe((id) => (selectedId = id));
   playedAdventureId.subscribe((v) => (playedId = v));
+  versionInfo.subscribe((v) => (vinfo = v));
+  checkForUpdate();
+
+  const year = new Date().getFullYear();
 
   const selectedAdventure = $derived(selectedId ? (adventures[selectedId] ?? null) : null);
   const storyCards = $derived(selectedAdventure ? Object.values(selectedAdventure.storyCards) : []);
@@ -92,6 +99,23 @@
       </span>
     </div>-->
   {/if}
+
+  <!-- Footer: installed version + copyright, with a green update badge when GitHub has a newer one. -->
+  <div class="flex flex-col items-center gap-1 pt-6 pb-1 text-theme-neutral-700">
+    {#if vinfo.updateAvailable}
+      <a
+        href={RELEASES_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-pretty-green/15 text-pretty-green text-xs font-bold hover:bg-pretty-green/25 transition-colors"
+      >
+        <span class="font-symbol text-sm">arrow_circle_up</span>
+        New version available{vinfo.latest ? ` (v${vinfo.latest})` : ""}
+      </a>
+    {/if}
+    <span class="text-xs text-theme-neutral-800">Dungeon Extension v2 &middot; v{vinfo.current}</span>
+    <span class="text-[10px]">&copy; {year} Oratorian</span>
+  </div>
 </div>
 
 <!-- Story Card Editor Dialog -->
