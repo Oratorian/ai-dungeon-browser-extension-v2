@@ -21,6 +21,36 @@ export class DOM {
     baseButton.parentElement?.insertBefore(button, baseButton);
   }
 
+  // Adds an "Editor" button to the gameplay input-mode toolbar (the Do/Say/Story/Guide/See flyout)
+  // for quick access, so you don't have to open the top menu. Clones a mode button (found by its
+  // stable aria-label, not AI Dungeon's atomic classes) and swaps its icon + label. Idempotent, and
+  // re-run on every mutation, so it comes back if the flyout re-renders or reopens.
+  static injectActionEditorButton() {
+    if (document.getElementById(Config.ID_ACTION_EDITOR_BUTTON)) return;
+
+    const modeButton = document.querySelector(Config.SELECTOR_MODE_BUTTON);
+    const toolbar = modeButton?.parentElement;
+    if (!modeButton || !toolbar) return;
+
+    const button = modeButton.cloneNode(true) as HTMLElement;
+    button.id = Config.ID_ACTION_EDITOR_BUTTON;
+    button.setAttribute("aria-label", "Open Dungeon Extension editor");
+
+    // Same structure as the mode buttons: an aria-hidden icon glyph and a label span.
+    const icon = button.querySelector('[aria-hidden="true"]') as HTMLElement | null;
+    if (icon) icon.innerText = "w_wrench";
+    const label = button.querySelector(":scope > span") as HTMLElement | null;
+    if (label) label.innerText = "DExtV2R";
+
+    // Stop the click from reaching AI Dungeon's delegated handlers (which would switch input mode).
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      extensionState.isEditorOpen = true;
+    });
+
+    toolbar.appendChild(button);
+  }
+
   // AI Dungeon doesn't keep the response text in a fixed position: story paragraphs and the last
   // action hold it in the first child, but a player action now leads with an empty spacer <span>
   // and pushes the real text into a later sibling, past layout spacers and an icon glyph. Return the
