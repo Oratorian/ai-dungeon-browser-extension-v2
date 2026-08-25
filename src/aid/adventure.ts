@@ -35,5 +35,8 @@ export function autoSelectPlayedAdventure(): void {
   if (shortId === lastShortId) return;
   lastShortId = shortId;
   playedAdventureId.set(shortId);
-  if (shortId) Storage.selectAdventureByAidId(shortId);
+  if (!shortId) return; // not on an adventure page: leave the current selection alone
+  // Select the card set linked to this adventure, or clear to an empty state if it was never added,
+  // so we do not keep highlighting the previous adventure's cards on an unrelated story.
+  if (!Storage.selectAdventureByAidId(shortId)) Storage.selectAdventure(null);
 }
