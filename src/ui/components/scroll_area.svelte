@@ -8,7 +8,7 @@
   let { children }: Props = $props();
 </script>
 
-<ScrollArea.Root class="shadow-card relative overflow-hidden rounded-[10px] px-4 py-4">
+<ScrollArea.Root class="shadow-card relative flex-1 min-h-0 overflow-hidden rounded-[10px] px-4 py-4">
   <ScrollArea.Viewport class="h-full w-full">
     <div class="flex flex-1 p-2 flex-col gap-2">
       {@render children?.()}
