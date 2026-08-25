@@ -60,15 +60,15 @@
       <div
         class="flex items-center justify-between gap-2 shrink-0 px-4 py-2 border-t border-theme-neutral-100 text-theme-neutral-700"
       >
-        <span class="text-xs truncate">v{vinfo.current} &middot; &copy; {year} Oratorian</span>
+        <span class="text-sm truncate">v{vinfo.current} &middot; &copy; {year} Oratorian &middot; Mahesvara</span>
         {#if vinfo.updateAvailable}
           <a
             href={RELEASES_URL}
             target="_blank"
             rel="noopener noreferrer"
-            class="flex items-center gap-1 text-xs font-bold text-pretty-green hover:underline shrink-0"
+            class="flex items-center gap-1 text-sm font-bold text-pretty-green hover:underline shrink-0"
           >
-            <span class="font-symbol text-sm">arrow_circle_up</span>
+            <span class="font-symbol text-base">arrow_circle_up</span>
             New version{vinfo.latest ? ` v${vinfo.latest}` : ""}
           </a>
         {/if}
