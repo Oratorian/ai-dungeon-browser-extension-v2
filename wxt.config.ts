@@ -38,7 +38,8 @@ export default defineConfig({
       "https://github.com/*/releases/download/*",
       "https://release-assets.githubusercontent.com/*",
     ],
-    version: "1.3.1",
+    // version is intentionally omitted: WXT reads it from package.json, so `npm version <x>` bumps
+    // the manifest and tags in one step (no manual edit here).
     web_accessible_resources: [
       {
         // interceptor.js is the page-world GraphQL tap, injected by aid-inject.content.ts.
