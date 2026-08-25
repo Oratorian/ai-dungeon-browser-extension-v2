@@ -21,26 +21,49 @@ export class DOM {
     baseButton.parentElement?.insertBefore(button, baseButton);
   }
 
-  // Adds an "Editor" button to the gameplay input-mode toolbar (the Do/Say/Story/Guide/See flyout)
-  // for quick access, so you don't have to open the top menu. Clones a mode button (found by its
-  // stable aria-label, not AI Dungeon's atomic classes) and swaps its icon + label. Idempotent, and
-  // re-run on every mutation, so it comes back if the flyout re-renders or reopens.
+  // Adds a "DExtV2R" quick-access button to AI Dungeon's input-mode menu (the Do/Say/Story/Guide/See
+  // bar) so the editor is reachable without opening the top menu. That bar only exists while the menu
+  // is open and AI Dungeon re-renders it constantly, so this runs on every mutation and is defensive:
+  //  - it finds the mode buttons by their stable aria-label ("Set to '<mode>' mode"), not by AID's
+  //    atomic classes, which churn;
+  //  - when the menu is closed (no mode buttons) it removes our button, so it never lingers as an
+  //    orphan in a half-rendered bar;
+  //  - it clones a live mode button and swaps the icon glyph + label, both detected structure-
+  //    agnostically (the icon is a "w_*" font ligature, the label is the other text leaf), so it
+  //    survives AID moving things around;
+  //  - it copies the icon/label color from the live button, so it matches instead of freezing the
+  //    state the clone happened to capture (AID paints these by state via JS).
   static injectActionEditorButton() {
-    if (document.getElementById(Config.ID_ACTION_EDITOR_BUTTON)) return;
+    const modeButtons = Array.from(document.querySelectorAll<HTMLElement>(Config.SELECTOR_MODE_BUTTON));
+    const existing = document.getElementById(Config.ID_ACTION_EDITOR_BUTTON);
 
-    const modeButton = document.querySelector(Config.SELECTOR_MODE_BUTTON);
-    const toolbar = modeButton?.parentElement;
-    if (!modeButton || !toolbar) return;
+    // Menu closed: the mode buttons are gone, so drop ours instead of leaving it floating.
+    if (modeButtons.length === 0) {
+      existing?.remove();
+      return;
+    }
 
-    const button = modeButton.cloneNode(true) as HTMLElement;
+    const reference = modeButtons[modeButtons.length - 1];
+    const row = reference.parentElement;
+    if (!row) return;
+
+    // Already present: just make sure AID's re-render didn't detach or reorder it away from the end.
+    if (existing) {
+      if (existing.parentElement !== row || existing.nextElementSibling) row.appendChild(existing);
+      return;
+    }
+
+    const button = reference.cloneNode(true) as HTMLElement;
     button.id = Config.ID_ACTION_EDITOR_BUTTON;
     button.setAttribute("aria-label", "Open Dungeon Extension editor");
 
-    // Same structure as the mode buttons: an aria-hidden icon glyph and a label span.
-    const icon = button.querySelector('[aria-hidden="true"]') as HTMLElement | null;
-    if (icon) icon.innerText = "w_wrench";
-    const label = button.querySelector(":scope > span") as HTMLElement | null;
-    if (label) label.innerText = "DExtV2R";
+    // Swap the cloned button's glyph + label by editing its text leaves (not the container), so AID's
+    // internal structure/classes stay intact. The icon leaf is a "w_*" ligature; the label is the rest.
+    for (const leaf of this.textLeaves(button)) {
+      const text = (leaf.textContent ?? "").trim();
+      leaf.textContent = this.isIconGlyph(text) ? "w_wrench" : "DExtV2R";
+    }
+    this.matchButtonColor(button, reference);
 
     // Stop the click from reaching AI Dungeon's delegated handlers (which would switch input mode).
     button.addEventListener("click", (e) => {
@@ -48,7 +71,35 @@ export class DOM {
       extensionState.isEditorOpen = true;
     });
 
-    toolbar.appendChild(button);
+    row.appendChild(button);
+  }
+
+  // Text-bearing leaf elements (no element children) of a button: its icon glyph and its label.
+  private static textLeaves(el: HTMLElement): HTMLElement[] {
+    return Array.from(el.querySelectorAll<HTMLElement>("*")).filter(
+      (n) => n.childElementCount === 0 && (n.textContent ?? "").trim().length > 0
+    );
+  }
+
+  // AI Dungeon renders icons as "w_*" font ligatures (e.g. "w_run", "w_wrench").
+  private static isIconGlyph(text: string): boolean {
+    return /^w_[\w-]+$/.test(text.trim());
+  }
+
+  // Copy the live icon/label color from a reference mode button onto our clone, matching icon-leaf to
+  // icon-leaf and label-leaf to label-leaf. AID paints icon glyphs with -webkit-text-fill-color (which
+  // overrides plain `color`, and Firefox honors it too), so we set both to be safe.
+  private static matchButtonColor(button: HTMLElement, reference: HTMLElement) {
+    const refLeaves = this.textLeaves(reference);
+    const refIcon = refLeaves.find((n) => this.isIconGlyph(n.textContent ?? ""));
+    const refLabel = refLeaves.find((n) => n !== refIcon);
+    for (const leaf of this.textLeaves(button)) {
+      const src = this.isIconGlyph(leaf.textContent ?? "") ? refIcon : refLabel;
+      if (!src) continue;
+      const s = getComputedStyle(src);
+      leaf.style.setProperty("color", s.color, "important");
+      leaf.style.setProperty("-webkit-text-fill-color", s.webkitTextFillColor || s.color, "important");
+    }
   }
 
   // AI Dungeon doesn't keep the response text in a fixed position: story paragraphs and the last
