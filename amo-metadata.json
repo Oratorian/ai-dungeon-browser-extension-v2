@@ -6,6 +6,10 @@
     "firefox": ["games-entertainment"]
   },
   "version": {
-    "license": "MIT"
+    "license": "MIT",
+    "release_notes": {
+      "en-US": "⚡ New: one-click Editor access\nNo more digging through the top menu. There's now a DExtV2R button right in the gameplay action bar, next to Do / Say / Story / Guide / See. One click opens the extension editor, and it's styled to soft pastel colors since AID's theme options are hard to track.\n\n🔧 Fixes & polish\n• No more phantom highlights: starting an adventure you never added to the extension now shows a clean empty state instead of the previous adventure's card highlights.\n• Version footer + update nudge: the editor always shows the current version (with credits), plus a green badge when a newer build is available on GitHub.",
+      "de": "⚡ Neu: Editor mit einem Klick öffnen\nKein Suchen mehr im oberen Menü. Jetzt gibt es direkt in der Gameplay-Aktionsleiste einen DExtV2R-Button, neben Do / Say / Story / Guide / See. Ein Klick öffnet den Extension-Editor. Die Oberfläche verwendet sanfte Pastellfarben, da die Theme-Optionen von AID schwer nachzuverfolgen sind.\n\n🔧 Fehlerbehebungen & Verbesserungen\n• Keine Phantom-Markierungen mehr: Wenn du ein Abenteuer startest, das du noch nie zur Extension hinzugefügt hast, wird jetzt ein sauberer leerer Zustand angezeigt, anstatt weiterhin die Karten-Markierungen des vorherigen Abenteuers zu zeigen.\n• Versionsanzeige + Update-Hinweis: Der Editor zeigt jetzt immer die aktuelle Version inklusive Credits an. Außerdem erscheint ein grünes Badge, wenn auf GitHub eine neuere Version verfügbar ist."
+    }
   }
 }

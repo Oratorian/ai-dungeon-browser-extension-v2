@@ -9,8 +9,12 @@ name: Publish to Firefox (AMO)
 #   WEB_EXT_API_KEY     the issuer id
 #   WEB_EXT_API_SECRET  the secret
 #
-# It signs whatever version is in wxt.config.ts, so bump that before publishing a
-# new version (AMO rejects a version that already exists).
+# It signs whatever version is in package.json, so bump that before publishing a new
+# version (AMO rejects a version that already exists). Update the new version's notes in
+# amo-metadata.json (version.release_notes, per locale) at the same time, so they are
+# submitted WITH the version and are live at approval. Firefox only fills the "Release
+# Notes" tab when it applies an update, so notes added after approval can miss users who
+# already updated.
 on:
   workflow_dispatch:
     inputs:
