@@ -31,8 +31,9 @@ export class DOM {
   //  - it clones a live mode button and swaps the icon glyph + label, both detected structure-
   //    agnostically (the icon is a "w_*" font ligature, the label is the other text leaf), so it
   //    survives AID moving things around;
-  //  - it copies the icon/label color from the live button, so it matches instead of freezing the
-  //    state the clone happened to capture (AID paints these by state via JS).
+  //  - it strips AID's themed image overlay (which collapses to nothing on a cloned node) and styles
+  //    the button as a soft pastel chip in the extension's brand color, so it reads as deliberate and
+  //    stays legible on every AID theme (see styleActionButton for why we don't sample the accent).
   static injectActionEditorButton() {
     const modeButtons = Array.from(document.querySelectorAll<HTMLElement>(Config.SELECTOR_MODE_BUTTON));
     const existing = document.getElementById(Config.ID_ACTION_EDITOR_BUTTON);
@@ -57,13 +58,22 @@ export class DOM {
     button.id = Config.ID_ACTION_EDITOR_BUTTON;
     button.setAttribute("aria-label", "Open Dungeon Extension editor");
 
+    // AID draws each mode button's themed border/fill by slicing a theme PNG into an absolutely-
+    // positioned image overlay (a div full of <img> tags). On our cloned, non-React node AID's theme
+    // code re-measures it, gets zero/negative sizes, and collapses those slices to nothing, so the
+    // frame vanishes and the button looks like a bare grey box. Drop that overlay entirely and give
+    // the button our own fill/border below, fully under our control and immune to AID's theming.
+    for (const child of Array.from(button.children)) {
+      if (child.querySelector("img")) child.remove();
+    }
+
     // Swap the cloned button's glyph + label by editing its text leaves (not the container), so AID's
     // internal structure/classes stay intact. The icon leaf is a "w_*" ligature; the label is the rest.
     for (const leaf of this.textLeaves(button)) {
       const text = (leaf.textContent ?? "").trim();
       leaf.textContent = this.isIconGlyph(text) ? "w_wrench" : "DExtV2R";
     }
-    this.matchButtonColor(button, reference);
+    this.styleActionButton(button);
 
     // Stop the click from reaching AI Dungeon's delegated handlers (which would switch input mode).
     button.addEventListener("click", (e) => {
@@ -86,19 +96,22 @@ export class DOM {
     return /^w_[\w-]+$/.test(text.trim());
   }
 
-  // Copy the live icon/label color from a reference mode button onto our clone, matching icon-leaf to
-  // icon-leaf and label-leaf to label-leaf. AID paints icon glyphs with -webkit-text-fill-color (which
-  // overrides plain `color`, and Firefox honors it too), so we set both to be safe.
-  private static matchButtonColor(button: HTMLElement, reference: HTMLElement) {
-    const refLeaves = this.textLeaves(reference);
-    const refIcon = refLeaves.find((n) => this.isIconGlyph(n.textContent ?? ""));
-    const refLabel = refLeaves.find((n) => n !== refIcon);
+  // Style our button as a soft, deliberate chip in the extension's brand color , a pastel take on the
+  // brand orange (#f8ae2c lifted toward white, ~#FBD8A8). We intentionally do NOT sample AID's theme:
+  // its vivid accent (teal/red/...) lives only in a cross-origin frame PNG whose pixels we can't read,
+  // and the one sampleable color (the mode-button text) is a washed-out neutral that vanishes on some
+  // themes (near-white on "Atlantis"). A fixed pastel stays legible on every theme because, having
+  // stripped AID's frame image above, our button always sits on AID's dark bar container. We paint the
+  // icon + label plus a 1px inset ring (a border that adds no layout shift) over a faint fill.
+  private static styleActionButton(button: HTMLElement) {
+    const accent = "251, 216, 168"; // pastel brand orange (~#FBD8A8)
+    button.style.setProperty("background-color", `rgba(${accent}, 0.13)`, "important");
+    button.style.setProperty("box-shadow", `inset 0 0 0 1px rgba(${accent}, 0.45)`, "important");
+    button.style.setProperty("border-radius", "10px", "important");
+    button.style.setProperty("margin-left", "8px", "important");
     for (const leaf of this.textLeaves(button)) {
-      const src = this.isIconGlyph(leaf.textContent ?? "") ? refIcon : refLabel;
-      if (!src) continue;
-      const s = getComputedStyle(src);
-      leaf.style.setProperty("color", s.color, "important");
-      leaf.style.setProperty("-webkit-text-fill-color", s.webkitTextFillColor || s.color, "important");
+      leaf.style.setProperty("color", `rgb(${accent})`, "important");
+      leaf.style.setProperty("-webkit-text-fill-color", `rgb(${accent})`, "important");
     }
   }
 
