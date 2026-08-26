@@ -5,9 +5,9 @@ name: Publish to Firefox (AMO)
 # release. There is no push/tag trigger, run it from the Actions tab.
 #
 # Requires your AMO API credentials from https://addons.mozilla.org/developers/addon/api/key/,
-# set under Settings, Secrets and variables, Actions:
-#   WEB_EXT_API_KEY     as a repository VARIABLE (the issuer id)
-#   WEB_EXT_API_SECRET  as a repository SECRET
+# set under Settings, Secrets and variables, Actions (both as repository SECRETS):
+#   WEB_EXT_API_KEY     the issuer id
+#   WEB_EXT_API_SECRET  the secret
 #
 # It signs whatever version is in wxt.config.ts, so bump that before publishing a
 # new version (AMO rejects a version that already exists).
@@ -47,8 +47,8 @@ jobs:
       - name: Sign and submit to AMO
         env:
           # web-ext reads these WEB_EXT_* env vars automatically as --api-key / --api-secret.
-          # Key is a repo variable, secret is a repo secret.
-          WEB_EXT_API_KEY: ${{ vars.WEB_EXT_API_KEY }}
+          # Both are repo secrets.
+          WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
           WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
           CHANNEL: ${{ inputs.channel }}
         run: |
