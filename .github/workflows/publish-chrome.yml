@@ -52,7 +52,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -100,7 +100,7 @@ jobs:
         # On a tag push there is no chosen action, so default to the safe "upload" (draft only).
         uses: mobilefirstllc/cws-publish@latest
         with:
-          action: ${{ inputs.action || 'upload' }}
+          action: ${{ inputs.action || 'publish' }}
           client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
           client_secret: ${{ secrets.GOOGLE_CLIENT_KEY }}
           refresh_token: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
