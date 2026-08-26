@@ -1,0 +1,108 @@
+name: Publish to Chrome Web Store
+
+# Builds the Chrome (MV3) zip and pushes it to the Chrome Web Store.
+#
+# Runs automatically when a version tag (e.g. v1.3.2) is pushed, right alongside
+# the Release workflow, and can also be run by hand from the Actions tab. By
+# default it only UPLOADS a new draft to your existing Web Store item; you then
+# press "Publish" in the Web Store dashboard. Pick the "publish" action on a
+# manual run to also submit it for review/publishing in one go.
+#
+# The item must already exist in the Web Store: create it by hand once (upload
+# any first build) to get its extension id. Then add these repository SECRETS
+# under Settings, Secrets and variables, Actions:
+#   GOOGLE_CLIENT_ID      OAuth client id
+#   GOOGLE_CLIENT_KEY     OAuth client secret
+#   GOOGLE_REFRESH_TOKEN  OAuth refresh token
+#   GOOGLE_EXT_ID         the extension id from the Web Store dashboard
+# Guide to creating the API credentials: https://developer.chrome.com/docs/webstore/using-api
+#
+# It publishes whatever version is in package.json, so bump that before tagging
+# (the Web Store rejects a version that already exists). If the secrets are not
+# set yet, this workflow fails loudly while the Release workflow still succeeds.
+#
+# Hardening note: mobilefirstllc/cws-publish is pinned to @latest for simplicity;
+# for supply-chain safety consider pinning it to a specific release tag or commit
+# SHA, since it handles your Web Store credentials.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "upload = stage a draft you publish by hand; publish = also submit for review/publishing"
+        type: choice
+        default: upload
+        options:
+          - upload
+          - publish
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check credentials
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_KEY: ${{ secrets.GOOGLE_CLIENT_KEY }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_EXT_ID: ${{ secrets.GOOGLE_EXT_ID }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "${GOOGLE_CLIENT_ID:-}" ]     || missing+=("GOOGLE_CLIENT_ID")
+          [ -n "${GOOGLE_CLIENT_KEY:-}" ]    || missing+=("GOOGLE_CLIENT_KEY")
+          [ -n "${GOOGLE_REFRESH_TOKEN:-}" ] || missing+=("GOOGLE_REFRESH_TOKEN")
+          [ -n "${GOOGLE_EXT_ID:-}" ]        || missing+=("GOOGLE_EXT_ID")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing Chrome Web Store secrets: ${missing[*]}. See the header of this workflow for setup."
+            exit 1
+          fi
+
+      - name: Build Chrome zip
+        run: npm run zip
+
+      - name: Locate the built zip
+        id: zip
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          version="$(jq -r .version package.json)"
+          # wxt zip emits DExtV2-Resurrect-chrome-<version>.zip (the installable MV3 build) plus a
+          # sources zip we do not ship. Match the exact browser + version so nothing stray is picked up.
+          zips=( .output/DExtV2-Resurrect-chrome-"${version}".zip )
+          if [ ${#zips[@]} -ne 1 ]; then
+            echo "::error::Expected exactly one chrome zip for v${version}"
+            ls -la .output/*.zip || true
+            exit 1
+          fi
+          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
+          echo "Using ${zips[0]}"
+
+      - name: Upload to Chrome Web Store
+        # On a tag push there is no chosen action, so default to the safe "upload" (draft only).
+        uses: mobilefirstllc/cws-publish@latest
+        with:
+          action: ${{ inputs.action || 'upload' }}
+          client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
+          client_secret: ${{ secrets.GOOGLE_CLIENT_KEY }}
+          refresh_token: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          extension_id: ${{ secrets.GOOGLE_EXT_ID }}
+          zip_file: ${{ steps.zip.outputs.path }}
