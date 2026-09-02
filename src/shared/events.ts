@@ -35,7 +35,6 @@ export class Events {
     }
 
     DOM.injectButton();
-    DOM.injectActionEditorButton();
 
     if (this._gameplayOutput) {
       DOM.prettifyButBetter(this._gameplayOutput);

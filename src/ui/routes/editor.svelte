@@ -12,6 +12,7 @@
   import Adventure from "./editor/adventure.svelte";
   import Import from "./editor/import.svelte";
   import ScrollArea from "@/ui/components/scroll_area.svelte";
+  import FloatingButton from "@/ui/components/floating_button.svelte";
   import { versionInfo, checkForUpdate, RELEASES_URL, type VersionInfo } from "@/shared/version";
   import { fade, fly } from "svelte/transition";
 
@@ -29,6 +30,8 @@
     if (extensionState.isEditorOpen) checkForUpdate();
   });
 </script>
+
+<FloatingButton />
 
 {#if extensionState.isEditorOpen}
   <div

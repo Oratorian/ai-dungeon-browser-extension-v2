@@ -10,7 +10,36 @@
 
   /* Storage */
   import { settings } from "@/storage";
+
+  // Send the floating button back to its default corner, for when it has been parked somewhere
+  // awkward (or off the edge of a screen that has since gotten smaller).
+  function resetFloatingPosition() {
+    $settings = { ...$settings, floatingButtonX: -1, floatingButtonY: -1 };
+  }
 </script>
+
+<Field label="Interface">
+  <Item foldout icon="drag_pan" label="Floating Button">
+    <Field
+      label="Show Floating Button"
+      info="Shows a small draggable button over the game that opens this editor.<br>- <b>Click</b> it to open the editor<br>- <b>Drag</b> it anywhere you like; it stays put<br><em>Turn this off if you would rather use the Editor entry in AI Dungeon's top menu.</em>"
+    >
+      <Switch bind:checked={$settings.floatingButton} />
+    </Field>
+
+    {#if $settings.floatingButton}
+      <Field label="Position" info="Moves the button back to the bottom-right corner">
+        <button
+          onclick={resetFloatingPosition}
+          class="flex items-center gap-1 px-3 py-1.5 place-self-end bg-pretty-theme/20 hover:bg-pretty-theme/30 text-pretty-theme rounded-lg transition-colors text-sm"
+        >
+          <span class="font-symbol text-base">restart_alt</span>
+          Reset Position
+        </button>
+      </Field>
+    {/if}
+  </Item>
+</Field>
 
 <Field label="Icons, Text & Tooltips">
   <Item foldout icon="sticker" label="Icons">

@@ -28,6 +28,14 @@ const defaultSettings = {
   // clip's fade-out tail at the seam. 0 = plain gapless native loop. See AudioManager.
   audioCrossfade: 1500,
 
+  // Floating quick-access button: a draggable puck that opens the editor without going through
+  // AI Dungeon's top menu. It lives in our own shadow root rather than AID's action bar, which
+  // other extensions also inject into. The position is the viewport coordinate of its top-left
+  // corner; -1 means "never moved", so it parks itself in the bottom-right corner.
+  floatingButton: true,
+  floatingButtonX: -1,
+  floatingButtonY: -1,
+
   trinetraApiKey: "",
   // GitHub repos to browse for shared adventure/scenario exports in the import dialog. Each entry
   // is a "owner/repo" or a github.com URL (optionally a /tree/<branch>/<subpath> URL). See github.ts.
