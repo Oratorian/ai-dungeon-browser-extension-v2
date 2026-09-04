@@ -28,8 +28,6 @@
   let resolving = $state(false);
   let resolved = $state("");
   let resolveWarning = $state("");
-  // A confirmed-bad base is stated plainly rather than hedged; an unrecognised one only cautions.
-  let resolveBlocking = $state(false);
   let appliedDefaults = $state("");
   let resolveError = $state("");
 
@@ -37,7 +35,6 @@
     resolving = true;
     resolved = "";
     resolveWarning = "";
-    resolveBlocking = false;
     appliedDefaults = "";
     resolveError = "";
     try {
@@ -61,17 +58,10 @@
         .join(", ");
       // Still applied, since the list of supported bases is ours and will age, but worth saying
       // before a generation is paid for and then fails with no reason given.
-      if (model.support === "unsupported") {
-        resolveWarning =
-          `${model.baseModel} models cannot be generated through Civitai's public API, even though ` +
-          `their own website can generate them. Every attempt here is charged and then fails. Pick ` +
-          `an SDXL, Pony, Illustrious or Flux checkpoint instead.`;
-        resolveBlocking = true;
-      } else if (model.support === "unknown") {
+      if (model.support === "unknown") {
         resolveWarning =
           `${model.baseModel} is not a base we have seen generate. It may work; if it fails, the ` +
           `Buzz is still spent, so try one image before relying on it.`;
-        resolveBlocking = false;
       }
       modelLink = "";
     } catch (e) {
@@ -160,7 +150,7 @@
   {:else if resolved}
     <span class="text-xs text-pretty-green">Using {resolved}</span>
     {#if resolveWarning}
-      <span class="text-xs {resolveBlocking ? 'text-pretty-red' : 'text-pretty-orange'}">{resolveWarning}</span>
+      <span class="text-xs text-pretty-orange">{resolveWarning}</span>
     {/if}
   {/if}
 

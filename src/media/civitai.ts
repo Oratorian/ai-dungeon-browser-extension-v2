@@ -179,6 +179,13 @@ export async function generateWithCivitai(
   if (!key.trim()) throw new CivitaiError("Add your Civitai API key first.");
   if (!prompt.trim()) throw new CivitaiError("Write a prompt first.");
 
+  // Also checked here, not only when a model is looked up: an identifier can be pasted straight into
+  // the settings field, and this costs Buzz to discover the hard way.
+  const ecosystem = ecosystemOf(model);
+  if (UNSUPPORTED_BASES.includes(ecosystem)) {
+    throw new CivitaiError(`${ecosystem} ${UNSUPPORTED_ADVICE}`);
+  }
+
   const { width, height } = dimensionsFor(aspectRatio);
 
   // Counted from submission, so the wait includes queueing rather than only the generating part.
@@ -308,6 +315,19 @@ const SUPPORTED_BASES = ["sd 1", "sd1", "sdxl", "pony", "illustrious", "noobai",
  */
 const UNSUPPORTED_BASES = ["anima"];
 
+/**
+ * The ecosystem segment of an AIR: urn:air:<ecosystem>:<type>:<source>:<model>@<version>.
+ * Lets a stored model be checked without asking Civitai anything.
+ */
+function ecosystemOf(air: string): string {
+  return air.split(":")[2] ?? "";
+}
+
+/** Told to the user whenever one of these is refused, since there is a way to get the image anyway. */
+export const UNSUPPORTED_ADVICE =
+  "models cannot be generated through Civitai's API, only on their website. Generate it there, then " +
+  "add the image here by URL.";
+
 function supportFor(baseModel: string): GenerationSupport {
   const base = baseModel.toLowerCase();
   if (UNSUPPORTED_BASES.some((known) => base.startsWith(known))) return "unsupported";
@@ -392,6 +412,12 @@ export async function resolveModel(input: string): Promise<ResolvedModel> {
   }
 
   const baseModel = version?.baseModel ?? "Unknown";
+
+  // Refused rather than warned about: the model would be stored, then charged for on every attempt,
+  // and fail every time. Nothing is set when this throws.
+  if (supportFor(baseModel) === "unsupported") {
+    throw new CivitaiError(`${baseModel} ${UNSUPPORTED_ADVICE}`);
+  }
 
   return {
     defaults: defaultsFromSamples(version?.images),
