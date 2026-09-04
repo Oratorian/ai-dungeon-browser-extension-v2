@@ -17,11 +17,29 @@ export type AidCard = {
   triggers: string;
 };
 
+/**
+ * What the tap saw, so the diagnostics report can tell the failure modes apart when no cards turn
+ * up: no GraphQL traffic seen at all (we are not intercepting), traffic but none carrying story
+ * cards (AI Dungeon fetches them some other way now), or payloads that carry them but from which we
+ * extracted nothing (our search is wrong). Counts only, no content.
+ */
+export type AidStats = {
+  /** GraphQL responses read. */
+  responses: number;
+  /** ...of which contained the storyCards key. */
+  withStoryCards: number;
+  /** Objects carrying a storyCards array that the search actually found. */
+  holders: number;
+};
+
 export type AidDetected = {
   shortId: string | null;
   title: string | null;
   cards: AidCard[];
+  stats: AidStats;
 };
+
+export const EMPTY_STATS: AidStats = { responses: 0, withStoryCards: 0, holders: 0 };
 
 export const AID_MSG = {
   /** window.postMessage tag so we ignore unrelated page messages. */
@@ -39,6 +57,7 @@ export type AidMessage =
       shortId: string | null;
       title: string | null;
       cards: AidCard[];
+      stats: AidStats;
     }
   | { source: typeof AID_MSG.SOURCE; kind: typeof AID_MSG.REQUEST };
 

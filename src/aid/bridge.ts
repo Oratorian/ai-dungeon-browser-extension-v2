@@ -1,11 +1,11 @@
 import { writable } from "svelte/store";
-import { AID_MSG, type AidDetected, type AidMessage } from "@/aid/protocol";
+import { AID_MSG, EMPTY_STATS, type AidDetected, type AidMessage } from "@/aid/protocol";
 
 // Story cards passively detected from the AI Dungeon page (via the page-world interceptor).
 // Ephemeral and session-only: the Import tab reads this store. It stays empty until an adventure
 // with story cards is observed, so if AID changes its API the tab simply shows "nothing detected"
 // and the rest of the extension is unaffected.
-export const aidDetected = writable<AidDetected>({ shortId: null, title: null, cards: [] });
+export const aidDetected = writable<AidDetected>({ shortId: null, title: null, cards: [], stats: EMPTY_STATS });
 
 let connected = false;
 
@@ -22,7 +22,7 @@ export function connectAidBridge() {
     if (ev.source !== window) return; // only messages posted into this page
     const d = ev.data as AidMessage | undefined;
     if (!d || d.source !== AID_MSG.SOURCE || d.kind !== AID_MSG.UPDATE) return;
-    aidDetected.set({ shortId: d.shortId, title: d.title, cards: d.cards });
+    aidDetected.set({ shortId: d.shortId, title: d.title, cards: d.cards, stats: d.stats ?? EMPTY_STATS });
   });
 
   // Pull whatever the interceptor already captured for the open adventure.

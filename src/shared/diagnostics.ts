@@ -300,6 +300,13 @@ export async function collectDiagnostics(): Promise<string> {
   if (portraitHosts.length > 0) detail.push(row("portrait hosts", portraitHosts.join(", ")));
   if (probe) detail.push(row("portrait fetch", probe));
   detail.push(row("page tap", detected.cards.length > 0 ? detected.cards.length + " cards seen" : "nothing captured"));
+  // Always shown, because the counts are what separate the three ways the tap can come up empty.
+  detail.push(
+    row(
+      "  graphql seen",
+      detected.stats.responses + " responses, " + detected.stats.withStoryCards + " with cards, " + detected.stats.holders + " read"
+    )
+  );
 
   detail.push("", "[Settings]");
   detail.push(row("icon", cfg.iconSize + "px, border " + cfg.iconThickness + "px"));
@@ -448,15 +455,26 @@ export async function collectDiagnostics(): Promise<string> {
   // be told something is broken. It can also be empty simply because the adventure has no story
   // cards, or because AID fetched them before the extension started, hence the reload advice.
   if (shortId && detected.cards.length === 0) {
-    if (cards.length === 0) {
+    const tap = detected.stats;
+    // Someone who built their card set by hand, or imported it in an earlier session, has a working
+    // setup; an empty tap costs them nothing, so say so rather than raising an alarm.
+    const harmless = cards.length > 0 ? " The cards you already have are unaffected, this only matters for importing." : "";
+    const level: Level = cards.length > 0 ? "ok" : "warn";
+
+    if (tap.responses === 0) {
       findings.push({
-        level: "warn",
-        text: "No story cards were captured from AI Dungeon, so the Import tab has nothing to offer. If this adventure does have story cards, reload the page: the extension only sees them when AI Dungeon fetches them while it is already running.",
+        level,
+        text: "No AI Dungeon data traffic was seen at all, so the Import tab is empty. Reload the page: the extension can only read that traffic when it starts before the page does." + harmless,
+      });
+    } else if (tap.withStoryCards === 0) {
+      findings.push({
+        level,
+        text: "Read " + tap.responses + " responses from AI Dungeon and none carried story cards, so the Import tab is empty. Open an adventure that has story cards and reload; if it stays like this, AI Dungeon now sends them some other way and the extension needs a fix." + harmless,
       });
     } else {
       findings.push({
-        level: "ok",
-        text: "Nothing was captured from AI Dungeon this session, so the Import tab is empty. This does not affect the cards you already have, it only matters if you want to import from AI Dungeon again.",
+        level: "error",
+        text: "AI Dungeon sent story cards (" + tap.withStoryCards + " responses) but the extension could not read them. That is a bug in the extension, please report this line.",
       });
     }
   }

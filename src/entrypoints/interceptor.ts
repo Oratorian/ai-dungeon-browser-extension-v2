@@ -1,4 +1,4 @@
-import { AID_MSG, sanitizeCards, type AidCard, type AidMessage } from "@/aid/protocol";
+import { AID_MSG, sanitizeCards, type AidCard, type AidMessage, type AidStats } from "@/aid/protocol";
 
 // Page-world (MAIN) script. It is injected as a <script> tag by aid-inject.content.ts at
 // document_start, so it patches window.fetch and window.WebSocket before AI Dungeon's own bundle
@@ -16,14 +16,23 @@ export default defineUnlistedScript(() => {
   // whole set. Kept so a late-loading content script can ask for it (see the request handler).
   let latest: { shortId: string | null; title: string | null; byId: Map<string, AidCard> } | null = null;
 
+  // What the tap has seen this session. Posted even when no cards were found, so the diagnostics
+  // report can say whether we saw no traffic, traffic without cards, or cards we failed to read.
+  const stats: AidStats = { responses: 0, withStoryCards: 0, holders: 0 };
+
   function post() {
-    if (!latest) return;
-    const cards = [...latest.byId.values()];
-    if (!cards.length) return;
+    const cards = latest ? [...latest.byId.values()] : [];
     // Handy manual verification hook: type `__deAidCards` in the page console.
-    (window as any).__deAidCards = { shortId: latest.shortId, title: latest.title, cards };
+    if (cards.length) (window as any).__deAidCards = { shortId: latest!.shortId, title: latest!.title, cards };
     window.postMessage(
-      { source: AID_MSG.SOURCE, kind: AID_MSG.UPDATE, shortId: latest.shortId, title: latest.title, cards } as AidMessage,
+      {
+        source: AID_MSG.SOURCE,
+        kind: AID_MSG.UPDATE,
+        shortId: latest?.shortId ?? null,
+        title: latest?.title ?? null,
+        cards,
+        stats: { ...stats },
+      } as AidMessage,
       "*"
     );
   }
@@ -105,7 +114,9 @@ export default defineUnlistedScript(() => {
   }
 
   function scan(json: any, full: boolean) {
-    const holder = pick(findHolders(json));
+    const holders = findHolders(json);
+    stats.holders += holders.length;
+    const holder = pick(holders);
     if (holder) capture(holder.shortId, holder.title, holder.cards, full);
   }
 
@@ -123,15 +134,19 @@ export default defineUnlistedScript(() => {
             .clone()
             .text()
             .then((t) => {
+              stats.responses++;
               // Cheap pre-filter: only parse responses that actually carry cards, not every
               // action/streaming response during play.
               if (t.includes('"storyCards"')) {
+                stats.withStoryCards++;
                 try {
                   scan(JSON.parse(t), true);
                 } catch {
                   /* not JSON we can use */
                 }
               }
+              // Post even with nothing found, so the report always has the counts.
+              post();
             })
             .catch(() => {})
         ).catch(() => {});
