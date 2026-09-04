@@ -127,6 +127,13 @@ export async function generateWithCivitai(
 
   const { width, height } = dimensionsFor(aspectRatio);
 
+  // Counted from submission, so the wait includes queueing rather than only the generating part.
+  const startedAt = Date.now();
+  const elapsed = () => {
+    const seconds = Math.round((Date.now() - startedAt) / 1000);
+    return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, "0")}s`;
+  };
+
   onStage?.("Submitting...");
   const submitted = await call(key, "/workflows", {
     method: "POST",
@@ -160,11 +167,6 @@ export async function generateWithCivitai(
     ? submitted.transactions.list.reduce((sum: number, t: any) => sum + (Number(t?.amount) || 0), 0)
     : null;
 
-  // Read back rather than assumed: Civitai fills in its own defaults for anything not sent, so the
-  // step count it actually runs is only knowable from the response.
-  const totalSteps: number | null =
-    typeof submitted?.steps?.[0]?.input?.steps === "number" ? submitted.steps[0].input.steps : null;
-
   const deadline = Date.now() + POLL_TIMEOUT;
   let workflow = submitted;
   let pollFailures = 0;
@@ -193,17 +195,11 @@ export async function generateWithCivitai(
       continue;
     }
 
-    // The rate is the fraction of sampler steps done, so it reads better as a step count. It also
-    // resets to a low value when the worker restarts a job, which a plain percentage makes look like
-    // the progress went backwards for no reason; "4/20" at least says what it is counting.
-    const rate = workflow?.steps?.[0]?.estimatedProgressRate;
-    if (typeof rate !== "number" || rate <= 0) {
-      onStage?.("Generating...");
-    } else if (totalSteps) {
-      onStage?.(`Generating ${Math.min(totalSteps, Math.round(rate * totalSteps))}/${totalSteps}`);
-    } else {
-      onStage?.(`Generating ${Math.min(99, Math.round(rate * 100))}%...`);
-    }
+    // Deliberately not using estimatedProgressRate. Despite the shape, it is not cumulative progress:
+    // watching one job it ran 0.41, 1, 0.67, 0.09, 0.49, 1, so anything derived from it counts up,
+    // snaps back to zero and counts up again. Elapsed time only ever increases, and on a queue where
+    // a generation can take two minutes it is the number a waiting user actually wants.
+    onStage?.(`${workflow?.status === "processing" ? "Generating" : "Queued"} ${elapsed()}`);
   }
 
   const image = workflow?.steps?.[0]?.output?.images?.[0];
