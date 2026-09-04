@@ -26,16 +26,25 @@
   let modelLink = $state("");
   let resolving = $state(false);
   let resolved = $state("");
+  let resolveWarning = $state("");
   let resolveError = $state("");
 
   async function lookup() {
     resolving = true;
     resolved = "";
+    resolveWarning = "";
     resolveError = "";
     try {
       const model = await resolveModel(modelLink);
       $settings.civitaiModel = model.air;
       resolved = `${model.name} (${model.version}), base ${model.baseModel}`;
+      // Still applied, since the list of supported bases is ours and will age, but worth saying
+      // before a generation is paid for and then fails with no reason given.
+      if (!model.likelyGeneratable) {
+        resolveWarning =
+          `Civitai's generator may not support the ${model.baseModel} base. If so, a generation will ` +
+          `be charged, run, and then fail. Try an SDXL, Pony, Illustrious or Flux checkpoint instead.`;
+      }
       modelLink = "";
     } catch (e) {
       resolveError = e instanceof CivitaiError ? e.message : e instanceof Error ? e.message : String(e);
@@ -122,6 +131,9 @@
     <span class="text-xs text-pretty-red">{resolveError}</span>
   {:else if resolved}
     <span class="text-xs text-pretty-green">Using {resolved}</span>
+    {#if resolveWarning}
+      <span class="text-xs text-pretty-orange">{resolveWarning}</span>
+    {/if}
   {/if}
 
   <Field label="Model ID" info="The resolved identifier that is actually sent. You can paste one directly if you have it.">

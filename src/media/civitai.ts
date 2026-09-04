@@ -13,7 +13,8 @@
 const API_BASE = "https://orchestration.civitai.com/v2/consumer";
 
 const POLL_INTERVAL = 2000;
-const POLL_TIMEOUT = 180_000; // generation regularly takes a minute under load
+const POLL_TIMEOUT = 300_000; // observed: a busy queue can run past two minutes before settling
+const POLL_FAILURES_ALLOWED = 3; // a blip while polling must not abandon a job already paid for
 
 export class CivitaiError extends Error {
   constructor(
@@ -161,18 +162,34 @@ export async function generateImage(
 
   const deadline = Date.now() + POLL_TIMEOUT;
   let workflow = submitted;
+  let pollFailures = 0;
 
   while (workflow?.status !== "succeeded") {
     if (workflow?.status === "failed" || workflow?.status === "canceled") {
-      throw new CivitaiError(`Generation ${workflow.status}. Your Buzz for it is normally refunded.`);
+      // Deliberately not promising a refund: Civitai charges on submit, and whether a failure is
+      // credited back is their policy, not something this can observe.
+      throw new CivitaiError(
+        `Generation ${workflow.status} on Civitai's side. If this model's base is not one their ` +
+          `generator supports, it will fail every time; check your Buzz balance on civitai.com.`
+      );
     }
     if (Date.now() > deadline) {
       throw new CivitaiError("Civitai is taking unusually long. The job may still finish in your Civitai account.");
     }
 
     await wait(POLL_INTERVAL);
-    onStage?.("Generating...");
-    workflow = await call(key, `/workflows/${id}`);
+
+    try {
+      workflow = await call(key, `/workflows/${id}`);
+      pollFailures = 0;
+    } catch (e) {
+      // The job is running and already paid for, so a blip on one poll is not a reason to abandon it.
+      if (++pollFailures > POLL_FAILURES_ALLOWED) throw e;
+      continue;
+    }
+
+    const rate = workflow?.steps?.[0]?.estimatedProgressRate;
+    onStage?.(typeof rate === "number" && rate > 0 ? `Generating ${Math.min(99, Math.round(rate * 100))}%...` : "Generating...");
   }
 
   const image = workflow?.steps?.[0]?.output?.images?.[0];
@@ -197,6 +214,23 @@ export async function verifyKey(key: string): Promise<boolean> {
 
 const WEB_API = "https://civitai.com/api/v1";
 
+/**
+ * Base models Civitai's generator is known to run. A checkpoint on any other base is normally
+ * download-only: the job is still accepted and still charged, runs to completion, and then fails
+ * with no reason attached, which is an expensive way to find out. Confirmed the hard way with an
+ * "Anima" checkpoint, which failed twice while an SDXL one succeeded in seconds.
+ *
+ * Matched loosely, since Civitai writes these as "SDXL 1.0", "Flux.1 D", "Pony" and so on. This only
+ * warns, never blocks: the list will fall out of date as they add support, and refusing a model that
+ * actually works would be worse than a warning that is occasionally unnecessary.
+ */
+const GENERATABLE_BASES = ["sd 1", "sd1", "sdxl", "pony", "illustrious", "noobai", "flux", "sd 3", "sd3"];
+
+function isLikelyGeneratable(baseModel: string): boolean {
+  const base = baseModel.toLowerCase();
+  return GENERATABLE_BASES.some((known) => base.startsWith(known));
+}
+
 export type ResolvedModel = {
   air: string;
   /** e.g. "One obsession", for confirming the right thing was pasted. */
@@ -207,6 +241,11 @@ export type ResolvedModel = {
   baseModel: string;
   /** "Checkpoint", "LORA", ... Only a checkpoint can be the model of a job. */
   type: string;
+  /**
+   * False when the base model is not one Civitai's generator is known to run. Advisory: the job would
+   * still be accepted and charged, then fail.
+   */
+  likelyGeneratable: boolean;
 };
 
 /**
@@ -262,12 +301,15 @@ export async function resolveModel(input: string): Promise<ResolvedModel> {
     throw new CivitaiError(`That is a ${type}, not a checkpoint. Generation needs a checkpoint model.`);
   }
 
+  const baseModel = version?.baseModel ?? "Unknown";
+
   return {
     air,
     name: version?.model?.name ?? "Unknown model",
     version: version?.name ?? "",
-    baseModel: version?.baseModel ?? "Unknown",
+    baseModel,
     type,
+    likelyGeneratable: isLikelyGeneratable(baseModel),
   };
 }
 
