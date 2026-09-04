@@ -148,7 +148,8 @@
           {:else}
             <span class="text-sm font-bold">No story cards detected</span>
             <span class="text-xs text-center max-w-xs">
-              Open an adventure in AI Dungeon (or refresh it) and its story cards will show up here, ready to import.
+              Cards are read from AI Dungeon's own traffic as it loads them, so open your story cards in AI Dungeon
+              once, or refresh the adventure, and they will show up here ready to import.
             </span>
           {/if}
         </div>

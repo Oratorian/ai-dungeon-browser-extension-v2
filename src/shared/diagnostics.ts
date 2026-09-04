@@ -469,7 +469,7 @@ export async function collectDiagnostics(): Promise<string> {
     } else if (tap.withStoryCards === 0) {
       findings.push({
         level,
-        text: "Read " + tap.responses + " responses from AI Dungeon and none carried story cards, so the Import tab is empty. Open an adventure that has story cards and reload; if it stays like this, AI Dungeon now sends them some other way and the extension needs a fix." + harmless,
+        text: "Read " + tap.responses + " responses from AI Dungeon and none carried story cards, so the Import tab is empty. Open your story cards in AI Dungeon once, or reload the adventure, then check again: cards are only visible here when AI Dungeon itself loads them." + harmless,
       });
     } else {
       findings.push({
