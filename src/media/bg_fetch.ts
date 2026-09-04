@@ -25,6 +25,21 @@ export type BgFetchOptions = {
   /** read only the first `maxBytes` (text only), for a cheap head peek. */
   head?: boolean;
   maxBytes?: number;
+  /** HTTP method; defaults to GET. */
+  method?: string;
+  /**
+   * A file to send as multipart/form-data. Passed as a data: URI because a Port can only carry
+   * structured-cloneable values, so File and FormData cannot cross it; the background rebuilds the
+   * multipart body. Used for Trinetra uploads, whose API rejects a browser preflight.
+   */
+  upload?: {
+    dataUri: string;
+    filename?: string;
+    /** form field name, default "file". */
+    field?: string;
+    /** extra plain form fields sent alongside. */
+    fields?: Record<string, string>;
+  };
 };
 
 function bgFetchOnce(url: string, opts: BgFetchOptions): Promise<string> {
@@ -73,6 +88,8 @@ function bgFetchOnce(url: string, opts: BgFetchOptions): Promise<string> {
       dataUri: opts.dataUri ?? false,
       head: opts.head ?? false,
       maxBytes: opts.maxBytes ?? null,
+      method: opts.method ?? "GET",
+      upload: opts.upload ?? null,
     });
   });
 }

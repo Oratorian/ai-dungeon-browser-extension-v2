@@ -50,6 +50,14 @@ const defaultSettings = {
   floatingButtonY: -1,
 
   trinetraApiKey: "",
+
+  // Image generation through OpenRouter (media/openrouter.ts). The key is the user's own and pays for
+  // their own generations. `imageGenUpload` chooses where a result lands: true uploads it to Trinetra
+  // and stores only the link, false compresses it into the card like any other local image.
+  imageGenKey: "",
+  imageGenModel: "google/gemini-2.5-flash-image-preview",
+  imageGenRatio: "1:1",
+  imageGenUpload: false,
   // GitHub repos to browse for shared adventure/scenario exports in the import dialog. Each entry
   // is a "owner/repo" or a github.com URL (optionally a /tree/<branch>/<subpath> URL). See github.ts.
   scenarioRepos: [] as string[],

@@ -19,7 +19,8 @@ export default defineConfig({
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
     permissions: ["storage", "unlimitedStorage"],
     // Named hosts for the optional remote-media / remote-import features:
-    //  - trinetra.mahesvara.cloud: story-card images (API + downloads)
+    //  - trinetra.mahesvara.cloud: story-card images (API + downloads + generated-image uploads)
+    //  - openrouter.ai: optional image generation from a prompt, with the user's own API key
     //  - pixabay.com: resolve a sound-effect page URL to its direct audio link (JSON-LD)
     //  - cdn.pixabay.com: stream the royalty-free ambient audio
     //  - api.github.com: list a scenario repo's .json files (git tree + latest release assets)
@@ -31,6 +32,7 @@ export default defineConfig({
     // Firefox does not allow permissions.request().
     host_permissions: [
       "https://trinetra.mahesvara.cloud/*",
+      "https://openrouter.ai/*",
       "https://pixabay.com/*",
       "https://cdn.pixabay.com/*",
       "https://api.github.com/*",

@@ -58,7 +58,15 @@ export default defineBackground(() => {
     });
 
     port.onMessage.addListener(async (raw) => {
-      const req = raw as { url?: unknown; headers?: unknown; dataUri?: unknown; head?: unknown; maxBytes?: unknown };
+      const req = raw as {
+        url?: unknown;
+        headers?: unknown;
+        dataUri?: unknown;
+        head?: unknown;
+        maxBytes?: unknown;
+        method?: unknown;
+        upload?: unknown;
+      };
       if (typeof req.url !== "string") {
         send({ type: "error" });
         return;
@@ -74,9 +82,33 @@ export default defineBackground(() => {
 
       try {
         const reqHeaders = head ? { ...headers, Range: `bytes=0-${maxBytes - 1}` } : headers;
+        const method = typeof req.method === "string" ? req.method : "GET";
+
+        // An upload arrives as a data: URI because a Port can only carry structured-cloneable data,
+        // and neither File nor FormData survives that trip. Rebuild the multipart body here instead.
+        let body: FormData | undefined;
+        if (req.upload && typeof req.upload === "object") {
+          const file = req.upload as { dataUri?: string; filename?: string; field?: string; fields?: Record<string, string> };
+          if (typeof file.dataUri === "string") {
+            const [meta, base64] = file.dataUri.split(",", 2);
+            const mime = meta.match(/^data:([^;]+)/)?.[1] ?? "application/octet-stream";
+            const bytes = Uint8Array.from(atob(base64 ?? ""), (c) => c.charCodeAt(0));
+            body = new FormData();
+            for (const [key, value] of Object.entries(file.fields ?? {})) body.append(key, value);
+            // Appended last so a server reading the stream sequentially sees the plain fields first.
+            body.append(file.field ?? "file", new Blob([bytes], { type: mime }), file.filename ?? "image");
+          }
+        }
+
         let res: Response;
         try {
-          res = await fetch(req.url, reqHeaders ? { headers: reqHeaders } : undefined);
+          res = await fetch(req.url, {
+            method,
+            // Content-Type is deliberately left unset for a FormData body: fetch adds it along with
+            // the multipart boundary, and overriding it produces a body the server cannot parse.
+            ...(reqHeaders ? { headers: reqHeaders } : {}),
+            ...(body ? { body } : {}),
+          });
         } catch (e) {
           send({ type: "error", error: e instanceof Error ? e.message : String(e) });
           return;

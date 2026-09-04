@@ -1,6 +1,8 @@
 <script lang="ts">
   import { parseImageInput } from "@/media/image_url";
   import TrinetraPicker from "./trinetra_picker.svelte";
+  import ImageGenerator from "./image_generator.svelte";
+  import { settings } from "@/storage";
 
   type Props = {
     images?: string[];
@@ -14,7 +16,7 @@
   let fileInput: HTMLInputElement;
 
   // Add flow: null = closed, "menu" = choose source, "url" = url entry, "trinetra" = image picker.
-  let addMode = $state<null | "menu" | "url" | "trinetra">(null);
+  let addMode = $state<null | "menu" | "url" | "trinetra" | "generate">(null);
   let urlValue = $state("");
   let urlError = $state("");
 
@@ -44,6 +46,17 @@
 
   function startTrinetra() {
     addMode = "trinetra";
+  }
+
+  function startGenerate() {
+    addMode = "generate";
+  }
+
+  // The generator hands back whatever it produced: a Trinetra URL, or a compressed data URI.
+  function addGenerated(url: string) {
+    if (images.length >= maxImages) return;
+    addImage(url);
+    closeAdd();
   }
 
   // Called by the picker with the image's Trinetra URL. Returns whether it was added.
@@ -144,6 +157,15 @@
         <span class="font-symbol text-base">photo_library</span>
         Browse Trinetra
       </button>
+      {#if $settings.imageGenKey.trim()}
+        <button
+          onclick={startGenerate}
+          class="flex items-center gap-2 px-3 py-2 text-sm text-theme-neutral-800 bg-theme-neutral-100 hover:bg-theme-neutral-300 rounded-lg transition-colors"
+        >
+          <span class="font-symbol text-base">auto_awesome</span>
+          Generate
+        </button>
+      {/if}
     </div>
   {/if}
 
@@ -191,6 +213,15 @@
 
   {#if addMode === "trinetra"}
     <TrinetraPicker onselect={addFromPicker} canAddMore={!full} onclose={closeAdd} />
+  {/if}
+
+  {#if addMode === "generate"}
+    <div class="flex flex-col gap-2 p-2 bg-theme-neutral-200 rounded-xl">
+      <ImageGenerator onaccept={addGenerated} square={label === "Icon"} disabled={full} />
+      <button onclick={closeAdd} class="text-xs text-theme-neutral-700 hover:text-theme-neutral-900 place-self-end">
+        Close
+      </button>
+    </div>
   {/if}
 
   <div class="h-20">

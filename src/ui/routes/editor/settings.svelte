@@ -9,6 +9,7 @@
   import ScenarioRepos from "@/ui/components/scenario_repos.svelte";
   import Diagnostics from "@/ui/components/diagnostics.svelte";
   import ImageCompression from "@/ui/components/image_compression.svelte";
+  import ImageGenerationSettings from "@/ui/components/image_generation_settings.svelte";
 
   /* Storage */
   import { settings } from "@/storage";
@@ -93,6 +94,10 @@
 
   <Item foldout icon="folder_open" label="GitHub Repos">
     <ScenarioRepos />
+  </Item>
+
+  <Item foldout icon="auto_awesome" label="Image Generation">
+    <ImageGenerationSettings />
   </Item>
 
   <Item foldout icon="compress" label="Image Compression">

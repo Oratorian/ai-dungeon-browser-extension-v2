@@ -90,3 +90,44 @@ export async function listImages(
   return request(apiKey, `/images?${params.toString()}`);
 }
 
+
+/**
+ * Uploads an image and returns its stored record, most usefully `url`, which is what a card holds.
+ *
+ * Goes through the background like every other Trinetra call: the API answers a preflight with 401
+ * and sends no Access-Control-Allow-Headers, so a POST carrying X-API-Key from the page is refused
+ * before it is ever sent. The background has host permission and is not subject to that.
+ *
+ * `folderId` files the upload into one of the user's folders; omitted, it lands uncategorised.
+ */
+export async function uploadImage(
+  apiKey: string,
+  dataUri: string,
+  filename: string,
+  folderId?: number | null
+): Promise<TrinetraImage> {
+  const fields: Record<string, string> = {};
+  if (typeof folderId === "number") fields.folder = String(folderId);
+
+  let text: string;
+  try {
+    text = await bgFetch(`${API_BASE}/images`, {
+      method: "POST",
+      headers: { "X-API-Key": apiKey },
+      upload: { dataUri, filename, field: "file", fields },
+    });
+  } catch (e) {
+    const status = e instanceof BgFetchError ? e.status : undefined;
+    if (status === 401 || status === 403) throw new TrinetraError("Invalid or unauthorized API key.", status);
+    if (status === 413) throw new TrinetraError("That image is larger than Trinetra accepts.", 413);
+    if (status === 429) throw new TrinetraError("Too many uploads, slow down a moment.", 429);
+    if (status) throw new TrinetraError(`Upload failed (${status}).`, status);
+    throw new TrinetraError("Couldn't reach Trinetra. Check your connection.");
+  }
+
+  try {
+    return JSON.parse(text) as TrinetraImage;
+  } catch {
+    throw new TrinetraError("Trinetra accepted the upload but returned something unreadable.");
+  }
+}
