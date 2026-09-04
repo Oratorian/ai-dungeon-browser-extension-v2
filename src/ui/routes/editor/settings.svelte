@@ -8,6 +8,7 @@
   import AudioLibrary from "@/ui/components/audio_library.svelte";
   import ScenarioRepos from "@/ui/components/scenario_repos.svelte";
   import Diagnostics from "@/ui/components/diagnostics.svelte";
+  import ImageCompression from "@/ui/components/image_compression.svelte";
 
   /* Storage */
   import { settings } from "@/storage";
@@ -39,6 +40,21 @@
         </button>
       </Field>
     {/if}
+  </Item>
+</Field>
+
+<Field label="Appearance">
+  <Item foldout icon="motion_mode" label="Card Effects">
+    <Field
+      label="Tilt Angle"
+      info="How far a story card tilts as you move the cursor across it, in degrees.<br>Set it to <b>0</b> to hold the cards still."
+    >
+      <Slider bind:value={$settings.cardTiltAngle} min={0} max={45} />
+    </Field>
+
+    <Field label="Shine" info="Whether a soft highlight follows the cursor across a card">
+      <Switch bind:checked={$settings.cardShine} />
+    </Field>
   </Item>
 </Field>
 
@@ -130,6 +146,12 @@
 <Field label="Scenarios">
   <Item foldout icon="folder_open" label="GitHub Repos">
     <ScenarioRepos />
+  </Item>
+</Field>
+
+<Field label="Storage">
+  <Item foldout icon="compress" label="Image Compression">
+    <ImageCompression />
   </Item>
 </Field>
 

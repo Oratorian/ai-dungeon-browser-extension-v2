@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Storage } from "@/storage";
+  import { Storage, settings } from "@/storage";
   import type { StoryCard } from "@/shared/types";
 
   let card: HTMLDivElement;
@@ -13,8 +13,10 @@
 
     const xPct = x / rect.width;
     const yPct = y / rect.height;
-    const rX = (0.5 - yPct) * 15;
-    const rY = (xPct - 0.5) * 15;
+    // Maximum tilt is a setting: some people find the movement distracting, and 0 disables it.
+    const angle = $settings.cardTiltAngle;
+    const rX = (0.5 - yPct) * angle;
+    const rY = (xPct - 0.5) * angle;
 
     card.style.setProperty("--rx", `${rX}deg`);
     card.style.setProperty("--ry", `${rY}deg`);
@@ -103,7 +105,7 @@
   {onmouseleave}
   onclick={handleClick}
   onkeydown={handleKeydown}
-  class="card-3d relative w-full aspect-2/3 rounded-xl shadow-2xl overflow-hidden cursor-pointer transform-gpu group
+  class="card-3d {$settings.cardShine ? 'card-shine' : ''} relative w-full aspect-2/3 rounded-xl shadow-2xl overflow-hidden cursor-pointer transform-gpu group
   {placeholder ? 'bg-pretty-orange/20' : hasGraphic ? 'bg-cover bg-center' : 'bg-cover bg-pretty-theme/20'}"
   style={hasGraphic && currentGraphic ? `background-image: url(${currentGraphic})` : ""}
 >
@@ -171,7 +173,7 @@
     transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
-  .card-3d::after {
+  .card-shine::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -189,7 +191,7 @@
     transition: opacity 0.2s;
   }
 
-  .card-3d:hover::after {
+  .card-shine:hover::after {
     opacity: 1;
   }
 </style>

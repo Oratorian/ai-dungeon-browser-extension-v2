@@ -23,6 +23,19 @@ const defaultSettings = {
 
   focusHeight: 384,
 
+  // Card presentation on the Adventure tab. The tilt and the cursor-following sheen are the same
+  // effect the cards have always had; these just make them adjustable, and switchable off for anyone
+  // who finds the movement distracting or is running on a weak GPU.
+  cardTiltAngle: 15,
+  cardShine: true,
+
+  // Re-encoding limits for images stored inline in a card (see media/compress.ts). Icons render in a
+  // small square box and graphics in a tooltip, so neither needs the full resolution of a photo
+  // straight off a phone.
+  compressionQuality: 85,
+  compressionResolutionIcon: 256,
+  compressionResolutionGraphic: 768,
+
   volume: 100,
   // Loop crossfade in milliseconds: how much the next pass overlaps the previous one to hide a
   // clip's fade-out tail at the seam. 0 = plain gapless native loop. See AudioManager.
