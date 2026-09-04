@@ -7,6 +7,54 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
+## v2.0.0
+
+### ⚠️ This update asks for new permissions
+
+Your browser will ask you to approve access to **openrouter.ai** and **civitai.com** before the update
+finishes, and Chrome will pause the extension until you do. That is expected.
+
+Those two are image generation services, and the extension only ever contacts the one you pick, only
+after you paste in your own API key. If you never turn image generation on, nothing is ever sent to
+either of them. Everything the extension already did is unchanged and still works offline.
+
+### 🎨 New: generate card images from a prompt
+
+Add your own **OpenRouter** or **Civitai** key and a **Generate** option appears wherever you add an
+icon or a portrait. Describe what you want, and the finished image goes straight onto the card.
+
+- Generations are billed to **your own account**, in dollars on OpenRouter or Buzz on Civitai. Cost is
+  shown after each one.
+- Choose where the result is kept: uploaded to **Trinetra** so the card stores only a link, or
+  compressed and stored in the card itself.
+- OpenRouter offers every image model it currently has, cheapest first. Civitai takes a model link and
+  looks the rest up for you, including the sampler, steps and CFG the model's own samples were made
+  with.
+- Models that cannot generate through Civitai's API, Anima checkpoints among them, are refused up
+  front rather than charged for and then failed.
+
+### 🗜️ New: shrink images you have already added
+
+**Settings → Extension → Image Compression** finds every image stored inside a card, tells you what
+they cost, and re-encodes them. Images added as links are untouched, and anything already small enough
+is left alone, so running it twice does nothing the second time.
+
+Worth checking if the editor feels slow: an adventure with a few full-resolution photos pasted in can
+reach hundreds of megabytes, and all of it is loaded on every AI Dungeon tab.
+
+### 🗂️ Reorganised
+
+- **Settings** is now two tabs: **Extension** for the extension's own behaviour, **Story Cards** for
+  everything that changes what you see while playing.
+- The **Adventure** tab groups cards by type into collapsible sections, with a search across names and
+  trigger words and filters per type. Groups start closed, so a large set opens as a short overview.
+
+### 🔧 Fixes
+
+- Tooltips no longer open on top of the setting they describe, which had made some fields impossible
+  to use.
+- Card tilt and shine are now adjustable, and can be turned off.
+
 ## v1.4.0
 
 ### 🔧 Fixed: story cards were no longer being detected
