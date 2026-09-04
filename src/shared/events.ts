@@ -2,6 +2,7 @@ import { Config } from "@/shared/config";
 import { Debug } from "@/shared/debug";
 import { DOM } from "@/rendering/dom";
 import { Storage } from "@/storage";
+import { recordError } from "@/shared/errors";
 
 export class Events {
   private static _observer: MutationObserver;
@@ -19,7 +20,14 @@ export class Events {
 
     Debug.log("Creating observers...");
     this._observer = new MutationObserver((mutations) => {
-      this.onMutate(mutations);
+      // A throw in here is invisible: MutationObserver swallows it and keeps firing, so the
+      // extension renders nothing while the page looks perfectly normal. Record it instead, so the
+      // diagnostics report can show what actually broke.
+      try {
+        this.onMutate(mutations);
+      } catch (error) {
+        recordError(error, "observer");
+      }
     });
     Debug.log("Observers created!");
 

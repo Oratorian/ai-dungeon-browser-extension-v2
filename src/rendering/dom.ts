@@ -11,6 +11,12 @@ export class DOM {
   // sees no icons or portraits while everyone else does. Reset by cleanup().
   static skippedAnimated = 0;
 
+  // Whether AI Dungeon's "Exit game" button has been seen at any point this session. It only exists
+  // while AID's menu is open, so a live query for it says nothing on its own: absent usually just
+  // means the menu is closed. The diagnostics report needs this session-cumulative view to tell
+  // "you never opened the menu" apart from "AID renamed the button and the Editor entry is broken".
+  static sawExitButton = false;
+
   /** Live Response components, for the diagnostics report. */
   static get mountedCount(): number {
     return this.mountedComponents.size;
@@ -20,6 +26,7 @@ export class DOM {
     if (document.getElementById(Config.ID_EDITOR_BUTTON)) return;
     const baseButton = document.querySelector(Config.SELECTOR_EXIT_BUTTON);
     if (!baseButton) return;
+    this.sawExitButton = true;
 
     const button = baseButton.cloneNode(true) as HTMLElement;
     button.id = Config.ID_EDITOR_BUTTON;

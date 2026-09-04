@@ -6,11 +6,16 @@ import { Events } from "@/shared/events";
 import { connectAidBridge } from "@/aid/bridge";
 import { autoSelectPlayedAdventure } from "@/aid/adventure";
 import { mount, unmount } from "svelte";
+import { installErrorCapture } from "@/shared/errors";
 
 export default defineContentScript({
   matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
   cssInjectionMode: "ui",
   async main(ctx) {
+    // Capture our own uncaught errors from the very start, so the diagnostics report can show
+    // what broke even when the failure happens long before anyone opens the editor.
+    installErrorCapture();
+
     // Listen for story cards the page-world interceptor detects, and ask for any already captured.
     connectAidBridge();
 

@@ -3,26 +3,38 @@ import { Config } from "@/shared/config";
 import { DOM } from "@/rendering/dom";
 import { Storage, settings } from "@/storage";
 import { playedShortId } from "@/aid/adventure";
+import { aidDetected } from "@/aid/bridge";
+import { capturedErrors } from "@/shared/errors";
+import { versionInfo } from "@/shared/version";
+import { parseResponse } from "@/rendering/parser";
 
 // Builds the report behind Settings > Support > Diagnostics.
 //
 // Why this exists: when someone reports "portraits don't show up" there is no way to tell from the
-// outside whether AI Dungeon changed its DOM (which breaks for everyone), or whether that one user
-// has text animation on / no linked card set / an icon size of 0 (which breaks only for them). Those
-// need opposite answers, so the report captures both the live DOM probes and the user's own state,
-// then draws the conclusion itself in the Findings block.
+// outside whether AI Dungeon changed its DOM (which breaks the extension for everyone) or whether
+// that one user has text animation on / no linked card set / an icon size of 0 (which breaks it only
+// for them). Those need opposite answers, so the report captures the live DOM, the user's own state
+// and a real image fetch, then draws the conclusion itself in the Findings block.
 //
-// PRIVACY: this is meant to be pasted into a public support thread, so it reports COUNTS AND SHAPES,
-// never content. No card names, no trigger words, no story text, no image URLs (hosts only), no API
-// keys, and the adventure id is truncated. Keep it that way when adding checks.
+// Two rules to keep when adding checks:
+//
+//  1. PRIVACY. This is written to be pasted in public, so it reports COUNTS AND SHAPES, never
+//     content: no card names, trigger words, story text, image URLs (hosts only) or API keys, and
+//     the adventure id is truncated.
+//
+//  2. DON'T CRY WOLF. Several things AI Dungeon renders only exist while one of its menus is open,
+//     so a live query missing them means nothing on its own. Anything in that class must be reported
+//     as inconclusive, not as a failure, or the report trains people to ignore it. See sawExitButton.
 
 type Level = "error" | "warn" | "ok";
 
 type Finding = { level: Level; text: string };
 
 const LINE = 58; // report width, chosen to survive Discord's mobile code-block wrapping
+const MAX_ISSUES = 6; // unrendered nodes listed individually before collapsing to a count
+const PROBE_TIMEOUT = 6000; // ms to wait for the portrait test fetch
 
-/** "Firefox 143 (Windows)", preferring the brand over the Chrome token every Chromium UA carries. */
+/** "Firefox 155 (Windows)", preferring the brand over the Chrome token every Chromium UA carries. */
 function browserLabel(): string {
   const ua = navigator.userAgent;
   const brands: [RegExp, string][] = [
@@ -70,17 +82,45 @@ function hostsOf(urls: string[]): string[] {
 }
 
 /**
- * How a response container is laid out, so a structural change on AI Dungeon's side is visible in a
- * paste. "text in #0" is the shape the renderer expects; a higher index means AID has buried the
- * prose behind spacers and we are running on pickTextHost's fallback path.
+ * Actually fetches one portrait, because every other check can pass while the images themselves are
+ * unreachable (dead host, revoked host permission, blocked by a content blocker), which looks
+ * exactly like "portraits don't show up". Resolves to a human-readable outcome, never rejects.
  */
-function describeShape(container: HTMLElement): string {
-  const host = DOM.pickTextHost(container);
-  const tag = container.tagName.toLowerCase();
-  const count = container.childElementCount;
-  if (!host) return tag + ", " + count + " children, NO TEXT HOST";
-  const index = Array.from(container.children).indexOf(host);
-  return tag + ", " + count + " children, text in #" + index;
+function probeImage(url: string): Promise<string> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    const started = performance.now();
+    let settled = false;
+
+    const finish = (result: string) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+
+    const timer = setTimeout(() => {
+      image.src = ""; // abort the in-flight request
+      finish("TIMED OUT after " + PROBE_TIMEOUT / 1000 + "s");
+    }, PROBE_TIMEOUT);
+
+    image.onload = () =>
+      finish("ok, " + image.naturalWidth + "x" + image.naturalHeight + " in " + Math.round(performance.now() - started) + "ms");
+    image.onerror = () => finish("FAILED to load");
+    image.src = url;
+  });
+}
+
+/** Bytes of extension storage in use, or null where the browser does not expose it. */
+async function storageUsage(): Promise<string | null> {
+  try {
+    const area = chrome.storage.local as unknown as { getBytesInUse?: (keys: null) => Promise<number> };
+    if (typeof area.getBytesInUse !== "function") return null;
+    const bytes = await area.getBytesInUse(null);
+    return bytes < 1024 * 1024 ? Math.round(bytes / 1024) + " KB" : (bytes / 1024 / 1024).toFixed(1) + " MB";
+  } catch {
+    return null;
+  }
 }
 
 function row(label: string, value: string): string {
@@ -105,24 +145,55 @@ function wrap(marker: string, text: string): string {
   return lines.map((l, i) => (i === 0 ? marker + " " + l : "  " + l)).join("\n");
 }
 
-export function collectDiagnostics(): string {
-  const out: string[] = [];
+/**
+ * Why each response container did not render, checked live rather than from counters, so the report
+ * can name the specific node instead of only a total. Mirrors the guards in prettifyButBetter and
+ * mountResponseOn; keep the two in step.
+ */
+function nodeIssues(containers: HTMLElement[]): string[] {
+  const issues: string[] = [];
+
+  containers.forEach((container, index) => {
+    if (!container.firstElementChild) {
+      issues.push("#" + index + " no element child");
+      return;
+    }
+    if (container.querySelector(".word-fade")) {
+      issues.push("#" + index + " animating");
+      return;
+    }
+    if (!DOM.pickTextHost(container)) {
+      issues.push("#" + index + " no text host");
+      return;
+    }
+    if (!container.hasAttribute(Config.ATTRIBUTE_ALTERED)) {
+      issues.push("#" + index + " not processed");
+    }
+  });
+
+  return issues;
+}
+
+export async function collectDiagnostics(): Promise<string> {
+  const header: string[] = [];
+  const detail: string[] = [];
   const findings: Finding[] = [];
 
   const manifest = browser.runtime.getManifest();
   const cfg = get(settings);
+  const version = get(versionInfo);
 
   /* ------------------------------------------------------------------ DOM */
   const output = document.querySelector<HTMLElement>(Config.SELECTOR_OUTPUT);
   const containers = output ? Array.from(output.querySelectorAll<HTMLElement>(Config.SELECTOR_RESPONSE)) : [];
   const rendered = containers.filter((c) => c.hasAttribute(Config.ATTRIBUTE_ALTERED)).length;
+  const issues = nodeIssues(containers);
+  const lastActionNodes = containers.filter((c) => (c.getAttribute("aria-label") ?? "").startsWith("Last action:")).length;
+
   const lastAction = document.querySelector(Config.SELECTOR_LAST_ACTION);
   const exitButton = document.querySelector(Config.SELECTOR_EXIT_BUTTON);
   const shadowHost = document.querySelector(Config.ID_EDITOR_ANCHOR);
   const menuButton = document.getElementById(Config.ID_EDITOR_BUTTON);
-  // AID's per-word fade animation. The renderer refuses to mount over it (the animation rewrites the
-  // nodes underneath us), so while it is on the newest response keeps its plain text and never gets
-  // icons, highlights, or the portrait pin.
   const wordFade = output?.querySelector(".word-fade") ?? null;
 
   /* -------------------------------------------------------------- Content */
@@ -131,42 +202,93 @@ export function collectDiagnostics(): string {
   const cards = adventure ? Object.values(adventure.storyCards) : [];
   const withIcons = cards.filter((c) => c.icons.length > 0).length;
   const withPortraits = cards.filter((c) => c.graphics.length > 0).length;
-  const portraitHosts = hostsOf(cards.flatMap((c) => c.graphics));
-  const triggers = get(Storage.cardMap).size;
+  const portraits = cards.flatMap((c) => c.graphics);
+  const portraitHosts = hostsOf(portraits);
+  const cardMap = get(Storage.cardMap);
   const linked = Boolean(adventure && shortId && adventure.aidShortId === shortId);
+  const detected = get(aidDetected);
 
-  /* --------------------------------------------------------------- Report */
-  out.push("DExtV2R " + manifest.version + " diagnostics (MV" + manifest.manifest_version + ")");
-  out.push(browserLabel());
-  out.push(new Date().toISOString());
-  out.push(location.host + (shortId ? ", adventure " + shortId.slice(0, 4) + "..." : ", not in an adventure"));
+  // Do the card triggers actually match anything on screen? This separates "highlighting is broken"
+  // from "nothing on this page happens to mention a card".
+  let matches = 0;
+  if (cardMap.size > 0) {
+    for (const container of containers) {
+      const text = container.textContent ?? "";
+      if (text) matches += parseResponse(text, cardMap).filter((c) => c.type === "card").length;
+    }
+  }
 
-  out.push("", "[DOM]");
-  out.push(row("gameplay output", output ? "found" : "MISSING"));
-  out.push(row("response nodes", containers.length + " (rendered " + rendered + ")"));
-  out.push(row("last action node", lastAction ? "found" : "MISSING"));
-  out.push(row("exit game button", exitButton ? "found" : "MISSING"));
-  out.push(row("extension UI", shadowHost ? "mounted" : "MISSING"));
-  out.push(row("menu entry", menuButton ? "injected" : "absent"));
-  out.push(row("floating button", cfg.floatingButton ? "on" : "off"));
-  out.push(row("text animation", wordFade ? "DETECTED" : "off"));
-  out.push(row("skipped (animated)", String(DOM.skippedAnimated)));
-  out.push(row("live components", String(DOM.mountedCount)));
-  if (containers.length > 0) out.push(row("newest shape", describeShape(containers[containers.length - 1])));
+  const probe = portraits.length > 0 ? await probeImage(portraits[0]) : null;
+  const usage = await storageUsage();
+  const errors = capturedErrors();
 
-  out.push("", "[Content]");
-  out.push(row("linked card set", adventure ? (linked ? "yes" : "selected, NOT linked") : "none selected"));
-  out.push(row("story cards", cards.length + " (icons " + withIcons + ", portraits " + withPortraits + ")"));
-  out.push(row("trigger map", String(triggers)));
-  if (portraitHosts.length > 0) out.push(row("portrait hosts", portraitHosts.join(", ")));
+  /* --------------------------------------------------------------- Header */
+  header.push("DExtV2R " + manifest.version + " diagnostics (MV" + manifest.manifest_version + ")");
+  header.push(browserLabel());
+  header.push(new Date().toISOString());
+  header.push(location.host + (shortId ? ", adventure " + shortId.slice(0, 4) + "..." : ", not in an adventure"));
 
-  out.push("", "[Settings]");
-  out.push(row("icon", cfg.iconSize + "px, border " + cfg.iconThickness + "px"));
-  out.push(row("tooltip", cfg.tooltipWidth + "x" + cfg.tooltipHeight + ", delay " + cfg.tooltipDelay + "ms"));
-  out.push(row("focus / markdown", (cfg.highlightFocus ? "on" : "off") + " / " + (cfg.highlightMarkdown ? "on" : "off")));
+  /* --------------------------------------------------------------- Detail */
+  detail.push("", "[DOM]");
+  detail.push(row("gameplay output", output ? "found" : "MISSING"));
+  if (!output) detail.push(row("  selector", Config.SELECTOR_OUTPUT));
+  detail.push(row("response nodes", containers.length + " (rendered " + rendered + ", last-action " + lastActionNodes + ")"));
+  if (!output || containers.length === 0) detail.push(row("  selector", Config.SELECTOR_RESPONSE));
+  if (issues.length > 0) {
+    const shown = issues.slice(0, MAX_ISSUES).join(", ");
+    detail.push(row("  unrendered", shown + (issues.length > MAX_ISSUES ? ", +" + (issues.length - MAX_ISSUES) + " more" : "")));
+  }
+  if (containers.length > 0) {
+    const newest = containers[containers.length - 1];
+    const host = DOM.pickTextHost(newest);
+    const index = host ? Array.from(newest.children).indexOf(host) : -1;
+    detail.push(
+      row(
+        "newest shape",
+        newest.tagName.toLowerCase() + ", " + newest.childElementCount + " children, " + (host ? "text in #" + index : "NO TEXT HOST")
+      )
+    );
+  }
+  detail.push(row("last action node", lastAction ? "found" : "MISSING"));
+  // Menu-gated: absent normally just means AID's menu is closed, so report the session view too.
+  detail.push(row("exit game button", exitButton ? "found" : DOM.sawExitButton ? "not open now" : "never seen"));
+  detail.push(row("menu entry", menuButton ? "injected" : DOM.sawExitButton ? "menu closed" : "not yet possible"));
+  detail.push(row("extension UI", shadowHost ? "mounted" : "MISSING"));
+  detail.push(row("floating button", cfg.floatingButton ? "on" : "off"));
+  detail.push(row("text animation", wordFade ? "DETECTED" : "off"));
+  if (DOM.skippedAnimated > 0) detail.push(row("  skipped so far", String(DOM.skippedAnimated)));
+  detail.push(row("live components", String(DOM.mountedCount)));
+
+  detail.push("", "[Content]");
+  detail.push(row("linked card set", adventure ? (linked ? "yes" : "selected, NOT linked") : "none selected"));
+  detail.push(row("story cards", cards.length + " (icons " + withIcons + ", portraits " + withPortraits + ")"));
+  detail.push(row("trigger map", String(cardMap.size)));
+  detail.push(row("trigger matches", matches + " in " + containers.length + " visible"));
+  if (portraitHosts.length > 0) detail.push(row("portrait hosts", portraitHosts.join(", ")));
+  if (probe) detail.push(row("portrait fetch", probe));
+  detail.push(row("page tap", detected.cards.length > 0 ? detected.cards.length + " cards seen" : "nothing captured"));
+
+  detail.push("", "[Settings]");
+  detail.push(row("icon", cfg.iconSize + "px, border " + cfg.iconThickness + "px"));
+  detail.push(row("tooltip", cfg.tooltipWidth + "x" + cfg.tooltipHeight + ", delay " + cfg.tooltipDelay + "ms"));
+  detail.push(row("focus / markdown", (cfg.highlightFocus ? "on" : "off") + " / " + (cfg.highlightMarkdown ? "on" : "off")));
+  if (usage) detail.push(row("storage in use", usage));
+  if (version.latest) detail.push(row("latest release", version.latest + (version.updateAvailable ? " (UPDATE AVAILABLE)" : "")));
+
+  if (errors.length > 0) {
+    detail.push("", "[Errors]");
+    for (const error of errors) detail.push(error);
+  }
 
   /* ------------------------------------------------------------- Findings */
   // Ordered so the first line a helper reads is the most likely cause.
+  if (errors.length > 0) {
+    findings.push({
+      level: "error",
+      text: "The extension threw " + errors.length + " error(s), listed above. That usually means AI Dungeon changed something the renderer depends on, and it needs a fix.",
+    });
+  }
+
   if (!shortId) {
     findings.push({
       level: "warn",
@@ -191,7 +313,12 @@ export function collectDiagnostics(): string {
   if (containers.length > 0 && rendered === 0) {
     findings.push({
       level: "error",
-      text: "Found " + containers.length + " responses but rendered none of them. Nothing is highlighted, so no icons or portraits can appear.",
+      text: "Found " + containers.length + " responses but rendered none. Nothing is highlighted, so no icons or portraits can appear.",
+    });
+  } else if (issues.length > 0) {
+    findings.push({
+      level: "warn",
+      text: issues.length + " of " + containers.length + " responses did not render, listed above. Ones marked 'no text host' mean AI Dungeon moved the story text somewhere the renderer does not expect.",
     });
   }
 
@@ -199,6 +326,27 @@ export function collectDiagnostics(): string {
     findings.push({
       level: "warn",
       text: "Text animation is on, so the newest response is skipped and shows no icons, highlights, or portrait pin. Turn it off in AI Dungeon under Gameplay > Appearance > Accessibility > Text Animation.",
+    });
+  }
+
+  if (!shadowHost) {
+    findings.push({
+      level: "error",
+      text: "The extension's own UI is not mounted on the page, so nothing it draws can appear. Reload the tab; if that does not help, reinstall.",
+    });
+  }
+
+  // Only a finding once we know the button exists but our entry never landed. Absent-and-never-seen
+  // is the normal state when the user has not opened AID's menu, and must not read as breakage.
+  if (DOM.sawExitButton && exitButton && !menuButton) {
+    findings.push({
+      level: "warn",
+      text: "AI Dungeon's menu is open but the Editor entry was not added to it. Use the floating button to open the editor.",
+    });
+  } else if (!DOM.sawExitButton && !cfg.floatingButton) {
+    findings.push({
+      level: "warn",
+      text: "The floating button is off and AI Dungeon's menu has not been opened this session, so there may be no way to reach the editor. If the Editor entry is missing from the menu, turn the floating button on.",
     });
   }
 
@@ -218,10 +366,22 @@ export function collectDiagnostics(): string {
     findings.push({ level: "warn", text: "The linked card set has no story cards yet." });
   }
 
-  if (cards.length > 0 && triggers === 0) {
+  if (cards.length > 0 && cardMap.size === 0) {
     findings.push({
       level: "warn",
       text: "The cards have no trigger words, so nothing in the story can match them. Add triggers on each card.",
+    });
+  } else if (cardMap.size > 0 && containers.length > 0 && matches === 0) {
+    findings.push({
+      level: "warn",
+      text: "No trigger matched any of the text currently on screen. Either these responses genuinely mention no cards, or the triggers do not match how the names are written in the story.",
+    });
+  }
+
+  if (probe && !probe.startsWith("ok")) {
+    findings.push({
+      level: "error",
+      text: "A portrait image could not be loaded (" + probe + "). The images themselves are unreachable, so portraits cannot show no matter what else is correct. Check whether the host is up, or whether a content blocker is blocking it.",
     });
   }
 
@@ -246,6 +406,20 @@ export function collectDiagnostics(): string {
     });
   }
 
+  if (location.host !== "play.aidungeon.com") {
+    findings.push({
+      level: "ok",
+      text: "This is " + location.host + ", not the live site. Its page structure can differ from play.aidungeon.com, so breakage here does not necessarily affect everyone.",
+    });
+  }
+
+  if (version.updateAvailable) {
+    findings.push({
+      level: "ok",
+      text: "A newer version (" + version.latest + ") is available; the problem may already be fixed in it.",
+    });
+  }
+
   if (!cfg.highlightFocus && withPortraits > 0) {
     findings.push({
       level: "ok",
@@ -257,12 +431,10 @@ export function collectDiagnostics(): string {
     findings.push({ level: "ok", text: "No problems detected. Highlighting is rendering as expected." });
   }
 
-  out.push("", "[Findings]");
-  for (const finding of findings) {
-    out.push(wrap(finding.level === "error" ? "X" : finding.level === "warn" ? "!" : "-", finding.text));
-  }
+  const findingLines = findings.map((f) => wrap(f.level === "error" ? "X" : f.level === "warn" ? "!" : "-", f.text));
 
-  return out.join("\n");
+  // Findings first: a long report can be truncated in chat, and the conclusion is what matters.
+  return [...header, "", "[Findings]", ...findingLines, ...detail].join("\n");
 }
 
 /**
