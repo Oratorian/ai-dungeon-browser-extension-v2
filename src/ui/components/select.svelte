@@ -1,7 +1,12 @@
 <script lang="ts">
   import { Select, type WithoutChildren } from "bits-ui";
 
-  type Props = WithoutChildren<Select.RootProps> & {
+  // Root props minus `value` and `type`. Select.RootProps is a union of the single and multiple
+  // variants, so its `value` is string | string[] and TypeScript resolves it to the array branch,
+  // even though this component hardcodes type="single" below. Dropping both and re-declaring `value`
+  // as a string makes the component's actual contract, a single-select, the one callers see.
+  type Props = Omit<WithoutChildren<Select.RootProps>, "value" | "type"> & {
+    value?: string;
     placeholder?: string;
     items: { value: string; label: string; disabled?: boolean }[];
     contentProps?: WithoutChildren<Select.ContentProps>;

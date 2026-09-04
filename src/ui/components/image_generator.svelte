@@ -3,6 +3,7 @@
   import { generateWithOpenRouter, getRemainingCredit, OpenRouterError } from "@/media/openrouter";
   import { generateWithCivitai, CivitaiError } from "@/media/civitai";
   import { ASPECT_RATIOS } from "@/media/image_gen";
+  import Select from "@/ui/components/select.svelte";
   import { uploadImage, TrinetraError } from "@/media/trinetra";
   import { compressInlineImage } from "@/media/compress";
 
@@ -29,6 +30,8 @@
   let cost = $state<number | null>(null);
   let buzz = $state<number | null>(null);
   let credit = $state<number | null | undefined>(undefined);
+
+  const ratioItems = ASPECT_RATIOS.map((r) => ({ value: r, label: r }));
 
   const civitai = $derived($settings.imageGenProvider === "civitai");
   const hasKey = $derived(
@@ -129,14 +132,9 @@
     ></textarea>
 
     <div class="flex items-center gap-2">
-      <select
-        bind:value={$settings.imageGenRatio}
-        class="bg-theme-neutral-100 rounded-lg px-2 py-1.5 text-xs outline-0 shrink-0"
-      >
-        {#each ASPECT_RATIOS as ratio}
-          <option value={ratio}>{ratio}</option>
-        {/each}
-      </select>
+      <div class="w-28 shrink-0">
+        <Select bind:value={$settings.imageGenRatio} items={ratioItems} icon="aspect_ratio" ariaLabel="Aspect ratio" />
+      </div>
 
       <span class="text-xs text-theme-neutral-700 truncate">
         {willUpload ? "Uploads to Trinetra" : "Stored in the card"}

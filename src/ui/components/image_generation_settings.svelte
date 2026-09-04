@@ -2,6 +2,7 @@
   import Field from "@/ui/components/field.svelte";
   import Switch from "@/ui/components/switch.svelte";
   import Slider from "@/ui/components/slider.svelte";
+  import Select from "@/ui/components/select.svelte";
   import { settings } from "@/storage";
   import { getRemainingCredit, OPENROUTER_MODELS } from "@/media/openrouter";
   import { verifyKey as verifyCivitaiKey, resolveModel, CivitaiError, SCHEDULERS } from "@/media/civitai";
@@ -72,8 +73,25 @@
   }
 
   const civitai = $derived($settings.imageGenProvider === "civitai");
-  // A model outside the curated list means the user typed their own, so keep the field showing.
-  const customModel = $derived(!OPENROUTER_MODELS.some((m) => m.value === $settings.imageGenModel));
+  const modelItems = OPENROUTER_MODELS.map((m) => ({
+    value: m.value,
+    label: m.note ? `${m.label} (${m.note})` : m.label,
+  }));
+
+  const schedulerItems = SCHEDULERS.map((s) => ({ value: s.value, label: s.label }));
+
+  // Starts in whichever mode the stored value implies, then the user drives it. Not derived: once
+  // they have chosen to type an id, the field must not vanish the moment it stops matching a listed
+  // one, which is exactly while they are still typing it.
+  let useCustomModel = $state(!OPENROUTER_MODELS.some((m) => m.value === $settings.imageGenModel));
+
+  function toggleCustomModel() {
+    useCustomModel = !useCustomModel;
+    // Coming back to the list with an id that is not on it would leave the control blank.
+    if (!useCustomModel && !OPENROUTER_MODELS.some((m) => m.value === $settings.imageGenModel)) {
+      $settings.imageGenModel = OPENROUTER_MODELS[1].value;
+    }
+  }
   const hasTrinetra = $derived($settings.trinetraApiKey.trim().length > 0);
 
   async function checkKey() {
@@ -172,14 +190,7 @@
     label="Sampler"
     info="Civitai combines the sampler and its noise schedule into one choice, so the Karras entries are the Karras schedule.<br>Set automatically from a model's sample images when they say."
   >
-    <select
-      bind:value={$settings.civitaiScheduler}
-      class="bg-theme-neutral-100 w-full min-h-11 px-3 outline-0 rounded-xl text-sm"
-    >
-      {#each SCHEDULERS as scheduler (scheduler.value)}
-        <option value={scheduler.value}>{scheduler.label}</option>
-      {/each}
-    </select>
+    <Select bind:value={$settings.civitaiScheduler} items={schedulerItems} ariaLabel="Sampler" />
   </Field>
 
   <Field label="Steps" info="How many sampling steps. More is slower and costs more Buzz, with diminishing returns past roughly 30.">
@@ -215,32 +226,26 @@
 
   <Field
     label="Model"
-    info="Image models OpenRouter currently offers, cheapest first.<br>Pick <b>Custom</b> to use any other model id; one that only returns text will say so rather than producing an image."
+    info="Every image model OpenRouter currently offers, cheapest first.<br>A model that only returns text will say so rather than producing an image."
   >
-    <select
-      value={customModel ? "__custom" : $settings.imageGenModel}
-      onchange={(e) => {
-        const picked = (e.currentTarget as HTMLSelectElement).value;
-        // "Custom" only reveals the field; whatever is already stored stays until it is edited.
-        if (picked !== "__custom") $settings.imageGenModel = picked;
-      }}
-      class="bg-theme-neutral-100 w-full min-h-11 px-3 outline-0 rounded-xl text-sm"
-    >
-      {#each OPENROUTER_MODELS as model (model.value)}
-        <option value={model.value}>{model.label}{model.note ? ` (${model.note})` : ""}</option>
-      {/each}
-      <option value="__custom">Custom...</option>
-    </select>
+    {#if useCustomModel}
+      <input
+        type="text"
+        bind:value={$settings.imageGenModel}
+        placeholder="provider/model-id"
+        class="bg-theme-neutral-100 w-full min-h-11 p-3 outline-0 rounded-xl text-sm font-mono"
+      />
+    {:else}
+      <Select bind:value={$settings.imageGenModel} items={modelItems} ariaLabel="Image model" />
+    {/if}
   </Field>
 
-  {#if customModel}
-    <input
-      type="text"
-      bind:value={$settings.imageGenModel}
-      placeholder="provider/model-id"
-      class="bg-theme-neutral-100 w-full min-h-11 p-3 outline-0 rounded-xl text-sm font-mono"
-    />
-  {/if}
+  <button
+    onclick={toggleCustomModel}
+    class="text-xs text-theme-neutral-700 hover:text-theme-neutral-900 place-self-start ml-4 transition-colors"
+  >
+    {useCustomModel ? "Choose from the list" : "Use a custom model id"}
+  </button>
 {/if}
 
 {#if (civitai ? $settings.civitaiKey : $settings.imageGenKey).trim()}

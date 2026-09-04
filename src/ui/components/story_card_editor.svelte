@@ -223,7 +223,6 @@
             <Field label="Limit To">
               <Select
                 bind:value={limit}
-                type="single"
                 icon="disabled_visible"
                 items={[
                   { value: "none", label: "None" },
@@ -236,7 +235,6 @@
 
             <Field label="Color Mode">
               <Select
-                type="single"
                 bind:value={colorSelection}
                 icon="colorize"
                 items={[
