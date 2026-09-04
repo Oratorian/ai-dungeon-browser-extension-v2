@@ -13,6 +13,16 @@
   /* Storage */
   import { settings } from "@/storage";
 
+  // Two groups, split by what a setting acts on rather than by what it happens to be called:
+  //
+  //  - "Extension" is the extension's own behaviour and upkeep. Nothing here changes what your story
+  //    looks like while you play.
+  //  - "Story Cards" is everything that changes what appears in the story itself.
+  //
+  // Text sits in the second group even though markdown formatting applies to all story text and not
+  // only to cards: it is part of the same rendering pass, and someone hunting for it will look
+  // alongside the other things that change how the story reads.
+
   // Send the floating button back to its default corner, for when it has been parked somewhere
   // awkward (or off the edge of a screen that has since gotten smaller).
   function resetFloatingPosition() {
@@ -20,7 +30,7 @@
   }
 </script>
 
-<Field label="Interface">
+<Field label="Extension">
   <Item foldout icon="drag_pan" label="Floating Button">
     <Field
       label="Show Floating Button"
@@ -41,13 +51,11 @@
       </Field>
     {/if}
   </Item>
-</Field>
 
-<Field label="Appearance">
   <Item foldout icon="motion_mode" label="Card Effects">
     <Field
       label="Tilt Angle"
-      info="How far a story card tilts as you move the cursor across it, in degrees.<br>Set it to <b>0</b> to hold the cards still."
+      info="How far a story card tilts as you move the cursor across it, in degrees.<br>Set it to <b>0</b> to hold the cards still.<br><em>This is the card tiles in this editor, not anything in your story.</em>"
     >
       <Slider bind:value={$settings.cardTiltAngle} min={0} max={45} />
     </Field>
@@ -56,9 +64,21 @@
       <Switch bind:checked={$settings.cardShine} />
     </Field>
   </Item>
+
+  <Item foldout icon="folder_open" label="GitHub Repos">
+    <ScenarioRepos />
+  </Item>
+
+  <Item foldout icon="compress" label="Image Compression">
+    <ImageCompression />
+  </Item>
+
+  <Item foldout icon="stethoscope" label="Diagnostics">
+    <Diagnostics />
+  </Item>
 </Field>
 
-<Field label="Icons, Text & Tooltips">
+<Field label="Story Cards">
   <Item foldout icon="sticker" label="Icons">
     <Field label="Size" info="Icon size in pixels">
       <Slider bind:value={$settings.iconSize} min={0} max={40} />
@@ -80,7 +100,7 @@
 
     <Field
       label="Markdown Formatting"
-      info="Whether custom formatting is applied, with rules for:<br>- <b>Bold</b> <code>(**)</code><br>- <b>Italic</b> <code>(*)</code><br>- <b>Underline</b> <code>(~)</code><br>- <b>Strikethrough</b> <code>(~~)</code>"
+      info="Whether custom formatting is applied to <b>all</b> story text, not only to cards, with rules for:<br>- <b>Bold</b> <code>(**)</code><br>- <b>Italic</b> <code>(*)</code><br>- <b>Underline</b> <code>(~)</code><br>- <b>Strikethrough</b> <code>(~~)</code>"
     >
       <Switch bind:checked={$settings.highlightMarkdown} />
     </Field>
@@ -113,22 +133,20 @@
       <Slider bind:value={$settings.tooltipHeight} min={0} max={1280} step={32} />
     </Field>
   </Item>
-</Field>
 
-<Item foldout icon="eye_tracking" label="Focus">
-  <Field
-    label="Allow Focus"
-    info="Whether to enable the focus system which allows you to:<br>- Hover over a highlighted text thingy<br>- See the <span class='de-icon-tip'>eye_tracking</span> in the upper right corner<br>- Click it to pin its graphic to the last response<br>- <em>Also enables the SFX feature for ambience</em>"
-  >
-    <Switch bind:checked={$settings.highlightFocus} />
-  </Field>
+  <Item foldout icon="eye_tracking" label="Focus">
+    <Field
+      label="Allow Focus"
+      info="Whether to enable the focus system which allows you to:<br>- Hover over a highlighted text thingy<br>- See the <span class='de-icon-tip'>eye_tracking</span> in the upper right corner<br>- Click it to pin its graphic to the last response<br>- <em>Also enables the SFX feature for ambience</em>"
+    >
+      <Switch bind:checked={$settings.highlightFocus} />
+    </Field>
 
-  <Field label="Max Height" info="Maximum height of the focus container">
-    <Slider bind:value={$settings.focusHeight} max={1280} step={32} />
-  </Field>
-</Item>
+    <Field label="Max Height" info="Maximum height of the focus container">
+      <Slider bind:value={$settings.focusHeight} max={1280} step={32} />
+    </Field>
+  </Item>
 
-<Field label="Audio">
   <Item foldout icon="cadence" label="SFX">
     <Field label="Volume">
       <Slider bind:value={$settings.volume} />
@@ -140,23 +158,5 @@
       <Slider bind:value={$settings.audioCrossfade} min={0} max={3000} step={50} />
     </Field>
     <AudioLibrary />
-  </Item>
-</Field>
-
-<Field label="Scenarios">
-  <Item foldout icon="folder_open" label="GitHub Repos">
-    <ScenarioRepos />
-  </Item>
-</Field>
-
-<Field label="Storage">
-  <Item foldout icon="compress" label="Image Compression">
-    <ImageCompression />
-  </Item>
-</Field>
-
-<Field label="Support">
-  <Item foldout icon="stethoscope" label="Diagnostics">
-    <Diagnostics />
   </Item>
 </Field>
