@@ -104,20 +104,42 @@ function probeImage(url: string): Promise<string> {
       finish("TIMED OUT after " + PROBE_TIMEOUT / 1000 + "s");
     }, PROBE_TIMEOUT);
 
-    image.onload = () =>
-      finish("ok, " + image.naturalWidth + "x" + image.naturalHeight + " in " + Math.round(performance.now() - started) + "ms");
+    image.onload = () => {
+      const elapsed = Math.round(performance.now() - started);
+      const size = image.naturalWidth + "x" + image.naturalHeight;
+      // An instant load came from cache and proves nothing about the host being reachable, so say so
+      // rather than reporting a flattering "0ms".
+      finish("ok, " + size + (elapsed < 10 ? " (cached)" : " in " + elapsed + "ms"));
+    };
     image.onerror = () => finish("FAILED to load");
     image.src = url;
   });
 }
 
-/** Bytes of extension storage in use, or null where the browser does not expose it. */
-async function storageUsage(): Promise<string | null> {
+function formatBytes(bytes: number): string {
+  return bytes < 1024 * 1024 ? Math.round(bytes / 1024) + " KB" : (bytes / 1024 / 1024).toFixed(1) + " MB";
+}
+
+type Usage = { total: number; parts: string[] };
+
+/**
+ * Extension storage in use, broken down by key. The breakdown matters because the total alone does
+ * not say what to delete: images and audio pasted in as data URIs live inside `adventures` and
+ * `audioLibrary` and dwarf everything else. Null where the browser does not expose the API.
+ */
+async function storageUsage(): Promise<Usage | null> {
   try {
-    const area = chrome.storage.local as unknown as { getBytesInUse?: (keys: null) => Promise<number> };
+    const area = chrome.storage.local as unknown as { getBytesInUse?: (keys: string[] | null) => Promise<number> };
     if (typeof area.getBytesInUse !== "function") return null;
-    const bytes = await area.getBytesInUse(null);
-    return bytes < 1024 * 1024 ? Math.round(bytes / 1024) + " KB" : (bytes / 1024 / 1024).toFixed(1) + " MB";
+
+    const total = await area.getBytesInUse(null);
+    const parts: string[] = [];
+    for (const key of ["adventures", "audioLibrary"]) {
+      const bytes = await area.getBytesInUse([key]);
+      // Only worth a line once it is a real share of the total; otherwise it is noise.
+      if (bytes > 1024 * 1024) parts.push(key + " " + formatBytes(bytes));
+    }
+    return { total, parts };
   } catch {
     return null;
   }
@@ -191,7 +213,6 @@ export async function collectDiagnostics(): Promise<string> {
   const lastActionNodes = containers.filter((c) => (c.getAttribute("aria-label") ?? "").startsWith("Last action:")).length;
 
   const lastAction = document.querySelector(Config.SELECTOR_LAST_ACTION);
-  const exitButton = document.querySelector(Config.SELECTOR_EXIT_BUTTON);
   const shadowHost = document.querySelector(Config.ID_EDITOR_ANCHOR);
   const menuButton = document.getElementById(Config.ID_EDITOR_BUTTON);
   const wordFade = output?.querySelector(".word-fade") ?? null;
@@ -250,9 +271,21 @@ export async function collectDiagnostics(): Promise<string> {
     );
   }
   detail.push(row("last action node", lastAction ? "found" : "MISSING"));
-  // Menu-gated: absent normally just means AID's menu is closed, so report the session view too.
-  detail.push(row("exit game button", exitButton ? "found" : DOM.sawExitButton ? "not open now" : "never seen"));
-  detail.push(row("menu entry", menuButton ? "injected" : DOM.sawExitButton ? "menu closed" : "not yet possible"));
+  // Session history, not a live probe: opening our editor closes AID's menu, so by the time anyone
+  // runs this the menu is always shut and a live check would always look like a failure.
+  detail.push(row("aid menu opened", DOM.sawExitButton ? "yes, this session" : "not this session"));
+  detail.push(
+    row(
+      "menu entry",
+      menuButton
+        ? "on page now"
+        : DOM.injectedMenuEntry
+          ? "injected earlier"
+          : DOM.sawExitButton
+            ? "FAILED, button was there"
+            : "untested, menu not opened"
+    )
+  );
   detail.push(row("extension UI", shadowHost ? "mounted" : "MISSING"));
   detail.push(row("floating button", cfg.floatingButton ? "on" : "off"));
   detail.push(row("text animation", wordFade ? "DETECTED" : "off"));
@@ -272,7 +305,9 @@ export async function collectDiagnostics(): Promise<string> {
   detail.push(row("icon", cfg.iconSize + "px, border " + cfg.iconThickness + "px"));
   detail.push(row("tooltip", cfg.tooltipWidth + "x" + cfg.tooltipHeight + ", delay " + cfg.tooltipDelay + "ms"));
   detail.push(row("focus / markdown", (cfg.highlightFocus ? "on" : "off") + " / " + (cfg.highlightMarkdown ? "on" : "off")));
-  if (usage) detail.push(row("storage in use", usage));
+  if (usage) {
+    detail.push(row("storage in use", formatBytes(usage.total) + (usage.parts.length > 0 ? " (" + usage.parts.join(", ") + ")" : "")));
+  }
   if (version.latest) detail.push(row("latest release", version.latest + (version.updateAvailable ? " (UPDATE AVAILABLE)" : "")));
 
   if (errors.length > 0) {
@@ -336,12 +371,13 @@ export async function collectDiagnostics(): Promise<string> {
     });
   }
 
-  // Only a finding once we know the button exists but our entry never landed. Absent-and-never-seen
-  // is the normal state when the user has not opened AID's menu, and must not read as breakage.
-  if (DOM.sawExitButton && exitButton && !menuButton) {
+  // Judged on session history: we saw AID's button at some point but never managed to add our entry
+  // beside it. A live check cannot express this, because our editor has to be open to run the report
+  // and that always closes AID's menu first.
+  if (DOM.sawExitButton && !DOM.injectedMenuEntry) {
     findings.push({
-      level: "warn",
-      text: "AI Dungeon's menu is open but the Editor entry was not added to it. Use the floating button to open the editor.",
+      level: "error",
+      text: "AI Dungeon's menu was opened but the Editor entry could not be added to it, so AID has probably changed that button. Use the floating button to open the editor until this is fixed.",
     });
   } else if (!DOM.sawExitButton && !cfg.floatingButton) {
     findings.push({
@@ -403,6 +439,23 @@ export async function collectDiagnostics(): Promise<string> {
     findings.push({
       level: "warn",
       text: "Tooltip max width or height is 0, which collapses the hover portrait to nothing. Raise it under Settings > Tooltip.",
+    });
+  }
+
+  // The page tap is what feeds the Import tab. It stays silent if AI Dungeon changed the API it
+  // listens to, and also if the adventure's cards were already fetched before the extension started,
+  // so the reload advice distinguishes the two.
+  if (shortId && detected.cards.length === 0) {
+    findings.push({
+      level: "warn",
+      text: "No story cards were captured from AI Dungeon, so the Import tab will show nothing to import. Reload the page and check again; if it stays empty, AI Dungeon has changed the data the extension listens for.",
+    });
+  }
+
+  if (usage && usage.total > 50 * 1024 * 1024) {
+    findings.push({
+      level: "warn",
+      text: "The extension is storing " + formatBytes(usage.total) + ", which is a lot and can slow loading. That usually means images or audio were pasted in directly rather than linked by URL.",
     });
   }
 

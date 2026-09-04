@@ -1,0 +1,40 @@
+DExtV2R 1.3.3 diagnostics (MV2)
+Firefox 155 (Windows)
+2026-09-04T09:49:35.877Z
+alpha.aidungeon.com, adventure eWZT...
+
+[Findings]
+- This is alpha.aidungeon.com, not the live site. Its page
+  structure can differ from play.aidungeon.com, so
+  breakage here does not necessarily affect everyone.
+- Focus is off, so the pin button on a portrait is hidden.
+  Hover portraits still work; enable Focus to pin one to
+  the story.
+
+[DOM]
+gameplay output    found
+response nodes     16 (rendered 16, last-action 1)
+newest shape       span, 2 children, text in #0
+last action node   found
+exit game button   not open now
+menu entry         menu closed
+extension UI       mounted
+floating button    on
+text animation     off
+live components    16
+
+[Content]
+linked card set    yes
+story cards        23 (icons 23, portraits 23)
+trigger map        42
+trigger matches    46 in 16 visible
+portrait hosts     trinetra.mahesvara.cloud
+portrait fetch     ok, 912x1336 in 0ms
+page tap           nothing captured
+
+[Settings]
+icon               28px, border 1px
+tooltip            512x512, delay 200ms
+focus / markdown   off / on
+storage in use     110.8 MB
+latest release     1.3.3

@@ -11,11 +11,13 @@ export class DOM {
   // sees no icons or portraits while everyone else does. Reset by cleanup().
   static skippedAnimated = 0;
 
-  // Whether AI Dungeon's "Exit game" button has been seen at any point this session. It only exists
-  // while AID's menu is open, so a live query for it says nothing on its own: absent usually just
-  // means the menu is closed. The diagnostics report needs this session-cumulative view to tell
-  // "you never opened the menu" apart from "AID renamed the button and the Editor entry is broken".
+  // Session history for the Editor menu entry, which the diagnostics report has to rely on because a
+  // live probe can never see it: AI Dungeon closes its menu the moment our editor opens, so by the
+  // time anyone reaches the Diagnostics button the menu is always gone. Together these two tell
+  // "the menu was never opened, so we cannot say" (sawExitButton false) apart from "we found AID's
+  // button but failed to add our entry" (saw it, never injected), which is real breakage.
   static sawExitButton = false;
+  static injectedMenuEntry = false;
 
   /** Live Response components, for the diagnostics report. */
   static get mountedCount(): number {
@@ -36,6 +38,10 @@ export class DOM {
       extensionState.isEditorOpen = true;
     });
     baseButton.parentElement?.insertBefore(button, baseButton);
+    // Only after the insert: the innerText lines above dereference AID's inner spans directly, so a
+    // structure change throws there and leaves this false, which is exactly what we want the report
+    // to be able to say.
+    this.injectedMenuEntry = true;
   }
 
   // AI Dungeon doesn't keep the response text in a fixed position: story paragraphs and the last
