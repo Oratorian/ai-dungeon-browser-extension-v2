@@ -442,14 +442,23 @@ export async function collectDiagnostics(): Promise<string> {
     });
   }
 
-  // The page tap is what feeds the Import tab. It stays silent if AI Dungeon changed the API it
-  // listens to, and also if the adventure's cards were already fetched before the extension started,
-  // so the reload advice distinguishes the two.
+  // The page tap only feeds the Import tab; highlighting runs entirely off the local card set. So an
+  // empty tap is only worth flagging to someone who has no cards yet, for whom importing is the way
+  // in. Anyone who built their set by hand (or imported it earlier) has a working setup and must not
+  // be told something is broken. It can also be empty simply because the adventure has no story
+  // cards, or because AID fetched them before the extension started, hence the reload advice.
   if (shortId && detected.cards.length === 0) {
-    findings.push({
-      level: "warn",
-      text: "No story cards were captured from AI Dungeon, so the Import tab will show nothing to import. Reload the page and check again; if it stays empty, AI Dungeon has changed the data the extension listens for.",
-    });
+    if (cards.length === 0) {
+      findings.push({
+        level: "warn",
+        text: "No story cards were captured from AI Dungeon, so the Import tab has nothing to offer. If this adventure does have story cards, reload the page: the extension only sees them when AI Dungeon fetches them while it is already running.",
+      });
+    } else {
+      findings.push({
+        level: "ok",
+        text: "Nothing was captured from AI Dungeon this session, so the Import tab is empty. This does not affect the cards you already have, it only matters if you want to import from AI Dungeon again.",
+      });
+    }
   }
 
   if (usage && usage.total > 50 * 1024 * 1024) {
