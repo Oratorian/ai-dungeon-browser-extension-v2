@@ -225,20 +225,31 @@ export async function verifyKey(key: string): Promise<boolean> {
 const WEB_API = "https://civitai.com/api/v1";
 
 /**
- * Base models Civitai's generator is known to run. A checkpoint on any other base is normally
- * download-only: the job is still accepted and still charged, runs to completion, and then fails
- * with no reason attached, which is an expensive way to find out. Confirmed the hard way with an
- * "Anima" checkpoint, which failed twice while an SDXL one succeeded in seconds.
+ * How likely a base model is to actually generate.
  *
- * Matched loosely, since Civitai writes these as "SDXL 1.0", "Flux.1 D", "Pony" and so on. This only
- * warns, never blocks: the list will fall out of date as they add support, and refusing a model that
- * actually works would be worse than a warning that is occasionally unnecessary.
+ * This matters because a job on an unsupported base is still accepted, still charged, still runs to
+ * completion, and only then reports "failed" with no reason attached anywhere in the response. The
+ * cost of finding out by trying is real Buzz, so it is worth saying up front.
  */
-const GENERATABLE_BASES = ["sd 1", "sd1", "sdxl", "pony", "illustrious", "noobai", "flux", "sd 3", "sd3"];
+export type GenerationSupport = "supported" | "unknown" | "unsupported";
 
-function isLikelyGeneratable(baseModel: string): boolean {
+/** Bases confirmed to work. An SDXL checkpoint generated in seconds. */
+const SUPPORTED_BASES = ["sd 1", "sd1", "sdxl", "pony", "illustrious", "noobai", "flux", "sd 3", "sd3"];
+
+/**
+ * Bases observed to fail every time. Anima checkpoints were charged, ran to completion and failed on
+ * every attempt, with Civitai's own default parameters as well as ours.
+ */
+const UNSUPPORTED_BASES = ["anima"];
+
+function supportFor(baseModel: string): GenerationSupport {
   const base = baseModel.toLowerCase();
-  return GENERATABLE_BASES.some((known) => base.startsWith(known));
+  if (UNSUPPORTED_BASES.some((known) => base.startsWith(known))) return "unsupported";
+  // Loose match: Civitai writes these as "SDXL 1.0", "Flux.1 D", "Pony" and so on.
+  if (SUPPORTED_BASES.some((known) => base.startsWith(known))) return "supported";
+  // Neither list. Allowed through, because both lists are ours and will age as Civitai adds support,
+  // and refusing something that works would be worse than a warning that is sometimes unnecessary.
+  return "unknown";
 }
 
 export type ResolvedModel = {
@@ -251,11 +262,8 @@ export type ResolvedModel = {
   baseModel: string;
   /** "Checkpoint", "LORA", ... Only a checkpoint can be the model of a job. */
   type: string;
-  /**
-   * False when the base model is not one Civitai's generator is known to run. Advisory: the job would
-   * still be accepted and charged, then fail.
-   */
-  likelyGeneratable: boolean;
+  /** Whether this base is known to generate. See GenerationSupport. */
+  support: GenerationSupport;
 };
 
 /**
@@ -319,7 +327,7 @@ export async function resolveModel(input: string): Promise<ResolvedModel> {
     version: version?.name ?? "",
     baseModel,
     type,
-    likelyGeneratable: isLikelyGeneratable(baseModel),
+    support: supportFor(baseModel),
   };
 }
 

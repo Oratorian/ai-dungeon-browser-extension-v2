@@ -27,12 +27,15 @@
   let resolving = $state(false);
   let resolved = $state("");
   let resolveWarning = $state("");
+  // A confirmed-bad base is stated plainly rather than hedged; an unrecognised one only cautions.
+  let resolveBlocking = $state(false);
   let resolveError = $state("");
 
   async function lookup() {
     resolving = true;
     resolved = "";
     resolveWarning = "";
+    resolveBlocking = false;
     resolveError = "";
     try {
       const model = await resolveModel(modelLink);
@@ -40,10 +43,17 @@
       resolved = `${model.name} (${model.version}), base ${model.baseModel}`;
       // Still applied, since the list of supported bases is ours and will age, but worth saying
       // before a generation is paid for and then fails with no reason given.
-      if (!model.likelyGeneratable) {
+      if (model.support === "unsupported") {
         resolveWarning =
-          `Civitai's generator may not support the ${model.baseModel} base. If so, a generation will ` +
-          `be charged, run, and then fail. Try an SDXL, Pony, Illustrious or Flux checkpoint instead.`;
+          `Civitai's generator does not run ${model.baseModel} models. Every generation will be ` +
+          `charged, run to completion, and then fail. Pick an SDXL, Pony, Illustrious or Flux ` +
+          `checkpoint instead.`;
+        resolveBlocking = true;
+      } else if (model.support === "unknown") {
+        resolveWarning =
+          `${model.baseModel} is not a base we have seen generate. It may work; if it fails, the ` +
+          `Buzz is still spent, so try one image before relying on it.`;
+        resolveBlocking = false;
       }
       modelLink = "";
     } catch (e) {
@@ -132,7 +142,7 @@
   {:else if resolved}
     <span class="text-xs text-pretty-green">Using {resolved}</span>
     {#if resolveWarning}
-      <span class="text-xs text-pretty-orange">{resolveWarning}</span>
+      <span class="text-xs {resolveBlocking ? 'text-pretty-red' : 'text-pretty-orange'}">{resolveWarning}</span>
     {/if}
   {/if}
 
