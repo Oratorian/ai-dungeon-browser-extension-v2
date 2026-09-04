@@ -6,6 +6,16 @@ import { ResponseType } from "@/shared/types";
 export class DOM {
   private static mountedComponents = new Map<HTMLElement, ReturnType<typeof mount>>();
 
+  // How many responses we declined to render because AI Dungeon was animating them word by word.
+  // Read by the diagnostics report: a non-zero count here is the single most common reason a user
+  // sees no icons or portraits while everyone else does. Reset by cleanup().
+  static skippedAnimated = 0;
+
+  /** Live Response components, for the diagnostics report. */
+  static get mountedCount(): number {
+    return this.mountedComponents.size;
+  }
+
   static injectButton() {
     if (document.getElementById(Config.ID_EDITOR_BUTTON)) return;
     const baseButton = document.querySelector(Config.SELECTOR_EXIT_BUTTON);
@@ -26,7 +36,8 @@ export class DOM {
   // and pushes the real text into a later sibling, past layout spacers and an icon glyph. Return the
   // child that actually carries the prose so our render/highlight lands on the right node instead of
   // assuming child-zero. Falls back to the first child so we never mount on nothing.
-  private static pickTextHost(container: HTMLElement): HTMLElement | null {
+  // Public so the diagnostics report can describe the shape AID is currently serving.
+  static pickTextHost(container: HTMLElement): HTMLElement | null {
     const first = container.firstElementChild as HTMLElement | null;
     // Common case (story text, last action): the first child already holds the text.
     if (first?.textContent?.trim()) return first;
@@ -58,6 +69,9 @@ export class DOM {
 
       if (original) {
         if (original.querySelector(".word-fade")) {
+          // Counted (not just logged) so the diagnostics report can name this as the cause without
+          // asking the user to open a console and scroll back through it.
+          this.skippedAnimated++;
           console.warn(
             "[Dungeon Extension v2 Resurrected] Detected text animation... skipping for now... this might cause issues in the future.\n\nTo disable text animations navigate to: Gameplay > Appearance > Accessibility > Text Animation"
           );
@@ -159,5 +173,8 @@ export class DOM {
       unmount(component);
     }
     this.mountedComponents.clear();
+    // Leaving an adventure ends the run this counter described, so a later report doesn't blame the
+    // new adventure for a skip that happened in the previous one.
+    this.skippedAnimated = 0;
   }
 }

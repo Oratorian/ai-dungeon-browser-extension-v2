@@ -7,6 +7,7 @@
   import Switch from "@/ui/components/switch.svelte";
   import AudioLibrary from "@/ui/components/audio_library.svelte";
   import ScenarioRepos from "@/ui/components/scenario_repos.svelte";
+  import Diagnostics from "@/ui/components/diagnostics.svelte";
 
   /* Storage */
   import { settings } from "@/storage";
@@ -129,5 +130,11 @@
 <Field label="Scenarios">
   <Item foldout icon="folder_open" label="GitHub Repos">
     <ScenarioRepos />
+  </Item>
+</Field>
+
+<Field label="Support">
+  <Item foldout icon="stethoscope" label="Diagnostics">
+    <Diagnostics />
   </Item>
 </Field>
