@@ -292,13 +292,19 @@ export type GenerationSupport = "supported" | "unknown" | "unsupported";
 const SUPPORTED_BASES = ["sd 1", "sd1", "sdxl", "pony", "illustrious", "noobai", "flux", "sd 3", "sd3"];
 
 /**
- * Bases that cannot generate. Tested across seven Anima checkpoints: every one failed. Two were
- * refused at submit with "X is not enabled for generation", which costs nothing; the other five were
- * accepted, charged, run, and then failed with no reason given anywhere in the response.
+ * Bases that cannot generate *through this API*. Tested across seven Anima checkpoints: every one
+ * failed. Two were refused at submit with "X is not enabled for generation", which costs nothing;
+ * the other five were accepted, charged, run, and then failed with no reason given anywhere in the
+ * response.
  *
- * So Civitai's per-model "enabled for generation" flag does not match what its workers can actually
- * run, and the models it misses take the user's Buzz before failing. Warning up front is the only
- * protection available.
+ * Worth being precise about the cause, because it is not that the models are unrunnable: Civitai's
+ * own web generator runs them. That UI is driven by their internal API, while this is the public
+ * consumer one, which offers a single "textToImage" step and an opaque workflowTemplate name with no
+ * way to enumerate the alternatives. An architecture shipping a separate text encoder and VAE, as
+ * Anima does, evidently needs a workflow this path cannot express.
+ *
+ * So the practical position stands even though the reason is different: these fail here, some of
+ * them after taking the user's Buzz, and warning up front is the only protection available.
  */
 const UNSUPPORTED_BASES = ["anima"];
 

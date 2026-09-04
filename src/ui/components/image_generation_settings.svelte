@@ -63,9 +63,9 @@
       // before a generation is paid for and then fails with no reason given.
       if (model.support === "unsupported") {
         resolveWarning =
-          `Civitai's generator does not run ${model.baseModel} models. Every generation will be ` +
-          `charged, run to completion, and then fail. Pick an SDXL, Pony, Illustrious or Flux ` +
-          `checkpoint instead.`;
+          `${model.baseModel} models cannot be generated through Civitai's public API, even though ` +
+          `their own website can generate them. Every attempt here is charged and then fails. Pick ` +
+          `an SDXL, Pony, Illustrious or Flux checkpoint instead.`;
         resolveBlocking = true;
       } else if (model.support === "unknown") {
         resolveWarning =
