@@ -80,6 +80,20 @@ export function compressInlineImage(
 
     image.onload = () => {
       try {
+        // Already done: right format, already within the size limit. Skipping these is what makes
+        // running this twice a no-op. Without the check every pass would re-encode them, and
+        // re-encoding a lossy image usually yields a slightly smaller and slightly worse one, which
+        // the size comparison below would happily accept. Quality would then drift down on every run.
+        const format = pickEncoder();
+        const withinLimit = square
+          ? image.width === image.height && image.width <= maxResolution
+          : Math.max(image.width, image.height) <= maxResolution;
+
+        if (withinLimit && source.startsWith("data:" + format)) {
+          resolve(source);
+          return;
+        }
+
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d");
         if (!context) {
@@ -101,7 +115,7 @@ export function compressInlineImage(
           context.drawImage(image, 0, 0, canvas.width, canvas.height);
         }
 
-        const result = canvas.toDataURL(pickEncoder(), Math.min(100, Math.max(1, quality)) / 100);
+        const result = canvas.toDataURL(format, Math.min(100, Math.max(1, quality)) / 100);
         // An already-optimised image can re-encode larger. Keep whichever is smaller so running this
         // twice can never inflate a card.
         resolve(result.length < source.length ? result : source);
