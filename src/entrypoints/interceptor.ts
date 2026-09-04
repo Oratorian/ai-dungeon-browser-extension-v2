@@ -50,21 +50,63 @@ export default defineUnlistedScript(() => {
     post();
   }
 
-  // Find adventure.storyCards anywhere in a parsed GraphQL response (single object or batch array).
-  function scan(json: any) {
-    const items = Array.isArray(json) ? json : [json];
-    for (const it of items) {
-      const adv =
-        it?.data?.adventure ?? it?.data?.updateAdventurePlot?.adventure ?? it?.data?.updateAdventureState?.adventure;
-      if (adv && Array.isArray(adv.storyCards)) {
-        capture(
-          adv.shortId != null ? String(adv.shortId) : null,
-          typeof adv.title === "string" ? adv.title : null,
-          sanitizeCards(adv.storyCards),
-          true
-        );
+  /** The adventure shortId in the address bar, used to ignore captures for anything else. */
+  const pageShortId = () => location.pathname.match(/adventure\/([^/]+)/)?.[1] ?? null;
+
+  type Holder = { shortId: string | null; title: string | null; cards: AidCard[] };
+
+  // Any object in a parsed GraphQL payload that carries a storyCards array, whatever the path to it.
+  //
+  // This used to read data.adventure.storyCards directly, and stopped finding anything the day AI
+  // Dungeon's app switched from querying `adventure` to `adventureState` (both root fields exist and
+  // both carry storyCards). A hardcoded path gives no signal when it stops matching, it just quietly
+  // returns nothing, so match on the shape instead and survive the next rename.
+  function findHolders(json: any): Holder[] {
+    const holders: Holder[] = [];
+    const seen = new Set<any>();
+
+    const walk = (node: any, depth: number) => {
+      if (!node || typeof node !== "object" || depth > 12 || seen.has(node)) return;
+      seen.add(node);
+
+      if (Array.isArray(node)) {
+        for (const item of node) walk(item, depth + 1);
+        return;
       }
+
+      if (Array.isArray(node.storyCards)) {
+        holders.push({
+          shortId: node.shortId != null ? String(node.shortId) : null,
+          title: typeof node.title === "string" ? node.title : null,
+          cards: sanitizeCards(node.storyCards),
+        });
+      }
+
+      for (const value of Object.values(node)) walk(value, depth + 1);
+    };
+
+    walk(json, 0);
+    return holders;
+  }
+
+  /**
+   * The holder that belongs to the adventure on screen. Scanning the whole payload can turn up cards
+   * for something else (a scenario the app loaded alongside), and taking those would replace the
+   * played adventure's set with a stranger's, so anything carrying a different shortId is dropped.
+   */
+  function pick(holders: Holder[]): Holder | null {
+    const page = pageShortId();
+    let best: Holder | null = null;
+    for (const holder of holders) {
+      if (page && holder.shortId && holder.shortId !== page) continue;
+      if (!best || holder.cards.length > best.cards.length) best = holder;
     }
+    return best;
+  }
+
+  function scan(json: any, full: boolean) {
+    const holder = pick(findHolders(json));
+    if (holder) capture(holder.shortId, holder.title, holder.cards, full);
   }
 
   // --- fetch (initial + refetched adventure loads: authoritative full sets) ---
@@ -85,7 +127,7 @@ export default defineUnlistedScript(() => {
               // action/streaming response during play.
               if (t.includes('"storyCards"')) {
                 try {
-                  scan(JSON.parse(t));
+                  scan(JSON.parse(t), true);
                 } catch {
                   /* not JSON we can use */
                 }
@@ -114,9 +156,9 @@ export default defineUnlistedScript(() => {
             return;
           }
           if (frame?.type !== "next") return;
-          const data = frame?.payload?.data;
-          const sc = data?.adventureStoryCardsUpdate?.storyCards ?? data?.adventure?.storyCards;
-          if (Array.isArray(sc)) capture(latest?.shortId ?? null, latest?.title ?? null, sanitizeCards(sc), false);
+          // Same shape-based search as the fetch path, but upserted: a subscription frame carries the
+          // cards that just changed, not the whole set.
+          scan(frame?.payload?.data, false);
         });
       }
     }
