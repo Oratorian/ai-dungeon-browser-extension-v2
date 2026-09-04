@@ -30,7 +30,9 @@
   // Empty means "no filter": every type shows. Reassigned rather than mutated, since Svelte does not
   // track mutations of a Set held in $state.
   let activeTypes = $state<Set<string>>(new Set());
-  let collapsed = $state<Set<string>>(new Set());
+  // Which groups are open. Everything starts closed so a large set opens as a short list of types
+  // you can take in at once, rather than the wall of cards this replaced.
+  let expanded = $state<Set<string>>(new Set());
 
   const needle = $derived(query.trim().toLowerCase());
 
@@ -75,13 +77,25 @@
   });
 
   // While searching every group opens: a hit hidden inside a collapsed group reads as no hit at all.
-  const isOpen = (type: string) => Boolean(needle) || !collapsed.has(type);
+  // A lone group is always open too, since collapsing the only thing on screen serves no purpose.
+  const isOpen = (type: string) => Boolean(needle) || groups.length === 1 || expanded.has(type);
+
+  // Switching adventures starts fresh, so a type left open in one card set does not silently decide
+  // how the next one opens.
+  $effect(() => {
+    selectedId;
+    expanded = new Set();
+  });
 
   function toggleGroup(type: string) {
-    const next = new Set(collapsed);
+    const next = new Set(expanded);
     if (next.has(type)) next.delete(type);
     else next.add(type);
-    collapsed = next;
+    expanded = next;
+  }
+
+  function setAllGroups(open: boolean) {
+    expanded = open ? new Set(groups.map((g) => g.type)) : new Set();
   }
 
   function toggleType(type: string) {
@@ -209,6 +223,14 @@
           {matching.length} of {storyCards.length} story cards
         {/if}
       </span>
+
+      <!-- Hidden while searching, when every group is force-opened and these would do nothing. -->
+      {#if groups.length > 1 && !needle}
+        <div class="flex gap-2 text-xs">
+          <button class="text-pretty-theme hover:underline" onclick={() => setAllGroups(true)}>Expand all</button>
+          <button class="text-theme-neutral-700 hover:underline" onclick={() => setAllGroups(false)}>Collapse all</button>
+        </div>
+      {/if}
     </div>
 
     {#if groups.length === 0}
