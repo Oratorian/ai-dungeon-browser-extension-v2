@@ -23,6 +23,7 @@ export default defineConfig({
     //  - openrouter.ai: optional image generation from a prompt, with the user's own API key
     //  - orchestration(-new).civitai.com: the same, via Civitai. The second host serves the
     //    finished image blob, which is downloaded before its URL expires.
+    //  - civitai.com/api: public model lookup, to turn a model link into the AIR a job needs
     //  - pixabay.com: resolve a sound-effect page URL to its direct audio link (JSON-LD)
     //  - cdn.pixabay.com: stream the royalty-free ambient audio
     //  - api.github.com: list a scenario repo's .json files (git tree + latest release assets)
@@ -35,6 +36,7 @@ export default defineConfig({
     host_permissions: [
       "https://trinetra.mahesvara.cloud/*",
       "https://openrouter.ai/*",
+      "https://civitai.com/api/*",
       "https://orchestration.civitai.com/*",
       "https://orchestration-new.civitai.com/*",
       "https://pixabay.com/*",

@@ -194,3 +194,95 @@ export async function verifyKey(key: string): Promise<boolean> {
     return false;
   }
 }
+
+const WEB_API = "https://civitai.com/api/v1";
+
+export type ResolvedModel = {
+  air: string;
+  /** e.g. "One obsession", for confirming the right thing was pasted. */
+  name: string;
+  /** e.g. "Anima2.9B v1". */
+  version: string;
+  /** e.g. "Anima". Worth showing: it decides which resolutions suit the model. */
+  baseModel: string;
+  /** "Checkpoint", "LORA", ... Only a checkpoint can be the model of a job. */
+  type: string;
+};
+
+/**
+ * Turns a Civitai model page URL, or a bare version id, into the AIR the orchestrator wants.
+ *
+ * Nobody should have to assemble an AIR by hand: the ecosystem segment is the base model, not the
+ * family you would guess from the page. A model whose page looks like any other SDXL checkpoint can
+ * be `urn:air:anima:...`, and getting it wrong is a rejected job rather than an obvious mistake.
+ * Civitai returns the canonical AIR on the version itself, so this asks rather than constructs.
+ *
+ * Public endpoint, no key required.
+ */
+export async function resolveModel(input: string): Promise<ResolvedModel> {
+  const trimmed = input.trim();
+  if (!trimmed) throw new CivitaiError("Paste a Civitai model link or version id.");
+
+  // Already an AIR: nothing to look up.
+  if (trimmed.startsWith("urn:air:")) {
+    throw new CivitaiError("That is already an AIR, paste a model link instead to check it.");
+  }
+
+  let versionId: string | null = null;
+
+  if (/^\d+$/.test(trimmed)) {
+    versionId = trimmed;
+  } else {
+    let url: URL;
+    try {
+      url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    } catch {
+      throw new CivitaiError("That does not look like a Civitai link.");
+    }
+    if (!/(^|\.)civitai\.com$/i.test(url.hostname)) throw new CivitaiError("That link is not on civitai.com.");
+
+    versionId = url.searchParams.get("modelVersionId");
+
+    // A link without ?modelVersionId points at the model, so take its newest version.
+    if (!versionId) {
+      const modelId = url.pathname.match(/\/models\/(\d+)/)?.[1];
+      if (!modelId) throw new CivitaiError("Couldn't find a model id in that link.");
+      const model = await fetchJson(`${WEB_API}/models/${modelId}`);
+      versionId = model?.modelVersions?.[0]?.id != null ? String(model.modelVersions[0].id) : null;
+      if (!versionId) throw new CivitaiError("That model has no published versions.");
+    }
+  }
+
+  const version = await fetchJson(`${WEB_API}/model-versions/${versionId}`);
+  const air = version?.air;
+  if (typeof air !== "string") throw new CivitaiError("Civitai did not return an AIR for that version.");
+
+  const type = version?.model?.type ?? "Unknown";
+  if (type !== "Checkpoint") {
+    throw new CivitaiError(`That is a ${type}, not a checkpoint. Generation needs a checkpoint model.`);
+  }
+
+  return {
+    air,
+    name: version?.model?.name ?? "Unknown model",
+    version: version?.name ?? "",
+    baseModel: version?.baseModel ?? "Unknown",
+    type,
+  };
+}
+
+async function fetchJson(url: string): Promise<any> {
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch {
+    throw new CivitaiError("Couldn't reach Civitai. Check your connection.");
+  }
+  if (response.status === 404) throw new CivitaiError("Civitai has no such model or version.");
+  if (!response.ok) throw new CivitaiError(`Civitai lookup failed (${response.status}).`, response.status);
+  try {
+    return await response.json();
+  } catch {
+    throw new CivitaiError("Civitai returned something unreadable.");
+  }
+}

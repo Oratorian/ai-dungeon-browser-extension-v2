@@ -3,7 +3,7 @@
   import Switch from "@/ui/components/switch.svelte";
   import { settings } from "@/storage";
   import { getRemainingCredit } from "@/media/openrouter";
-  import { verifyKey as verifyCivitaiKey } from "@/media/civitai";
+  import { verifyKey as verifyCivitaiKey, resolveModel, CivitaiError } from "@/media/civitai";
 
   // Provider, key and destination for prompt-based image generation. The generator itself lives on
   // each card's image list, since that is where a generated image is actually wanted.
@@ -19,6 +19,30 @@
 
   let checking = $state(false);
   let status = $state("");
+
+  // Pasting a model link is the sane way in: the AIR's ecosystem segment is the base model, which is
+  // not something a user can reliably guess from the page (an ordinary-looking checkpoint can be
+  // "anima" rather than "sdxl"), and a wrong guess is a rejected job.
+  let modelLink = $state("");
+  let resolving = $state(false);
+  let resolved = $state("");
+  let resolveError = $state("");
+
+  async function lookup() {
+    resolving = true;
+    resolved = "";
+    resolveError = "";
+    try {
+      const model = await resolveModel(modelLink);
+      $settings.civitaiModel = model.air;
+      resolved = `${model.name} (${model.version}), base ${model.baseModel}`;
+      modelLink = "";
+    } catch (e) {
+      resolveError = e instanceof CivitaiError ? e.message : e instanceof Error ? e.message : String(e);
+    } finally {
+      resolving = false;
+    }
+  }
 
   const civitai = $derived($settings.imageGenProvider === "civitai");
   const hasTrinetra = $derived($settings.trinetraApiKey.trim().length > 0);
@@ -74,9 +98,33 @@
   </Field>
 
   <Field
-    label="Model (AIR)"
-    info="Civitai addresses models by AIR, not by name.<br>Find it on a model's page, in the form <code>urn:air:sdxl:checkpoint:civitai:&lt;model&gt;@&lt;version&gt;</code>.<br>The default is SDXL 1.0 base."
+    label="Model"
+    info="Paste a Civitai model link and the exact identifier is looked up for you.<br>Guessing it by hand is unreliable: the identifier encodes the <b>base model</b>, so a normal-looking checkpoint can be <code>anima</code> rather than <code>sdxl</code>, and a wrong guess is simply rejected."
   >
+    <div class="flex gap-2">
+      <input
+        type="text"
+        bind:value={modelLink}
+        placeholder="https://civitai.com/models/..."
+        class="bg-theme-neutral-100 flex-1 min-w-0 min-h-11 p-3 outline-0 rounded-xl text-sm"
+      />
+      <button
+        onclick={lookup}
+        disabled={resolving || !modelLink.trim()}
+        class="px-3 rounded-xl text-sm shrink-0 bg-pretty-theme/20 hover:bg-pretty-theme/30 text-pretty-theme transition-colors disabled:opacity-40"
+      >
+        {resolving ? "..." : "Look up"}
+      </button>
+    </div>
+  </Field>
+
+  {#if resolveError}
+    <span class="text-xs text-pretty-red">{resolveError}</span>
+  {:else if resolved}
+    <span class="text-xs text-pretty-green">Using {resolved}</span>
+  {/if}
+
+  <Field label="Model ID" info="The resolved identifier that is actually sent. You can paste one directly if you have it.">
     <input
       type="text"
       bind:value={$settings.civitaiModel}
