@@ -3,7 +3,7 @@
   import Switch from "@/ui/components/switch.svelte";
   import Slider from "@/ui/components/slider.svelte";
   import { settings } from "@/storage";
-  import { getRemainingCredit } from "@/media/openrouter";
+  import { getRemainingCredit, OPENROUTER_MODELS } from "@/media/openrouter";
   import { verifyKey as verifyCivitaiKey, resolveModel, CivitaiError, SCHEDULERS } from "@/media/civitai";
 
   // Provider, key and destination for prompt-based image generation. The generator itself lives on
@@ -72,6 +72,8 @@
   }
 
   const civitai = $derived($settings.imageGenProvider === "civitai");
+  // A model outside the curated list means the user typed their own, so keep the field showing.
+  const customModel = $derived(!OPENROUTER_MODELS.some((m) => m.value === $settings.imageGenModel));
   const hasTrinetra = $derived($settings.trinetraApiKey.trim().length > 0);
 
   async function checkKey() {
@@ -213,14 +215,32 @@
 
   <Field
     label="Model"
-    info="Any image-capable model id from OpenRouter.<br>A model that only returns text will report that rather than producing an image."
+    info="Image models OpenRouter currently offers, cheapest first.<br>Pick <b>Custom</b> to use any other model id; one that only returns text will say so rather than producing an image."
   >
+    <select
+      value={customModel ? "__custom" : $settings.imageGenModel}
+      onchange={(e) => {
+        const picked = (e.currentTarget as HTMLSelectElement).value;
+        // "Custom" only reveals the field; whatever is already stored stays until it is edited.
+        if (picked !== "__custom") $settings.imageGenModel = picked;
+      }}
+      class="bg-theme-neutral-100 w-full min-h-11 px-3 outline-0 rounded-xl text-sm"
+    >
+      {#each OPENROUTER_MODELS as model (model.value)}
+        <option value={model.value}>{model.label}{model.note ? ` (${model.note})` : ""}</option>
+      {/each}
+      <option value="__custom">Custom...</option>
+    </select>
+  </Field>
+
+  {#if customModel}
     <input
       type="text"
       bind:value={$settings.imageGenModel}
+      placeholder="provider/model-id"
       class="bg-theme-neutral-100 w-full min-h-11 p-3 outline-0 rounded-xl text-sm font-mono"
     />
-  </Field>
+  {/if}
 {/if}
 
 {#if (civitai ? $settings.civitaiKey : $settings.imageGenKey).trim()}

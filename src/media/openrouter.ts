@@ -27,6 +27,29 @@ export type GeneratedImage = {
   cost: number | null;
 };
 
+/**
+ * Every model OpenRouter lists as producing image output, cheapest first.
+ *
+ * Not a curation: there are only seven. The upstream project's shortlist named flux.2-klein-4b,
+ * flux.2-pro and seedream-4.5, none of which resolve, and there is nothing to swap them for, since
+ * OpenRouter carries no Black Forest Labs, Stability, Midjourney, Ideogram or Recraft image models at
+ * all, and every ByteDance model it does carry outputs text. So the whole roster fits in one list.
+ *
+ * Preview aliases are left out where a stable id exists, since a preview is exactly what gets retired
+ * and breaks first run. Order is OpenRouter's own image_output rate. Deliberately no per-image
+ * prices: that rate is per token and an image is worth roughly a thousand of them, so any figure here
+ * would be a guess presented as fact.
+ */
+export const OPENROUTER_MODELS: { value: string; label: string; note: string }[] = [
+  { value: "openai/gpt-5-image-mini", label: "GPT-5 Image Mini", note: "cheapest" },
+  { value: "google/gemini-2.5-flash-image", label: "Nano Banana", note: "good default" },
+  { value: "google/gemini-3.1-flash-lite-image", label: "Nano Banana 2 Lite", note: "" },
+  { value: "openai/gpt-5.4-image-2", label: "GPT-5.4 Image 2", note: "" },
+  { value: "openai/gpt-5-image", label: "GPT-5 Image", note: "" },
+  { value: "google/gemini-3.1-flash-image", label: "Nano Banana 2", note: "" },
+  { value: "google/gemini-3-pro-image", label: "Nano Banana Pro", note: "best, priciest" },
+];
+
 function friendlyStatus(status: number, detail?: string): string {
   if (status === 401) return "OpenRouter rejected the API key.";
   if (status === 402) return "Your OpenRouter balance is too low for this generation.";
