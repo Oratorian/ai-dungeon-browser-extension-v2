@@ -96,9 +96,15 @@ function describe(status: number, body: any): CivitaiError {
   if (status === 402) return new CivitaiError("Not enough Buzz for this generation.", status);
   if (status === 429) return new CivitaiError("Civitai is rate limiting you, wait a moment.", status);
 
-  // A 400 carries per-field validation errors, which say far more than the status does.
   const errors = body?.errors;
   if (errors && typeof errors === "object") {
+    // `messages` is Civitai's general refusal, not a complaint about one field, and it is the useful
+    // one: an unrunnable model is refused here with "X is not enabled for generation", for free,
+    // before anything is charged. Naming a field alongside it would only obscure it.
+    const general = Array.isArray((errors as any).messages) ? (errors as any).messages[0] : null;
+    if (typeof general === "string" && general.trim()) return new CivitaiError(general, status);
+
+    // Anything else is a per-field validation error, worth naming the field for.
     const first = Object.entries(errors)[0];
     if (first) {
       const [field, messages] = first as [string, string[]];
@@ -286,8 +292,13 @@ export type GenerationSupport = "supported" | "unknown" | "unsupported";
 const SUPPORTED_BASES = ["sd 1", "sd1", "sdxl", "pony", "illustrious", "noobai", "flux", "sd 3", "sd3"];
 
 /**
- * Bases observed to fail every time. Anima checkpoints were charged, ran to completion and failed on
- * every attempt, with Civitai's own default parameters as well as ours.
+ * Bases that cannot generate. Tested across seven Anima checkpoints: every one failed. Two were
+ * refused at submit with "X is not enabled for generation", which costs nothing; the other five were
+ * accepted, charged, run, and then failed with no reason given anywhere in the response.
+ *
+ * So Civitai's per-model "enabled for generation" flag does not match what its workers can actually
+ * run, and the models it misses take the user's Buzz before failing. Warning up front is the only
+ * protection available.
  */
 const UNSUPPORTED_BASES = ["anima"];
 
