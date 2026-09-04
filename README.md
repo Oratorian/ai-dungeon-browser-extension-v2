@@ -28,37 +28,86 @@ A browser extension that enhances your AI Dungeon experience with story cards, v
 
 ## Installation
 
-### Chrome
+### From a store
 
-1. Download the latest release from the [Releases](https://github.com/Oratorian/ai-dungeon-browser-extension-v2/releases) page.
-2. Extract the downloaded zip file.
-3. Open `chrome://extensions/` in Chrome.
-4. Enable "Developer mode" in the top right corner.
-5. Click "Load unpacked" and select the extracted folder.
+The easiest option, and it keeps itself updated.
 
-### Firefox
+- **Firefox:** [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/dungeonextensionv2resurrect/)
+- **Chrome, Edge, Brave, Opera and other Chromium browsers:** [Chrome Web Store](https://chromewebstore.google.com/detail/dungeon-extension-v2-resu/keegfhpckdjecndjlgmjnjlfhlnepiga)
 
-1. Download the latest release from the [Releases](https://github.com/Oratorian/ai-dungeon-browser-extension-v2/releases) page.
-2. Open `about:addons` in Firefox.
-3. Click the gear icon and select "Install Add-on From File..."
-4. Select the manifest of the downloaded folder.
+### From a GitHub release
+
+Each [release](https://github.com/Oratorian/ai-dungeon-browser-extension-v2/releases) carries unpacked
+zips for both browsers, and a signed `.xpi` once that version has been published to AMO.
+
+**Firefox**, using the signed `.xpi`:
+
+1. Download `DExtV2-Resurrect-firefox-<version>.xpi`.
+2. Open `about:addons`.
+3. Click the gear icon, choose "Install Add-on From File...", and select the `.xpi`.
+
+**Chrome**, loading it unpacked:
+
+1. Download and extract `DExtV2-Resurrect-chrome-<version>.zip`.
+2. Open `chrome://extensions/`.
+3. Enable "Developer mode" in the top right corner.
+4. Click "Load unpacked" and select the extracted folder.
+
+### Chrome, from the store's signed package
+
+If you would rather install the published build without going through the store listing, you can grab
+the signed `.crx` directly. Because it is signed by Google it carries the proof Chrome requires, so it
+installs by drag and drop, which a self-packed `.crx` cannot do.
+
+1. Enable "Developer mode" on `chrome://extensions/`.
+2. Download the package:
+
+   ```
+   https://clients2.google.com/service/update2/crx?response=redirect&acceptformat=crx3&prodversion=120&x=id%3Dkeegfhpckdjecndjlgmjnjlfhlnepiga%26uc
+   ```
+
+3. Drag the downloaded `.crx` onto the `chrome://extensions/` page and confirm.
+
+This always serves whatever version is currently published, which can lag behind the latest GitHub
+release while a store review is pending.
+
+## Usage
+
+1. Open any adventure in AI Dungeon.
+2. Open the editor, either way works:
+   - click the floating **DExtV2R** button sitting on top of the game, which you can drag anywhere, or
+   - open AI Dungeon's own menu (the flame, top left) and click **Editor**.
+3. Bring your cards in: the **Import** tab pulls the story cards straight out of the adventure you have
+   open. Or pick an adventure on the **Adventure** tab and add cards by hand.
+4. Give each card trigger words, and whatever icons, graphics and audio you want.
+5. Play. Triggered words highlight themselves with your visuals and sounds as they appear in the story.
+
+If something looks wrong, **Settings → Support → Diagnostics** will usually tell you what, in one click.
 
 ## Features
 
 ### Adventures & Story Cards
 
-- **Adventure Management**: Create, rename, delete, import, and export adventures
+- **Import from AI Dungeon**: The **Import** tab reads the story cards of the adventure you are playing
+  and brings them over, filtered by type, so you do not rebuild anything by hand
+- **Auto-load**: Each imported set is linked to its AI Dungeon adventure and loads itself when you play
+  that adventure. Older hand-built sets can be linked retroactively with **Stamp Adventure-ID**
+- **Organised by type**: Cards are grouped into collapsible sections, with a search across names and
+  trigger words, and per-type filters with counts
 - **Story Card Types**: Characters, locations, items, factions, events, and races
-- **Trigger Words**: Define words or phrases that automatically highlight matching text in the story
-- **Import/Export**: Share adventures between devices or with other users via JSON files
-- **Import from GitHub**: Add public GitHub repos under Settings, then browse and import shared adventure/scenario `.json` files straight from the import dialog
+- **Trigger Words**: Words or phrases that automatically highlight matching text in the story
+- **Import/Export**: Share adventures between devices or with other people as JSON files
+- **Import from GitHub**: Add public repos under Settings, then browse and import shared
+  adventure/scenario `.json` files straight from the import dialog
 
 ### Visual Enhancements
 
 - **Inline Icons**: Small images displayed next to triggered text in the story
 - **Tooltips**: Hover over highlighted text to see larger graphics
 - **Focus Mode**: Pin a card's graphic to the screen for extended viewing
-- **Multiple Media**: Add up to 6 icons and 4 graphics per card with cycling support
+- **Multiple Media**: Up to 6 icons and 4 graphics per card, with cycling support
+- **Trinetra image hosting**: Browse your own uploaded images with an API key and insert them as links,
+  which keeps exports small
 - **Customization Options**:
   - Icon size, roundness, and border thickness
   - Global or per-card custom colors
@@ -67,10 +116,11 @@ A browser extension that enhances your AI Dungeon experience with story cards, v
 
 ### Audio Integration
 
-- **Audio Library**: Upload and manage sound effect files
+- **Audio Library**: Upload and manage sound effect files, or paste a Pixabay link
 - **Card Audio**: Attach up to 4 audio clips per story card
 - **Playback Controls**: Play/pause, skip tracks, and adjust volume
-- **Auto-play**: Audio automatically plays when a card enters focus mode
+- **Auto-play**: Audio starts when a card enters focus mode
+- **Loop Crossfade**: Overlaps each loop so ambient tracks do not audibly cut off at the seam
 
 ### Text Formatting
 
@@ -85,28 +135,24 @@ When enabled, the extension parses and renders markdown-style formatting in stor
 
 ### Settings
 
+- **Interface**: Show or hide the floating editor button, and reset its position
 - **Icons**: Size, roundness, border thickness
 - **Text**: Bold highlighting toggle, markdown formatting toggle, default color
 - **Tooltips**: Hide delay, max width, max height
 - **Focus**: Enable/disable focus mode, max height
-- **Audio**: Global volume control, loop crossfade, audio library management
+- **Audio**: Global volume, loop crossfade, audio library management
 - **Scenarios**: Manage public GitHub repos to import shared adventures from
-
-## Usage
-
-1. Open any adventure in AI Dungeon.
-2. Enter the in-game menu by clicking on the flamey thing in the top left corner.
-3. Click the **Editor** button (wrench icon).
-4. Create a new adventure or select an existing one.
-5. Add story cards with names, trigger words, icons, graphics, and audio.
-6. Play your adventure - triggered words will automatically highlight with your configured visuals and sounds.
+- **Support**: Diagnostics, a one-click report of what is and is not working
 
 ## Technology Stack
 
 - **Framework**: [WXT](https://wxt.dev/) + [Svelte 5](https://svelte.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **Styling**: [TailwindCSS 4](https://tailwindcss.com/)
 - **UI Components**: [bits-ui](https://www.bits-ui.com/)
 - **Build Tool**: [Vite](https://vitejs.dev/)
+
+Firefox builds target MV2 and Chrome builds target MV3, from the same source.
 
 ## Development
 
@@ -115,44 +161,70 @@ When enabled, the extension parses and renders markdown-style formatting in stor
 npm install
 
 # Start development server (with hot reload)
-npm run dev
+npm run dev          # Chrome
+npm run dev:firefox  # Firefox
 
 # Build for production
-npm run build
+npm run build          # Chrome (MV3) -> .output/chrome-mv3
+npm run build:firefox  # Firefox (MV2) -> .output/firefox-mv2
+
+# Type-check
+npm run check
 
 # Create distributable zip files
 npm run zip
+npm run zip:firefox
 ```
+
+> `wxt build` defaults to Chrome. If you are testing in Firefox, use `build:firefox`, or you will keep
+> loading a build that never receives your changes.
 
 ### Project Structure
 
 ```
 src/
-├── components/     # Reusable Svelte components
-├── entrypoints/    # Extension entry points (content script)
-├── routes/         # Main UI routes (editor, settings)
-└── utils/          # Storage, parsing, DOM manipulation, events
+├── aid/            # AI Dungeon integration: page-tap bridge, played-adventure tracking, protocol
+├── audio/          # Playback manager and focus-mode audio state
+├── entrypoints/    # Content scripts, background worker, page-world interceptor
+├── media/          # Remote media: Trinetra, Pixabay, GitHub, background fetch
+├── rendering/      # DOM injection and mounting, story text parsing
+├── shared/         # Config, state, versioning, diagnostics, error capture
+├── storage/        # Persistence, adventure and story-card operations
+└── ui/
+    ├── components/ # Reusable Svelte components
+    └── routes/     # The editor and its tabs
 ```
 
 ## Releasing
 
 ### GitHub release zips
 
-Pushing a version tag builds the Chrome and Firefox debug-installable zips and
-attaches them to a GitHub Release (see [.github/workflows/release.yml](.github/workflows/release.yml)).
-The tag version must match the `version` in `wxt.config.ts`:
+Pushing a version tag builds the Chrome and Firefox zips and attaches them to a GitHub Release
+(see [.github/workflows/release.yml](.github/workflows/release.yml)). The tag must match the `version`
+in [package.json](package.json), which is where WXT reads it from; `wxt.config.ts` deliberately does
+not carry a version of its own, so `npm version <x>` bumps the manifest in one step.
+
+Write that version's section in [CHANGELOG.md](CHANGELOG.md) before tagging: the workflow uses it as
+the release body, and falls back to generated notes if the section is missing.
 
 ```bash
-git tag v1.0.9
-git push origin v1.0.9
+npm version 1.4.1 --no-git-tag-version   # updates package.json + lockfile
+# commit, then:
+git tag v1.4.1
+git push --follow-tags
 ```
 
 ### Publishing to Firefox Add-ons (AMO)
 
-Listed submissions require listing metadata that `web-ext sign` reads from a
-JSON file (the manifest `license` field alone is not enough). [amo-metadata.json](amo-metadata.json)
-holds the license (SPDX slug), category, and summary. Provide your AMO API
-credentials via env vars (never commit them) and run:
+Run the **Publish to Firefox (AMO)** workflow by hand from the Actions tab. It needs
+`WEB_EXT_API_KEY` and `WEB_EXT_API_SECRET` as repository secrets, and it submits the listing metadata
+in [amo-metadata.json](amo-metadata.json), which holds the license, category, summary, and this
+version's release notes per locale.
+
+Keep those release notes current before publishing. Firefox only fills its "Release Notes" tab when it
+applies an update, so notes added after approval can miss everyone who already updated.
+
+To do it locally instead:
 
 ```bash
 npm run build:firefox
@@ -166,26 +238,44 @@ web-ext sign \
 
 Use `--channel=unlisted` for a self-hosted signed `.xpi` instead of a public listing.
 
+### Publishing to the Chrome Web Store
+
+Pushing a version tag also runs **Publish to Chrome Web Store**
+(see [.github/workflows/publish-chrome.yml](.github/workflows/publish-chrome.yml)), which needs
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_KEY`, `GOOGLE_REFRESH_TOKEN` and `GOOGLE_EXT_ID` as repository
+secrets. It can also be run by hand to upload a draft without submitting it.
+
 ## Privacy
 
-The extension stores all of your data (adventures, story cards, settings, uploaded
-images) locally in your browser via `chrome.storage.local`. Nothing is sent anywhere
-by default.
+The extension stores all of your data (adventures, story cards, settings, uploaded images) locally in
+your browser via `chrome.storage.local`. Nothing is sent anywhere by default.
 
-The only external hosts the extension can access are declared as named host permissions,
-and none is contacted unless you use its optional feature:
+The only external hosts the extension can reach are declared as named host permissions, and none is
+contacted unless you use its optional feature:
 
-- **Trinetra images** (`trinetra.mahesvara.cloud`): images added by URL/ID or via **Browse
-  Trinetra** are downloaded once and stored inline in the card (base64), so they are
-  self-contained and not re-fetched on every render. If you use **Browse Trinetra**, your
-  Trinetra API key is stored locally (in `chrome.storage.local`, unencrypted like all
-  extension data) so you don't have to re-enter it, remove it any time with **Sign out**.
-- **Pixabay audio** (`pixabay.com`, `cdn.pixabay.com`): a pasted Pixabay sound-effect page
-  URL is fetched once to read its public audio link, and the royalty-free audio is streamed
-  from Pixabay's CDN when the clip plays.
-- **GitHub scenario import** (`api.github.com`, `raw.githubusercontent.com`): for each public repo
-  you add under **Settings → Scenarios**, the extension lists its `.json` files and downloads only
-  the ones you choose to import. No credentials are sent and only public repos are supported.
+- **Trinetra images** (`trinetra.mahesvara.cloud`): images added by URL/ID or through **Browse
+  Trinetra** are stored as **links**, which keeps your exports small. The image is requested from
+  Trinetra when a card renders, and afterwards comes from your browser's ordinary HTTP cache. Images
+  you upload from your own device are stored inline instead (base64, inside the adventure) and are
+  never fetched from anywhere. If you use Browse Trinetra, your API key is stored locally (in
+  `chrome.storage.local`, unencrypted like all extension data) so you do not have to re-enter it;
+  remove it any time with **Sign out**.
+- **Pixabay audio** (`pixabay.com`, `cdn.pixabay.com`): a pasted Pixabay sound-effect page URL is
+  fetched once to read its public audio link, and the royalty-free audio is streamed from Pixabay's CDN
+  when the clip plays.
+- **GitHub scenario import** (`api.github.com`, `raw.githubusercontent.com`): for each public repo you
+  add under **Settings → Scenarios**, the extension lists its `.json` files and downloads only the ones
+  you choose to import. No credentials are sent and only public repos are supported.
+- **Update check** (`api.github.com`): the editor checks this repository's latest release once per
+  session so it can tell you when a newer version exists.
+
+The extension reads AI Dungeon's own network traffic in the page to detect your story cards for the
+Import tab. It only ever reads, never modifies, and it takes nothing but each card's id, type, name and
+trigger words. It does not read or store your account credentials or authentication tokens.
+
+**Diagnostics** (Settings → Support) builds its report on demand and copies it to your clipboard,
+nothing is transmitted. The report carries counts and yes/no checks only: never card names, trigger
+words, story text, image links, or API keys, so it is safe to paste into a public support thread.
 
 No analytics, tracking, or telemetry are included.
 
