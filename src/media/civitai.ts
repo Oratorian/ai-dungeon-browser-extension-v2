@@ -46,9 +46,6 @@ const BUCKETS: Record<string, { width: number; height: number }> = {
   "3:4": { width: 896, height: 1152 },
 };
 
-/** A Civitai checkpoint AIR. The default is SDXL 1.0 base, which every account can reach. */
-export const DEFAULT_MODEL = "urn:air:sdxl:checkpoint:civitai:101055@128078";
-
 export function dimensionsFor(aspectRatio: string) {
   return BUCKETS[aspectRatio] ?? BUCKETS["1:1"];
 }
@@ -112,9 +109,12 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * Generates one image: submit, poll until the workflow settles, then download the result.
  *
+ * Named for its provider because src/media is auto-imported globally, so a bare `generateImage`
+ * would collide with OpenRouter's and one would silently win.
+ *
  * `onStage` reports progress, since this routinely takes a minute and a silent button looks broken.
  */
-export async function generateImage(
+export async function generateWithCivitai(
   key: string,
   model: string,
   prompt: string,

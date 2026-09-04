@@ -1,7 +1,8 @@
 <script lang="ts">
   import { settings } from "@/storage";
-  import { generateImage as generateViaOpenRouter, getRemainingCredit, ASPECT_RATIOS, OpenRouterError } from "@/media/openrouter";
-  import { generateImage as generateViaCivitai, CivitaiError } from "@/media/civitai";
+  import { generateWithOpenRouter, getRemainingCredit, OpenRouterError } from "@/media/openrouter";
+  import { generateWithCivitai, CivitaiError } from "@/media/civitai";
+  import { ASPECT_RATIOS } from "@/media/image_gen";
   import { uploadImage, TrinetraError } from "@/media/trinetra";
   import { compressInlineImage } from "@/media/compress";
 
@@ -51,7 +52,7 @@
 
       if (civitai) {
         // Asynchronous and priced in Buzz, so it reports its own stage as it goes.
-        const result = await generateViaCivitai(
+        const result = await generateWithCivitai(
           $settings.civitaiKey,
           $settings.civitaiModel,
           prompt,
@@ -62,7 +63,7 @@
         dataUri = result.dataUri;
         buzz = result.buzz;
       } else {
-        const result = await generateViaOpenRouter(
+        const result = await generateWithOpenRouter(
           $settings.imageGenKey,
           $settings.imageGenModel,
           prompt,

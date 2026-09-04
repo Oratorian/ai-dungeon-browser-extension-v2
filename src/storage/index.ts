@@ -54,7 +54,7 @@ const defaultSettings = {
   // Image generation through OpenRouter (media/openrouter.ts). The key is the user's own and pays for
   // their own generations. `imageGenUpload` chooses where a result lands: true uploads it to Trinetra
   // and stores only the link, false compresses it into the card like any other local image.
-  imageGenProvider: "openrouter" as "openrouter" | "civitai",
+  imageGenProvider: "openrouter" as import("@/media/image_gen").ImageGenProvider,
   imageGenRatio: "1:1",
   imageGenUpload: false,
 

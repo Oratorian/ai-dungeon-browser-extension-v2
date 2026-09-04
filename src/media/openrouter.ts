@@ -27,12 +27,6 @@ export type GeneratedImage = {
   cost: number | null;
 };
 
-/** Aspect ratios OpenRouter's image models accept. */
-export const ASPECT_RATIOS = ["1:1", "3:2", "2:3", "16:9", "9:16", "4:3", "3:4"] as const;
-
-/** A sensible default; the user can type any model id OpenRouter offers. */
-export const DEFAULT_MODEL = "google/gemini-2.5-flash-image-preview";
-
 function friendlyStatus(status: number, detail?: string): string {
   if (status === 401) return "OpenRouter rejected the API key.";
   if (status === 402) return "Your OpenRouter balance is too low for this generation.";
@@ -44,8 +38,11 @@ function friendlyStatus(status: number, detail?: string): string {
 /**
  * Generates one image. Resolves to a data URI so the caller can decide where it lives, either
  * compressed into the card or uploaded to Trinetra and kept as a link.
+ *
+ * Named for its provider because src/media is auto-imported globally, so a bare `generateImage`
+ * would collide with Civitai's and one would silently win.
  */
-export async function generateImage(
+export async function generateWithOpenRouter(
   apiKey: string,
   model: string,
   prompt: string,
