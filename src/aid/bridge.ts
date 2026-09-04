@@ -10,6 +10,18 @@ export const aidDetected = writable<AidDetected>({ shortId: null, title: null, c
 let connected = false;
 
 /**
+ * The adventure name from the browser tab title, used when AI Dungeon's response carries no title of
+ * its own (its queries only return the fields they ask for, and the title is not always among them).
+ * Returns null for the bare site title, so a missing name stays missing rather than becoming
+ * "AI Dungeon".
+ */
+function pageTitle(): string | null {
+  // Escapes rather than literal dashes so the separator set survives any re-encoding of this file.
+  const stripped = document.title.replace(/\s*[|–—-]\s*AI Dungeon\s*$/i, "").trim();
+  return stripped && !/^ai dungeon$/i.test(stripped) ? stripped : null;
+}
+
+/**
  * Wire the content script to the page-world interceptor: receive captured cards, and ask for any
  * that were captured before the content script loaded (the interceptor installs at document_start,
  * the UI content script a bit later). Safe to call once from content-script startup.
@@ -22,7 +34,12 @@ export function connectAidBridge() {
     if (ev.source !== window) return; // only messages posted into this page
     const d = ev.data as AidMessage | undefined;
     if (!d || d.source !== AID_MSG.SOURCE || d.kind !== AID_MSG.UPDATE) return;
-    aidDetected.set({ shortId: d.shortId, title: d.title, cards: d.cards, stats: d.stats ?? EMPTY_STATS });
+    aidDetected.set({
+      shortId: d.shortId,
+      title: d.title ?? pageTitle(),
+      cards: d.cards,
+      stats: d.stats ?? EMPTY_STATS,
+    });
   });
 
   // Pull whatever the interceptor already captured for the open adventure.

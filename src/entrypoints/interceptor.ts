@@ -74,27 +74,33 @@ export default defineUnlistedScript(() => {
     const holders: Holder[] = [];
     const seen = new Set<any>();
 
-    const walk = (node: any, depth: number) => {
+    // shortId/title are carried down from enclosing objects: whichever object holds storyCards need
+    // not be the one naming the adventure, so a holder inherits the nearest one that does.
+    const walk = (node: any, depth: number, shortId: string | null, title: string | null) => {
       if (!node || typeof node !== "object" || depth > 12 || seen.has(node)) return;
       seen.add(node);
 
       if (Array.isArray(node)) {
-        for (const item of node) walk(item, depth + 1);
+        for (const item of node) walk(item, depth + 1, shortId, title);
         return;
       }
 
+      const id = node.shortId != null ? String(node.shortId) : shortId;
+      const name = typeof node.title === "string" && node.title.trim() ? node.title : title;
+
       if (Array.isArray(node.storyCards)) {
-        holders.push({
-          shortId: node.shortId != null ? String(node.shortId) : null,
-          title: typeof node.title === "string" ? node.title : null,
-          cards: sanitizeCards(node.storyCards),
-        });
+        holders.push({ shortId: id, title: name, cards: sanitizeCards(node.storyCards) });
       }
 
-      for (const value of Object.values(node)) walk(value, depth + 1);
+      for (const [key, value] of Object.entries(node)) {
+        // Never descend into the cards themselves: a story card has its own `title`, which would
+        // otherwise be inherited as if it were the adventure's name.
+        if (key === "storyCards") continue;
+        walk(value, depth + 1, id, name);
+      }
     };
 
-    walk(json, 0);
+    walk(json, 0, null, null);
     return holders;
   }
 
