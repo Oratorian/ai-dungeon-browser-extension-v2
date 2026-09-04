@@ -160,6 +160,11 @@ export async function generateWithCivitai(
     ? submitted.transactions.list.reduce((sum: number, t: any) => sum + (Number(t?.amount) || 0), 0)
     : null;
 
+  // Read back rather than assumed: Civitai fills in its own defaults for anything not sent, so the
+  // step count it actually runs is only knowable from the response.
+  const totalSteps: number | null =
+    typeof submitted?.steps?.[0]?.input?.steps === "number" ? submitted.steps[0].input.steps : null;
+
   const deadline = Date.now() + POLL_TIMEOUT;
   let workflow = submitted;
   let pollFailures = 0;
@@ -188,8 +193,17 @@ export async function generateWithCivitai(
       continue;
     }
 
+    // The rate is the fraction of sampler steps done, so it reads better as a step count. It also
+    // resets to a low value when the worker restarts a job, which a plain percentage makes look like
+    // the progress went backwards for no reason; "4/20" at least says what it is counting.
     const rate = workflow?.steps?.[0]?.estimatedProgressRate;
-    onStage?.(typeof rate === "number" && rate > 0 ? `Generating ${Math.min(99, Math.round(rate * 100))}%...` : "Generating...");
+    if (typeof rate !== "number" || rate <= 0) {
+      onStage?.("Generating...");
+    } else if (totalSteps) {
+      onStage?.(`Generating ${Math.min(totalSteps, Math.round(rate * totalSteps))}/${totalSteps}`);
+    } else {
+      onStage?.(`Generating ${Math.min(99, Math.round(rate * 100))}%...`);
+    }
   }
 
   const image = workflow?.steps?.[0]?.output?.images?.[0];
