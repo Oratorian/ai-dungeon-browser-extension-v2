@@ -57,7 +57,12 @@
           $settings.civitaiModel,
           prompt,
           $settings.imageGenRatio,
-          $settings.civitaiNegativePrompt,
+          {
+            negativePrompt: $settings.civitaiNegativePrompt,
+            steps: $settings.civitaiSteps,
+            cfgScale: $settings.civitaiCfgScale,
+            scheduler: $settings.civitaiScheduler,
+          },
           (s) => (stage = s)
         );
         dataUri = result.dataUri;

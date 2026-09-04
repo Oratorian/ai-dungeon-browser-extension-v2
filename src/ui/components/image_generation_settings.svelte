@@ -1,9 +1,10 @@
 <script lang="ts">
   import Field from "@/ui/components/field.svelte";
   import Switch from "@/ui/components/switch.svelte";
+  import Slider from "@/ui/components/slider.svelte";
   import { settings } from "@/storage";
   import { getRemainingCredit } from "@/media/openrouter";
-  import { verifyKey as verifyCivitaiKey, resolveModel, CivitaiError } from "@/media/civitai";
+  import { verifyKey as verifyCivitaiKey, resolveModel, CivitaiError, SCHEDULERS } from "@/media/civitai";
 
   // Provider, key and destination for prompt-based image generation. The generator itself lives on
   // each card's image list, since that is where a generated image is actually wanted.
@@ -29,6 +30,7 @@
   let resolveWarning = $state("");
   // A confirmed-bad base is stated plainly rather than hedged; an unrecognised one only cautions.
   let resolveBlocking = $state(false);
+  let appliedDefaults = $state("");
   let resolveError = $state("");
 
   async function lookup() {
@@ -36,11 +38,27 @@
     resolved = "";
     resolveWarning = "";
     resolveBlocking = false;
+    appliedDefaults = "";
     resolveError = "";
     try {
       const model = await resolveModel(modelLink);
       $settings.civitaiModel = model.air;
       resolved = `${model.name} (${model.version}), base ${model.baseModel}`;
+
+      // Adopt the settings the model's own samples were made with. A fine-tuned checkpoint often
+      // wants very different numbers from the generic default, and the author's are the best guess
+      // available without generating anything.
+      const { steps, cfgScale, scheduler } = model.defaults;
+      if (steps) $settings.civitaiSteps = steps;
+      if (cfgScale) $settings.civitaiCfgScale = cfgScale;
+      if (scheduler) $settings.civitaiScheduler = scheduler;
+      appliedDefaults = [
+        steps ? `${steps} steps` : null,
+        cfgScale ? `CFG ${cfgScale}` : null,
+        scheduler ? (SCHEDULERS.find((x) => x.value === scheduler)?.label ?? scheduler) : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
       // Still applied, since the list of supported bases is ours and will age, but worth saying
       // before a generation is paid for and then fails with no reason given.
       if (model.support === "unsupported") {
@@ -152,6 +170,35 @@
       bind:value={$settings.civitaiModel}
       class="bg-theme-neutral-100 w-full min-h-11 p-3 outline-0 rounded-xl text-xs font-mono"
     />
+  </Field>
+
+  {#if appliedDefaults}
+    <span class="text-xs text-theme-neutral-700">Adopted from this model's samples: {appliedDefaults}</span>
+  {/if}
+
+  <Field
+    label="Sampler"
+    info="Civitai combines the sampler and its noise schedule into one choice, so the Karras entries are the Karras schedule.<br>Set automatically from a model's sample images when they say."
+  >
+    <select
+      bind:value={$settings.civitaiScheduler}
+      class="bg-theme-neutral-100 w-full min-h-11 px-3 outline-0 rounded-xl text-sm"
+    >
+      {#each SCHEDULERS as scheduler (scheduler.value)}
+        <option value={scheduler.value}>{scheduler.label}</option>
+      {/each}
+    </select>
+  </Field>
+
+  <Field label="Steps" info="How many sampling steps. More is slower and costs more Buzz, with diminishing returns past roughly 30.">
+    <Slider bind:value={$settings.civitaiSteps} min={5} max={60} step={1} />
+  </Field>
+
+  <Field
+    label="CFG Scale"
+    info="How closely the image follows the prompt.<br>Low is loose and often more natural, high is literal and can look overcooked."
+  >
+    <Slider bind:value={$settings.civitaiCfgScale} min={1} max={20} step={1} />
   </Field>
 
   <Field label="Negative Prompt" info="Applied to every Civitai generation, for the things you never want in an image.">

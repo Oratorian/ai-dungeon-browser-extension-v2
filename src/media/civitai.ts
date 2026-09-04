@@ -46,6 +46,47 @@ const BUCKETS: Record<string, { width: number; height: number }> = {
   "3:4": { width: 896, height: 1152 },
 };
 
+/**
+ * Civitai's sampler list. It folds the sampler and its noise schedule into one value, so "DPM++ 2M"
+ * and "DPM++ 2M Karras" are separate entries rather than two fields.
+ */
+export const SCHEDULERS: { value: string; label: string }[] = [
+  { value: "eulerA", label: "Euler a" },
+  { value: "euler", label: "Euler" },
+  { value: "lms", label: "LMS" },
+  { value: "heun", label: "Heun" },
+  { value: "dpM2", label: "DPM2" },
+  { value: "dpM2A", label: "DPM2 a" },
+  { value: "dpM2SA", label: "DPM++ 2S a" },
+  { value: "dpM2M", label: "DPM++ 2M" },
+  { value: "dpmsde", label: "DPM++ SDE" },
+  { value: "dpmFast", label: "DPM fast" },
+  { value: "dpmAdaptive", label: "DPM adaptive" },
+  { value: "lmsKarras", label: "LMS Karras" },
+  { value: "dpM2Karras", label: "DPM2 Karras" },
+  { value: "dpM2AKarras", label: "DPM2 a Karras" },
+  { value: "dpM2SAKarras", label: "DPM++ 2S a Karras" },
+  { value: "dpM2MKarras", label: "DPM++ 2M Karras" },
+  { value: "dpmsdeKarras", label: "DPM++ SDE Karras" },
+  { value: "ddim", label: "DDIM" },
+  { value: "plms", label: "PLMS" },
+  { value: "uniPC", label: "UniPC" },
+  { value: "lcm", label: "LCM" },
+  { value: "ddpm", label: "DDPM" },
+  { value: "deis", label: "DEIS" },
+];
+
+/**
+ * Maps a sampler name as written in image metadata ("DPM++ 2M Karras") onto Civitai's enum value.
+ * Comparing with punctuation and case stripped is enough, because the enum names are the same words.
+ */
+function schedulerFrom(name: unknown): string | undefined {
+  if (typeof name !== "string") return undefined;
+  const flatten = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const target = flatten(name);
+  return SCHEDULERS.find((s) => flatten(s.value) === target || flatten(s.label) === target)?.value;
+}
+
 export function dimensionsFor(aspectRatio: string) {
   return BUCKETS[aspectRatio] ?? BUCKETS["1:1"];
 }
@@ -114,12 +155,19 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  *
  * `onStage` reports progress, since this routinely takes a minute and a silent button looks broken.
  */
+export type CivitaiParams = {
+  negativePrompt?: string;
+  steps?: number;
+  cfgScale?: number;
+  scheduler?: string;
+};
+
 export async function generateWithCivitai(
   key: string,
   model: string,
   prompt: string,
   aspectRatio: string,
-  negativePrompt = "",
+  params: CivitaiParams = {},
   onStage?: (stage: string) => void
 ): Promise<CivitaiResult> {
   if (!key.trim()) throw new CivitaiError("Add your Civitai API key first.");
@@ -146,13 +194,14 @@ export async function generateWithCivitai(
             model,
             quantity: 1,
             prompt,
-            ...(negativePrompt.trim() ? { negativePrompt } : {}),
-            scheduler: "EulerA",
-            steps: 20,
-            cfgScale: 7,
+            // Anything omitted is filled in by Civitai's own defaults, which is better than sending
+            // a guess of our own.
+            ...(params.negativePrompt?.trim() ? { negativePrompt: params.negativePrompt } : {}),
+            ...(params.scheduler ? { scheduler: params.scheduler } : {}),
+            ...(params.steps ? { steps: params.steps } : {}),
+            ...(params.cfgScale ? { cfgScale: params.cfgScale } : {}),
             width,
             height,
-            clipSkip: 2,
           },
         },
       ],
@@ -264,6 +313,12 @@ export type ResolvedModel = {
   type: string;
   /** Whether this base is known to generate. See GenerationSupport. */
   support: GenerationSupport;
+  /**
+   * The settings the model's own sample images were made with, where they agree. These are the
+   * author's numbers rather than a house default, which for a fine-tuned checkpoint is usually the
+   * difference between a good image and a muddy one.
+   */
+  defaults: { steps?: number; cfgScale?: number; scheduler?: string };
 };
 
 /**
@@ -322,12 +377,40 @@ export async function resolveModel(input: string): Promise<ResolvedModel> {
   const baseModel = version?.baseModel ?? "Unknown";
 
   return {
+    defaults: defaultsFromSamples(version?.images),
     air,
     name: version?.model?.name ?? "Unknown model",
     version: version?.name ?? "",
     baseModel,
     type,
     support: supportFor(baseModel),
+  };
+}
+
+/**
+ * Reads generation settings off a version's sample images, taking the most common value for each.
+ * Most images carry the parameters they were made with; some carry a raw workflow dump instead,
+ * which has no such fields and is simply skipped.
+ */
+function defaultsFromSamples(images: unknown): { steps?: number; cfgScale?: number; scheduler?: string } {
+  if (!Array.isArray(images)) return {};
+
+  const commonest = <T>(values: T[]): T | undefined => {
+    const counts = new Map<T, number>();
+    for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  };
+
+  const metas = images.map((i: any) => i?.meta).filter((m: any) => m && typeof m === "object");
+
+  const steps = commonest(metas.map((m: any) => m.steps).filter((v: any) => typeof v === "number" && v > 0));
+  const cfgScale = commonest(metas.map((m: any) => m.cfgScale).filter((v: any) => typeof v === "number" && v > 0));
+  const scheduler = commonest(metas.map((m: any) => schedulerFrom(m.sampler)).filter(Boolean) as string[]);
+
+  return {
+    ...(steps ? { steps } : {}),
+    ...(cfgScale ? { cfgScale } : {}),
+    ...(scheduler ? { scheduler } : {}),
   };
 }
 

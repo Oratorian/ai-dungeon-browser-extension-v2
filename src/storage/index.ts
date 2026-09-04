@@ -67,6 +67,11 @@ const defaultSettings = {
   civitaiKey: "",
   civitaiModel: "urn:air:sdxl:checkpoint:civitai:101055@128078",
   civitaiNegativePrompt: "blurry, watermark, text, lowres",
+  // Used when a model publishes no sample metadata to copy. Civitai exposes no "beta" noise schedule,
+  // only plain and Karras variants, so Euler a is as close as its API allows.
+  civitaiSteps: 30,
+  civitaiCfgScale: 5,
+  civitaiScheduler: "eulerA",
   // GitHub repos to browse for shared adventure/scenario exports in the import dialog. Each entry
   // is a "owner/repo" or a github.com URL (optionally a /tree/<branch>/<subpath> URL). See github.ts.
   scenarioRepos: [] as string[],
