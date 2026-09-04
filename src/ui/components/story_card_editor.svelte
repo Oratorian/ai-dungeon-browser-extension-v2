@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Dialog } from "bits-ui";
+  import { STORY_CARD_TYPES } from "@/shared/card_types";
   import { Storage } from "@/storage";
   import { AudioManager } from "@/audio/manager";
   import type { Adventure, StoryCard } from "@/shared/types";
@@ -29,14 +30,8 @@
   let preset = $state<string>("default");
   let audioClips = $state<string[]>([]);
 
-  const storyCardTypes = [
-    { value: "character", label: "Character", icon: "sentiment_excited" },
-    { value: "location", label: "Location", icon: "explore" },
-    { value: "race", label: "Race", icon: "skull" },
-    { value: "item", label: "Item", icon: "apparel" },
-    { value: "faction", label: "Faction", icon: "sword_rose" },
-    { value: "event", label: "Event", icon: "domino_mask" },
-  ];
+  // Shared with the Adventure tab's grouping, see shared/card_types.ts.
+  const storyCardTypes = STORY_CARD_TYPES;
 
   function ensureArray(value: unknown): string[] {
     if (Array.isArray(value)) return value;
