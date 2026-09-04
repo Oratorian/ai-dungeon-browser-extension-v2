@@ -13,6 +13,10 @@
   /* Storage */
   import { settings } from "@/storage";
 
+  /* Other */
+  import { extensionState, type SettingsSection } from "@/shared/state.svelte";
+  import { fade } from "svelte/transition";
+
   // Two groups, split by what a setting acts on rather than by what it happens to be called:
   //
   //  - "Extension" is the extension's own behaviour and upkeep. Nothing here changes what your story
@@ -23,6 +27,11 @@
   // only to cards: it is part of the same rendering pass, and someone hunting for it will look
   // alongside the other things that change how the story reads.
 
+  const sections: { id: SettingsSection; icon: string; label: string }[] = [
+    { id: "extension", icon: "extension", label: "Extension" },
+    { id: "cards", icon: "sticker", label: "Story Cards" },
+  ];
+
   // Send the floating button back to its default corner, for when it has been parked somewhere
   // awkward (or off the edge of a screen that has since gotten smaller).
   function resetFloatingPosition() {
@@ -30,6 +39,23 @@
   }
 </script>
 
+<div class="flex gap-1 p-1 bg-theme-neutral-200 rounded-xl">
+  {#each sections as section (section.id)}
+    {@const active = extensionState.settingsSection === section.id}
+    <button
+      onclick={() => (extensionState.settingsSection = section.id)}
+      class="flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors {active
+        ? 'bg-theme-neutral-0 text-pretty-theme font-bold'
+        : 'text-theme-neutral-800 hover:bg-theme-neutral-300'}"
+    >
+      <span class="font-symbol text-lg">{section.icon}</span>
+      {section.label}
+    </button>
+  {/each}
+</div>
+
+{#if extensionState.settingsSection === "extension"}
+<div in:fade={{ duration: 120 }} class="flex flex-col gap-4">
 <Field label="Extension">
   <Item foldout icon="drag_pan" label="Floating Button">
     <Field
@@ -77,7 +103,9 @@
     <Diagnostics />
   </Item>
 </Field>
-
+</div>
+{:else}
+<div in:fade={{ duration: 120 }} class="flex flex-col gap-4">
 <Field label="Story Cards">
   <Item foldout icon="sticker" label="Icons">
     <Field label="Size" info="Icon size in pixels">
@@ -160,3 +188,5 @@
     <AudioLibrary />
   </Item>
 </Field>
+</div>
+{/if}
