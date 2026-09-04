@@ -56,9 +56,32 @@ jobs:
           echo "Release artifacts:"
           ls -la dist/
 
+      - name: Extract this version's changelog section
+        id: notes
+        # Pulls the "## v<version>" section out of CHANGELOG.md to use as the release body, so the
+        # release says what changed in prose instead of listing commit subjects. If the tag has no
+        # section (someone tagged without writing one), fall back to the generated notes rather than
+        # publishing an empty release.
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          awk -v tag="$tag" '
+            /^## v/ { if (found) exit; if ($2 == tag) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > release-body.md
+
+          if [ -s release-body.md ]; then
+            echo "Using the CHANGELOG.md section for $tag"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No '## $tag' section in CHANGELOG.md; falling back to generated notes."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
-          generate_release_notes: true
+          body_path: ${{ steps.notes.outputs.found == 'true' && 'release-body.md' || '' }}
+          generate_release_notes: ${{ steps.notes.outputs.found != 'true' }}
           fail_on_unmatched_files: true
