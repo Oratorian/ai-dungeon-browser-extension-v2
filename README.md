@@ -108,8 +108,8 @@ If something looks wrong, **Settings → Support → Diagnostics** will usually 
 - **Multiple Media**: Up to 6 icons and 4 graphics per card, with cycling support
 - **Trinetra image hosting**: Browse your own uploaded images with an API key and insert them as links,
   which keeps exports small
-- **Generate images from a prompt**: With your own OpenRouter key, generate a card's icon or portrait
-  and either upload it to Trinetra or keep it in the card, compressed
+- **Generate images from a prompt**: With your own OpenRouter or Civitai key, generate a card's icon or
+  portrait and either upload it to Trinetra or keep it in the card, compressed
 - **Customization Options**:
   - Icon size, roundness, and border thickness
   - Global or per-card custom colors
@@ -262,10 +262,12 @@ contacted unless you use its optional feature:
   never fetched from anywhere. If you use Browse Trinetra, your API key is stored locally (in
   `chrome.storage.local`, unencrypted like all extension data) so you do not have to re-enter it;
   remove it any time with **Sign out**.
-- **Image generation** (`openrouter.ai`): only if you add your own OpenRouter API key. Your prompt and
-  the chosen model are sent to OpenRouter, generations are billed to your account, and the key is
-  stored locally (in `chrome.storage.local`, unencrypted like all extension data). A generated image
-  is either uploaded to Trinetra or compressed into the card, whichever you pick.
+- **Image generation** (`openrouter.ai`, `orchestration.civitai.com`): only if you add your own API key
+  for whichever provider you pick. Your prompt and the chosen model are sent to that provider,
+  generations are billed to your own account (dollars on OpenRouter, Buzz on Civitai), and the key is
+  stored locally (in `chrome.storage.local`, unencrypted like all extension data). A generated image is
+  either uploaded to Trinetra or compressed into the card, whichever you pick. Only the provider you
+  have configured is ever contacted.
 - **Pixabay audio** (`pixabay.com`, `cdn.pixabay.com`): a pasted Pixabay sound-effect page URL is
   fetched once to read its public audio link, and the royalty-free audio is streamed from Pixabay's CDN
   when the clip plays.

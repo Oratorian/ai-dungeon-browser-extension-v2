@@ -1,6 +1,7 @@
 <script lang="ts">
   import { settings } from "@/storage";
-  import { generateImage, getRemainingCredit, ASPECT_RATIOS, OpenRouterError } from "@/media/openrouter";
+  import { generateImage as generateViaOpenRouter, getRemainingCredit, ASPECT_RATIOS, OpenRouterError } from "@/media/openrouter";
+  import { generateImage as generateViaCivitai, CivitaiError } from "@/media/civitai";
   import { uploadImage, TrinetraError } from "@/media/trinetra";
   import { compressInlineImage } from "@/media/compress";
 
@@ -25,9 +26,13 @@
   let error = $state("");
   let preview = $state<string | null>(null);
   let cost = $state<number | null>(null);
+  let buzz = $state<number | null>(null);
   let credit = $state<number | null | undefined>(undefined);
 
-  const hasKey = $derived($settings.imageGenKey.trim().length > 0);
+  const civitai = $derived($settings.imageGenProvider === "civitai");
+  const hasKey = $derived(
+    (civitai ? $settings.civitaiKey : $settings.imageGenKey).trim().length > 0
+  );
   const canUpload = $derived($settings.trinetraApiKey.trim().length > 0);
   // Uploading needs a Trinetra key as well; fall back to inline rather than failing at the end.
   const willUpload = $derived($settings.imageGenUpload && canUpload);
@@ -38,25 +43,44 @@
     error = "";
     preview = null;
     cost = null;
+    buzz = null;
     stage = "Generating...";
 
     try {
-      const result = await generateImage($settings.imageGenKey, $settings.imageGenModel, prompt, $settings.imageGenRatio);
-      cost = result.cost;
+      let dataUri: string;
+
+      if (civitai) {
+        // Asynchronous and priced in Buzz, so it reports its own stage as it goes.
+        const result = await generateViaCivitai(
+          $settings.civitaiKey,
+          $settings.civitaiModel,
+          prompt,
+          $settings.imageGenRatio,
+          $settings.civitaiNegativePrompt,
+          (s) => (stage = s)
+        );
+        dataUri = result.dataUri;
+        buzz = result.buzz;
+      } else {
+        const result = await generateViaOpenRouter(
+          $settings.imageGenKey,
+          $settings.imageGenModel,
+          prompt,
+          $settings.imageGenRatio
+        );
+        dataUri = result.dataUri;
+        cost = result.cost;
+      }
 
       let stored: string;
       if (willUpload) {
         stage = "Uploading to Trinetra...";
-        const uploaded = await uploadImage(
-          $settings.trinetraApiKey,
-          result.dataUri,
-          `generated-${Date.now()}.png`
-        );
+        const uploaded = await uploadImage($settings.trinetraApiKey, dataUri, `generated-${Date.now()}.png`);
         stored = uploaded.url;
       } else {
         stage = "Compressing...";
         stored = await compressInlineImage(
-          result.dataUri,
+          dataUri,
           square ? $settings.compressionResolutionIcon : $settings.compressionResolutionGraphic,
           $settings.compressionQuality,
           square
@@ -65,9 +89,10 @@
 
       preview = stored;
       // Refreshing the balance is a courtesy, never a reason to fail after a paid generation.
-      credit = await getRemainingCredit($settings.imageGenKey);
+      // Civitai's consumer API exposes no balance, so this is OpenRouter only.
+      if (!civitai) credit = await getRemainingCredit($settings.imageGenKey);
     } catch (e) {
-      if (e instanceof OpenRouterError || e instanceof TrinetraError) error = e.message;
+      if (e instanceof OpenRouterError || e instanceof CivitaiError || e instanceof TrinetraError) error = e.message;
       else error = e instanceof Error ? e.message : String(e);
     } finally {
       busy = false;
@@ -86,8 +111,8 @@
 <div class="flex flex-col gap-2">
   {#if !hasKey}
     <span class="text-xs text-theme-neutral-700">
-      Add an OpenRouter API key under <b>Settings &rsaquo; Extension &rsaquo; Image Generation</b> to generate images
-      from a prompt. Generations are billed to your own OpenRouter account.
+      Add a {civitai ? "Civitai" : "OpenRouter"} API key under <b>Settings &rsaquo; Extension &rsaquo; Image Generation</b>
+      to generate images from a prompt. Generations are billed to your own account.
     </span>
   {:else}
     <textarea
@@ -138,6 +163,7 @@
         <div class="flex flex-col gap-1 min-w-0 flex-1">
           <span class="text-xs text-theme-neutral-700">
             {#if cost !== null}Cost ${cost.toFixed(4)}{/if}
+            {#if buzz !== null}{buzz} Buzz{/if}
             {#if credit !== undefined}
               {cost !== null ? " · " : ""}{credit === null ? "Unlimited credit" : `$${credit.toFixed(2)} left`}
             {/if}

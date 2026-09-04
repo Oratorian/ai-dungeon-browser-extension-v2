@@ -157,7 +157,7 @@
         <span class="font-symbol text-base">photo_library</span>
         Browse Trinetra
       </button>
-      {#if $settings.imageGenKey.trim()}
+      {#if ($settings.imageGenProvider === "civitai" ? $settings.civitaiKey : $settings.imageGenKey).trim()}
         <button
           onclick={startGenerate}
           class="flex items-center gap-2 px-3 py-2 text-sm text-theme-neutral-800 bg-theme-neutral-100 hover:bg-theme-neutral-300 rounded-lg transition-colors"

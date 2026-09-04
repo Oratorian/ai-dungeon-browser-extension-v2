@@ -54,10 +54,19 @@ const defaultSettings = {
   // Image generation through OpenRouter (media/openrouter.ts). The key is the user's own and pays for
   // their own generations. `imageGenUpload` chooses where a result lands: true uploads it to Trinetra
   // and stores only the link, false compresses it into the card like any other local image.
-  imageGenKey: "",
-  imageGenModel: "google/gemini-2.5-flash-image-preview",
+  imageGenProvider: "openrouter" as "openrouter" | "civitai",
   imageGenRatio: "1:1",
   imageGenUpload: false,
+
+  // OpenRouter: one call returns the image. Model default matches upstream's stored default rather
+  // than the -preview alias, which is the sort of thing that gets retired and breaks first run.
+  imageGenKey: "",
+  imageGenModel: "google/gemini-2.5-flash-image",
+
+  // Civitai: asynchronous, priced in Buzz, and addressed by AIR rather than a plain model name.
+  civitaiKey: "",
+  civitaiModel: "urn:air:sdxl:checkpoint:civitai:101055@128078",
+  civitaiNegativePrompt: "blurry, watermark, text, lowres",
   // GitHub repos to browse for shared adventure/scenario exports in the import dialog. Each entry
   // is a "owner/repo" or a github.com URL (optionally a /tree/<branch>/<subpath> URL). See github.ts.
   scenarioRepos: [] as string[],
