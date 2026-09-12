@@ -29,10 +29,13 @@ export default defineConfig({
     },
     // Named hosts for the optional remote-media / remote-import features:
     //  - trinetra.mahesvara.cloud: story-card images (API + downloads + generated-image uploads)
-    //  - openrouter.ai: optional image generation from a prompt, with the user's own API key
-    //  - orchestration(-new).civitai.com: the same, via Civitai. The second host serves the
-    //    finished image blob, which is downloaded before its URL expires.
-    //  - civitai.com/api: public model lookup, to turn a model link into the AIR a job needs
+    //
+    // Deliberately NOT listed: openrouter.ai and the civitai.com hosts used for image generation.
+    // Those are only ever called from the content script, and a content script's fetch is
+    // governed by the page's CORS rules regardless of host permissions (Chrome MV3 enforces this;
+    // Firefox follows CORS when no permission matches). All of them send permissive CORS headers,
+    // verified against their preflights, so the calls work without a permission, and listing one
+    // would only make every user approve a warning on update for a feature most never enable.
     //  - pixabay.com: resolve a sound-effect page URL to its direct audio link (JSON-LD)
     //  - cdn.pixabay.com: stream the royalty-free ambient audio
     //  - api.github.com: list a scenario repo's .json files (git tree + latest release assets)
@@ -44,10 +47,6 @@ export default defineConfig({
     // Firefox does not allow permissions.request().
     host_permissions: [
       "https://trinetra.mahesvara.cloud/*",
-      "https://openrouter.ai/*",
-      "https://civitai.com/api/*",
-      "https://orchestration.civitai.com/*",
-      "https://orchestration-new.civitai.com/*",
       "https://pixabay.com/*",
       "https://cdn.pixabay.com/*",
       "https://api.github.com/*",
