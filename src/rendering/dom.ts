@@ -109,7 +109,9 @@ export class DOM {
     // Story response types are very tricky. You can't simply hide the first child elements because they do not have any. They're just spans with text inside.
     if (type === ResponseType.Story) {
       const originalHtml = element.innerHTML; // Grab the inner HTML directly.
-      element.innerHTML = ""; // Clear the old unstyled stuff.
+      // Cleared with replaceChildren rather than by assigning an empty string, which AMO's linter
+      // flags as an unsafe innerHTML write on every build even though nothing dynamic is involved.
+      element.replaceChildren();
       const component = mount(Response, {
         target: element,
         props: { rawHtml: originalHtml, type: type },

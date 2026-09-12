@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Tooltip } from "bits-ui";
-  import DOMPurify from "dompurify";
+  import { safeHtml } from "@/ui/actions/safe_html";
 
   // A labelled row. When `info` is given the label carries the explanation, and only the label opens
   // it.
@@ -20,9 +20,6 @@
 
   let { label, info, children }: Props = $props();
 
-  // `info` is developer-authored and may contain simple formatting HTML (<b>, <br>, <code>...).
-  // Sanitize before rendering so this {@html} sink stays safe if `info` ever becomes dynamic.
-  let safeInfo = $derived(info ? DOMPurify.sanitize(info) : "");
 </script>
 
 <div class="flex flex-col w-full h-fit gap-2">
@@ -45,11 +42,12 @@
           collisionPadding={12}
           class="animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--bits-tooltip-content-transform-origin) z-50"
         >
+          <!-- `info` is developer-authored and may carry simple formatting (<b>, <br>, <code>). It is
+               still sanitised on the way in, so this stays safe if `info` ever becomes dynamic. -->
           <div
+            use:safeHtml={{ html: info }}
             class="bg-theme-neutral-100 shadow-popover outline-hidden block text-start p-4 text-sm font-medium rounded-xl max-w-80"
-          >
-            {@html safeInfo}
-          </div>
+          ></div>
         </Tooltip.Content>
       </Tooltip.Root>
     </Tooltip.Provider>

@@ -5,6 +5,7 @@
   import { parseResponse } from "@/rendering/parser";
   import Highlight from "./highlight.svelte";
   import Focus from "./focus.svelte";
+  import { safeHtml } from "@/ui/actions/safe_html";
 
   /* Storage */
   import { settings } from "@/storage";
@@ -44,18 +45,18 @@
       {#if chunk.card.limit === "none" || (type === ResponseType.Action && (chunk.card.limit === "action_only" || (chunk.card.limit === "protagonist" && i === 0))) || (type !== ResponseType.Action && chunk.card.limit === "story_only")}
         <Highlight card={chunk.card} text={chunk.content} />
       {:else}
-        {@html chunk.content}
+        <span use:safeHtml={{ html: chunk.content, config: SANITIZE_CONFIG }}></span>
       {/if}
     {:else if chunk.type === "bold"}
-      <b>{@html chunk.content}</b>
+      <b use:safeHtml={{ html: chunk.content, config: SANITIZE_CONFIG }}></b>
     {:else if chunk.type === "italic"}
-      <em>{@html chunk.content}</em>
+      <em use:safeHtml={{ html: chunk.content, config: SANITIZE_CONFIG }}></em>
     {:else if chunk.type === "underline"}
-      <u>{@html chunk.content}</u>
+      <u use:safeHtml={{ html: chunk.content, config: SANITIZE_CONFIG }}></u>
     {:else if chunk.type === "strikethrough"}
-      <s>{@html chunk.content}</s>
+      <s use:safeHtml={{ html: chunk.content, config: SANITIZE_CONFIG }}></s>
     {:else}
-      {@html chunk.content}
+      <span use:safeHtml={{ html: chunk.content, config: SANITIZE_CONFIG }}></span>
     {/if}
   {/each}
 </span>
