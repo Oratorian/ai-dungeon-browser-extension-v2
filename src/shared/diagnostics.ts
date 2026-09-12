@@ -7,6 +7,7 @@ import { aidDetected } from "@/aid/bridge";
 import { capturedErrors } from "@/shared/errors";
 import { versionInfo } from "@/shared/version";
 import { parseResponse } from "@/rendering/parser";
+import { adventureKey, LEGACY_ADVENTURES_KEY } from "@/storage/persist";
 
 // Builds the report behind Settings > Support > Diagnostics.
 //
@@ -120,12 +121,20 @@ function formatBytes(bytes: number): string {
   return bytes < 1024 * 1024 ? Math.round(bytes / 1024) + " KB" : (bytes / 1024 / 1024).toFixed(1) + " MB";
 }
 
-type Usage = { total: number; parts: string[] };
+type Usage = {
+  total: number;
+  parts: string[];
+  /** How adventures are laid out on disk, and whether the old single blob is still around. */
+  layout: string;
+  legacyBytes: number;
+};
 
 /**
- * Extension storage in use, broken down by key. The breakdown matters because the total alone does
- * not say what to delete: images and audio pasted in as data URIs live inside `adventures` and
- * `audioLibrary` and dwarf everything else. Null where the browser does not expose the API.
+ * Extension storage in use, broken down by what matters. Adventures are one key each (see
+ * storage/persist.ts), so their share is summed over those keys using the ids the store already
+ * holds, which avoids re-reading every adventure just to measure it. The old single "adventures"
+ * blob is measured too: it should be gone after the first load on 2.1, and if it is not, the
+ * migration did not finish. Null where the browser does not expose the API.
  */
 async function storageUsage(): Promise<Usage | null> {
   try {
@@ -133,13 +142,21 @@ async function storageUsage(): Promise<Usage | null> {
     if (typeof area.getBytesInUse !== "function") return null;
 
     const total = await area.getBytesInUse(null);
+    const ids = Object.keys(get(Storage.adventures));
+    const adventureBytes = ids.length > 0 ? await area.getBytesInUse(ids.map(adventureKey)) : 0;
+    const audioBytes = await area.getBytesInUse(["audioLibrary"]);
+    const legacyBytes = await area.getBytesInUse([LEGACY_ADVENTURES_KEY]);
+
     const parts: string[] = [];
-    for (const key of ["adventures", "audioLibrary"]) {
-      const bytes = await area.getBytesInUse([key]);
-      // Only worth a line once it is a real share of the total; otherwise it is noise.
-      if (bytes > 1024 * 1024) parts.push(key + " " + formatBytes(bytes));
-    }
-    return { total, parts };
+    // Only worth a line once it is a real share of the total; otherwise it is noise.
+    if (adventureBytes > 1024 * 1024) parts.push("adventures " + formatBytes(adventureBytes));
+    if (audioBytes > 1024 * 1024) parts.push("audio " + formatBytes(audioBytes));
+
+    const layout =
+      ids.length + " adventure" + (ids.length === 1 ? "" : "s") + ", one key each" +
+      (legacyBytes > 0 ? ", OLD BLOB STILL PRESENT (" + formatBytes(legacyBytes) + ")" : "");
+
+    return { total, parts, layout, legacyBytes };
   } catch {
     return null;
   }
@@ -315,6 +332,7 @@ export async function collectDiagnostics(): Promise<string> {
   detail.push(row("focus / markdown", (cfg.highlightFocus ? "on" : "off") + " / " + (cfg.highlightMarkdown ? "on" : "off")));
   if (usage) {
     detail.push(row("storage in use", formatBytes(usage.total) + (usage.parts.length > 0 ? " (" + usage.parts.join(", ") + ")" : "")));
+    detail.push(row("storage layout", usage.layout));
   }
   if (version.latest) detail.push(row("latest release", version.latest + (version.updateAvailable ? " (UPDATE AVAILABLE)" : "")));
 
@@ -478,6 +496,16 @@ export async function collectDiagnostics(): Promise<string> {
         text: "AI Dungeon sent story cards (" + tap.withStoryCards + " responses) but the extension could not read them. That is a bug in the extension, please report this line.",
       });
     }
+  }
+
+  // Both layouts present means the one-time migration wrote the new keys but did not get to remove
+  // the blob. Harmless (the per-adventure copy wins on load) but it doubles the space, and the
+  // next load retries it, so a reload is the fix.
+  if (usage && usage.legacyBytes > 0) {
+    findings.push({
+      level: "warn",
+      text: "The old single-blob adventure store is still on disk next to the new per-adventure keys, so the storage migration did not finish. Reload the page once; if this line stays, report it.",
+    });
   }
 
   if (usage && usage.total > 50 * 1024 * 1024) {
