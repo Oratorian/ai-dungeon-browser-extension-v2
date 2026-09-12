@@ -18,6 +18,15 @@ export default defineConfig({
     name: "Dungeon Extension v2 Resurrected",
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
     permissions: ["storage", "unlimitedStorage"],
+    // Keyboard shortcut to open the editor. The browser delivers it to the background, which
+    // relays it to the active tab (see background.ts and content.ts). Users can rebind it in
+    // the browser's extension shortcut settings.
+    commands: {
+      "open-editor": {
+        suggested_key: { default: "Alt+Shift+D" },
+        description: "Open the Dungeon Extension editor",
+      },
+    },
     // Named hosts for the optional remote-media / remote-import features:
     //  - trinetra.mahesvara.cloud: story-card images (API + downloads + generated-image uploads)
     //  - openrouter.ai: optional image generation from a prompt, with the user's own API key

@@ -28,6 +28,15 @@ function toBase64(buf: ArrayBuffer): string {
 }
 
 export default defineBackground(() => {
+  // Keyboard shortcut (manifest `commands`). Shortcuts arrive here, not in the page, so tell the
+  // active tab's content script to open the editor. A tab without our script (not AI Dungeon)
+  // rejects the message, which is the correct outcome and is swallowed.
+  browser.commands.onCommand.addListener(async (command) => {
+    if (command !== "open-editor") return;
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id != null) browser.tabs.sendMessage(tab.id, { type: "de-open-editor" }).catch(() => {});
+  });
+
   browser.runtime.onConnect.addListener((port) => {
     if (port.name !== "bg-fetch") return;
 

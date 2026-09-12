@@ -70,5 +70,10 @@ export default defineContentScript({
     });
     ui.mount();
     Debug.log("Shadow root UI mounted!");
+
+    // The keyboard shortcut is delivered to the background and relayed here (see background.ts).
+    browser.runtime.onMessage.addListener((message: unknown) => {
+      if ((message as { type?: string } | null)?.type === "de-open-editor") extensionState.isEditorOpen = true;
+    });
   },
 });
