@@ -25,7 +25,7 @@
     "tailwindcss-animate": "^1.0.7",
     "tslib": "^2.8.1",
     "typescript": "^5.9.3",
-    "wxt": "^0.20.6"
+    "wxt": "^0.21.4"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
@@ -34,5 +34,10 @@
     "dompurify": "^3.3.1",
     "phosphor-svelte": "^3.0.1",
     "tailwindcss": "^4.1.18"
+  },
+  "allowScripts": {
+    "@parcel/watcher@2.5.6": true,
+    "esbuild@0.27.7": true,
+    "spawn-sync@1.0.15": true
   }
 }
