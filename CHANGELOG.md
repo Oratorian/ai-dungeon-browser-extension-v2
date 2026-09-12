@@ -43,7 +43,7 @@ Adventure tab restores it, keeping ids so links survive.
 
 ### ⌨️ Keyboard shortcut
 
-**Alt+Shift+D** opens the editor. Rebindable in your browser's extension shortcut settings.
+**Ctrl+Shift+L** opens the editor. Rebindable in your browser's extension shortcut settings.
 
 ### 🖼️ Trinetra: key in Settings, picker remembers your folder
 

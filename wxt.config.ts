@@ -21,9 +21,16 @@ export default defineConfig({
     // Keyboard shortcut to open the editor. The browser delivers it to the background, which
     // relays it to the active tab (see background.ts and content.ts). Users can rebind it in
     // the browser's extension shortcut settings.
+    //
+    // Ctrl+Shift+L because it is unassigned in Firefox and Chrome on every platform. The first
+    // choice, Alt+Shift+D, worked in Chrome and not in Firefox: on Windows and Linux, Firefox
+    // uses Alt+Shift as the modifier for page access keys, so any Alt+Shift+<letter> is contested
+    // by the page, and what reached the user was a bare Alt press toggling the menu bar. Chrome
+    // uses plain Alt for access keys, which is why the same combo was free there. Do not pick an
+    // Alt+Shift default again.
     commands: {
       "open-editor": {
-        suggested_key: { default: "Alt+Shift+D" },
+        suggested_key: { default: "Ctrl+Shift+L" },
         description: "Open the Dungeon Extension editor",
       },
     },
