@@ -22,12 +22,13 @@ export default defineConfig({
     // relays it to the active tab (see background.ts and content.ts). Users can rebind it in
     // the browser's extension shortcut settings.
     //
-    // Ctrl+Shift+L because it is unassigned in Firefox and Chrome on every platform. The first
-    // choice, Alt+Shift+D, worked in Chrome and not in Firefox: on Windows and Linux, Firefox
-    // uses Alt+Shift as the modifier for page access keys, so any Alt+Shift+<letter> is contested
-    // by the page, and what reached the user was a bare Alt press toggling the menu bar. Chrome
-    // uses plain Alt for access keys, which is why the same combo was free there. Do not pick an
-    // Alt+Shift default again.
+    // Ctrl+Shift+L because it is unassigned in Firefox and Chrome on every platform. Nothing more
+    // than that: the first choice, Alt+Shift+D, was thought to conflict with something in Firefox
+    // when it registered but did not fire in a temporary-add-on session, yet binding the identical
+    // combo by hand in "Manage Extension Shortcuts" made it work, so the combo was never at fault.
+    // A shortcut loaded through about:debugging can apparently show as registered without a live
+    // listener until it is set by hand; a store install binds the default at install time. Test
+    // shortcut changes with a real install, not a temporary one.
     commands: {
       "open-editor": {
         suggested_key: { default: "Ctrl+Shift+L" },
