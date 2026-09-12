@@ -1,6 +1,7 @@
 import type { Adventure, AudioClip, StoryCard } from "@/shared/types";
 import { get, writable, type Writable } from "svelte/store";
 import { OPENROUTER_DEFAULT_MODEL } from "@/media/openrouter";
+import { planAidSync, type IncomingCard } from "@/aid/sync";
 import { Debug } from "@/shared/debug";
 import { untrack } from "svelte";
 
@@ -147,6 +148,7 @@ function normalizeStoryCard(card: unknown): StoryCard | null {
     limit: typeof c.limit === "string" ? c.limit : "none",
     preset: typeof c.preset === "string" ? c.preset : "default",
     audioClips: ensureArray(c.audioClips),
+    aidId: typeof c.aidId === "string" ? c.aidId : undefined,
   };
 }
 
@@ -423,56 +425,41 @@ export class Storage {
   }
 
   /**
-   * Bulk-imports story cards captured from AI Dungeon into an adventure. Only name/type/triggers are
-   * set (the rest get the usual card defaults). Cards whose name already exists in the target are
-   * skipped (case-insensitive), as are duplicate names within the incoming batch. Returns how many
-   * were added and how many were skipped.
+   * Folds story cards captured from AI Dungeon into an adventure. New cards are created with the
+   * usual defaults; cards already present are updated in place, matched by AI Dungeon's id or by
+   * name, touching only the fields AI Dungeon owns (name, type, triggers) so icons, portraits, audio
+   * and colours survive a re-import. See aid/sync.ts for the rules. Returns what happened, for the
+   * Import tab to report.
    */
   static importStoryCards(
     adventureId: string,
-    cards: { name: string; type: string; triggers: string }[]
-  ): { imported: number; skipped: number } {
+    cards: IncomingCard[]
+  ): { imported: number; updated: number; skipped: number } {
     const adventure = this.getAdventureById(adventureId);
-    if (!adventure) return { imported: 0, skipped: 0 };
+    if (!adventure) return { imported: 0, updated: 0, skipped: 0 };
 
-    const existingNames = new Set(Object.values(adventure.storyCards).map((c) => c.name.trim().toLowerCase()));
+    const plan = planAidSync(Object.values(adventure.storyCards), cards);
 
-    const additions: Record<string, StoryCard> = {};
-    let imported = 0;
-    let skipped = 0;
-
-    for (const card of cards) {
-      const name = card.name.trim();
-      const key = name.toLowerCase();
-      if (!name || existingNames.has(key)) {
-        skipped++;
-        continue;
-      }
-      existingNames.add(key); // also de-dupe within this batch
-
+    const next: Record<string, StoryCard> = { ...adventure.storyCards };
+    for (const [id, changes] of Object.entries(plan.updates)) {
+      const current = next[id];
+      if (current) next[id] = { ...current, ...changes };
+    }
+    for (const addition of plan.additions) {
       const id = crypto.randomUUID();
-      additions[id] = {
-        id,
-        name,
-        triggers: card.triggers ?? "",
-        type: card.type || "character",
-        ...this.defaultStoryCardFields(),
-      };
-      imported++;
+      next[id] = { id, ...addition, ...this.defaultStoryCardFields() };
     }
 
-    if (imported > 0) {
+    const updated = Object.keys(plan.updates).length;
+    if (plan.additions.length > 0 || updated > 0) {
       this.adventures.update((adventures) => {
         const adv = adventures[adventureId];
         if (!adv) return adventures;
-        return {
-          ...adventures,
-          [adventureId]: { ...adv, storyCards: { ...adv.storyCards, ...additions } },
-        };
+        return { ...adventures, [adventureId]: { ...adv, storyCards: next } };
       });
     }
 
-    return { imported, skipped };
+    return { imported: plan.additions.length, updated, skipped: plan.unchanged + plan.dropped };
   }
 
   static updateStoryCard(adventureId: string, storyCardId: string, updates: Partial<Omit<StoryCard, "id">>): boolean {

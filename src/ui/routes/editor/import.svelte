@@ -11,7 +11,7 @@
   let adventures = $state<Record<string, Adventure>>({});
   let selectedId = $state<string | null>(null);
   let selectedTypes = $state<Set<string>>(new Set());
-  let result = $state<{ imported: number; skipped: number; adventureName: string } | null>(null);
+  let result = $state<{ imported: number; updated: number; skipped: number; adventureName: string } | null>(null);
   // AI Dungeon adventure currently in the URL (reactive), used for the match check and binding.
   let playedId = $state<string | null>(null);
   playedAdventureId.subscribe((v) => (playedId = v));
@@ -124,7 +124,7 @@
 
     const res = Storage.importStoryCards(
       adventure.id,
-      selectedCards.map((c) => ({ name: c.name, type: c.type, triggers: c.triggers }))
+      selectedCards.map((c) => ({ id: c.id, name: c.name, type: c.type, triggers: c.triggers }))
     );
     result = { ...res, adventureName: adventure.name };
   }
@@ -133,7 +133,7 @@
 <div class="flex flex-col gap-4">
   <Field
     label="Import from AI Dungeon"
-    info="Reads the story cards from the adventure you have open in AI Dungeon and adds them to the selected adventure (a new one is created if none is selected). Only name, type, and triggers are imported; cards that already exist by name are skipped."
+    info="Reads the story cards from the adventure you have open in AI Dungeon and adds them to the selected adventure (a new one is created if none is selected). Only name, type, and triggers are imported. Cards you already have are updated in place rather than duplicated, so importing again keeps their triggers current while your icons, portraits and audio stay as they are."
   >
     <div class="flex flex-col gap-3 bg-theme-neutral-100 rounded-xl p-3">
       {#if detected.cards.length === 0 || !detectedMatchesPlayed}
@@ -226,8 +226,9 @@
         {#if result}
           <div class="text-xs text-theme-neutral-800 px-1">
             Imported <span class="font-bold text-pretty-theme">{result.imported}</span> into
-            <span class="font-bold">{result.adventureName}</span>{#if result.skipped > 0}, skipped
-              <span class="font-bold">{result.skipped}</span> already present{/if}.
+            <span class="font-bold">{result.adventureName}</span>{#if result.updated > 0}, updated
+              <span class="font-bold">{result.updated}</span>{/if}{#if result.skipped > 0},
+              <span class="font-bold">{result.skipped}</span> already up to date{/if}.
           </div>
         {/if}
       {/if}

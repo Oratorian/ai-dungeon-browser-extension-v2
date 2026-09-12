@@ -28,6 +28,9 @@ export type StoryCard = {
   limit: string;
   preset: string;
   audioClips: string[];
+  /** AI Dungeon's own id for this card, when it was imported. Lets a re-import update the card
+   *  in place instead of skipping it by name (see aid/sync.ts). */
+  aidId?: string;
 };
 
 export type Adventure = {
