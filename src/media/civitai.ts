@@ -84,7 +84,7 @@ export const SCHEDULERS: { value: string; label: string }[] = [
  * Maps a sampler name as written in image metadata ("DPM++ 2M Karras") onto Civitai's enum value.
  * Comparing with punctuation and case stripped is enough, because the enum names are the same words.
  */
-function schedulerFrom(name: unknown): string | undefined {
+export function schedulerFrom(name: unknown): string | undefined {
   if (typeof name !== "string") return undefined;
   const flatten = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
   const target = flatten(name);
@@ -323,7 +323,7 @@ const UNSUPPORTED_BASES = ["anima"];
  * The ecosystem segment of an AIR: urn:air:<ecosystem>:<type>:<source>:<model>@<version>.
  * Lets a stored model be checked without asking Civitai anything.
  */
-function ecosystemOf(air: string): string {
+export function ecosystemOf(air: string): string {
   return air.split(":")[2] ?? "";
 }
 
@@ -332,7 +332,7 @@ export const UNSUPPORTED_ADVICE =
   "models cannot be generated through Civitai's API, only on their website. Generate it there, then " +
   "add the image here by URL.";
 
-function supportFor(baseModel: string): GenerationSupport {
+export function supportFor(baseModel: string): GenerationSupport {
   const base = baseModel.toLowerCase();
   if (UNSUPPORTED_BASES.some((known) => base.startsWith(known))) return "unsupported";
   // Loose match: Civitai writes these as "SDXL 1.0", "Flux.1 D", "Pony" and so on.
@@ -439,7 +439,7 @@ export async function resolveModel(input: string): Promise<ResolvedModel> {
  * Most images carry the parameters they were made with; some carry a raw workflow dump instead,
  * which has no such fields and is simply skipped.
  */
-function defaultsFromSamples(images: unknown): { steps?: number; cfgScale?: number; scheduler?: string } {
+export function defaultsFromSamples(images: unknown): { steps?: number; cfgScale?: number; scheduler?: string } {
   if (!Array.isArray(images)) return {};
 
   const commonest = <T>(values: T[]): T | undefined => {
