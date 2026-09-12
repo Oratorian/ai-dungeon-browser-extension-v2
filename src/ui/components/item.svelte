@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { slide } from "svelte/transition";
 
   type Props = {
@@ -10,7 +11,10 @@
   };
 
   let { children, foldout = false, expanded = false, icon, label }: Props = $props();
-  let isOpen = $state(expanded);
+  // `expanded` is an initial value only: the user opens and closes the foldout from here on, and a
+  // later change from the parent is deliberately not followed. untrack says so explicitly, which is
+  // what the compiler's state_referenced_locally warning was asking for.
+  let isOpen = $state(untrack(() => expanded));
 </script>
 
 <div class="flex flex-col w-full h-fit bg-theme-neutral-200 rounded-xl overflow-hidden">
