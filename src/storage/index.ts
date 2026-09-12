@@ -190,6 +190,19 @@ export class Storage {
   // Seeded by load() so the first subscriber callback in listen() has nothing to write.
   private static persisted: Record<string, Adventure> = {};
 
+  /**
+   * Every adventure as one document, for a backup before something irreversible. The regular
+   * import recognises this shape and restores it (see importAdventure), so it is a backup that
+   * can actually be put back, not just a download.
+   */
+  static exportAll(): string {
+    return JSON.stringify(
+      { version: 1, exportedAt: Date.now(), adventures: Object.values(get(this.adventures)) },
+      null,
+      2
+    );
+  }
+
   static exportAdventure(adventureId: string): string | null {
     const adventure = this.getAdventureById(adventureId);
     if (!adventure) return null;
@@ -245,6 +258,20 @@ export class Storage {
     try {
       if (isLegacyFormat(data)) {
         return this.importLegacyAdventure(data);
+      }
+
+      if (data && Array.isArray(data.adventures)) {
+        // A full backup from exportAll. Ids are kept, so links and AI Dungeon bindings survive, and
+        // an adventure with the same id is overwritten, because putting things back is what a
+        // restore means.
+        const restored: Adventure[] = [];
+        for (const raw of data.adventures) {
+          const normalized = normalizeAdventure(raw);
+          if (normalized) restored.push(normalized);
+        }
+        if (restored.length === 0) return { success: false, error: "The backup holds no adventures." };
+        this.adventures.update((all) => ({ ...all, ...Object.fromEntries(restored.map((a) => [a.id, a])) }));
+        return { success: true, adventure: restored[0] };
       }
 
       if (!data || typeof data !== "object" || !data.adventure || typeof data.adventure !== "object") {

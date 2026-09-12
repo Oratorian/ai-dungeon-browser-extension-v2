@@ -33,6 +33,19 @@
     return { count, bytes };
   });
 
+  // Downloads every adventure as one file. Restorable through Import on the Adventure tab.
+  function backup() {
+    const blob = new Blob([Storage.exportAll()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dextv2r-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   async function run() {
     running = true;
     result = null;
@@ -82,9 +95,18 @@
     <span class="text-xs text-theme-neutral-700">
       Re-encodes them at the sizes above, across every adventure. Images stored as links are left
       alone, and anything that would not get smaller is kept as it is. This cannot be undone, so
-      export anything you would want back first.
+      back up first; the file restores through Import on the Adventure tab.
     </span>
 
+    <div class="flex gap-2 mt-1">
+      <button
+        onclick={backup}
+        class="flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm
+               bg-theme-neutral-200 hover:bg-theme-neutral-300 text-theme-neutral-800"
+      >
+        <span class="font-symbol text-base">download</span>
+        Back up first
+      </button>
     <button
       onclick={run}
       disabled={running}
@@ -94,6 +116,7 @@
       <span class="font-symbol text-base">{running ? "hourglass" : "compress"}</span>
       {running ? "Compressing..." : "Compress inline images"}
     </button>
+    </div>
   {/if}
 
   {#if result}
