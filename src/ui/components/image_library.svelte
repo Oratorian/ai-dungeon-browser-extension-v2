@@ -3,6 +3,7 @@
   import TrinetraPicker from "./trinetra_picker.svelte";
   import ImageGenerator from "./image_generator.svelte";
   import { settings } from "@/storage";
+  import { compressInlineImage } from "@/media/compress";
 
   type Props = {
     images?: string[];
@@ -21,6 +22,8 @@
   let urlError = $state("");
 
   let full = $derived(images.length >= maxImages);
+  // Icons render in a small square box; graphics in a tooltip. Decides the size limit and crop.
+  const square = $derived(label === "Icon");
 
   function openMenu() {
     if (full) return;
@@ -98,8 +101,21 @@
       if (images.length >= maxImages) break;
 
       const reader = new FileReader();
-      reader.onload = () => {
-        addImage(reader.result as string);
+      reader.onload = async () => {
+        const raw = reader.result as string;
+        // Compressed on the way in when enabled, so a full-resolution photo never lands in storage.
+        // compressInlineImage keeps the original if the result would not be smaller, so this is
+        // safe to run on anything.
+        addImage(
+          $settings.compressOnUpload
+            ? await compressInlineImage(
+                raw,
+                square ? $settings.compressionResolutionIcon : $settings.compressionResolutionGraphic,
+                $settings.compressionQuality,
+                square
+              )
+            : raw
+        );
       };
       reader.readAsDataURL(file);
     }

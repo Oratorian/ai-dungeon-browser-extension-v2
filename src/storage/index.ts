@@ -36,6 +36,9 @@ const defaultSettings = {
   compressionQuality: 85,
   compressionResolutionIcon: 256,
   compressionResolutionGraphic: 768,
+  // Re-encode images the moment they are uploaded from a device, so a full-resolution photo never
+  // reaches storage in the first place. The cleanup pass then only matters for older images.
+  compressOnUpload: true,
 
   volume: 100,
   // Loop crossfade in milliseconds: how much the next pass overlaps the previous one to hide a

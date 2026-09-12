@@ -1,6 +1,7 @@
 <script lang="ts">
   import Field from "@/ui/components/field.svelte";
   import Slider from "@/ui/components/slider.svelte";
+  import Switch from "@/ui/components/switch.svelte";
   import { settings, Storage } from "@/storage";
   import { compressStoredImages, isInlineImage, formatBytes, type CompressStats } from "@/media/compress";
   import type { Adventure } from "@/shared/types";
@@ -44,6 +45,13 @@
 
   const saved = $derived(result ? Math.max(0, result.before - result.after) : 0);
 </script>
+
+<Field
+  label="Compress on Upload"
+  info="Re-encode images the moment they are added from your device, at the sizes below.<br>Keeps storage flat instead of relying on the cleanup pass further down. Images added as links are never touched."
+>
+  <Switch bind:checked={$settings.compressOnUpload} />
+</Field>
 
 <Field
   label="Quality"
