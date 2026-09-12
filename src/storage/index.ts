@@ -2,6 +2,7 @@ import type { Adventure, AudioClip, StoryCard } from "@/shared/types";
 import { get, writable, type Writable } from "svelte/store";
 import { OPENROUTER_DEFAULT_MODEL } from "@/media/openrouter";
 import { planAidSync, type IncomingCard } from "@/aid/sync";
+import { readAdventures, diffAdventures, adventureKey, LEGACY_ADVENTURES_KEY } from "@/storage/persist";
 import { Debug } from "@/shared/debug";
 import { untrack } from "svelte";
 
@@ -184,6 +185,10 @@ export class Storage {
   public static selectedAdventureId: Writable<string | null> = writable(null);
   public static editingStoryCard: Writable<{ adventureId: string; storyCardId: string } | null> = writable(null);
   public static cardMap: Writable<Map<string, StoryCard>> = writable(new Map());
+
+  // What is currently on disk, by adventure, compared by identity to decide which keys to write.
+  // Seeded by load() so the first subscriber callback in listen() has nothing to write.
+  private static persisted: Record<string, Adventure> = {};
 
   static exportAdventure(adventureId: string): string | null {
     const adventure = this.getAdventureById(adventureId);
@@ -530,23 +535,34 @@ export class Storage {
 
   static async load() {
     try {
-      const result = await chrome.storage.local.get(["settings", "adventures", "audioLibrary", "selectedAdventureId"]);
-      if (result.settings) this.settings.set({ ...get(this.settings), ...result.settings });
+      // One read of everything: settings, audio, selection, and however adventures are stored.
+      const all = await chrome.storage.local.get(null);
+      if (all.settings) this.settings.set({ ...get(this.settings), ...all.settings });
 
-      if (result.adventures && typeof result.adventures === "object") {
-        const normalizedAdventures: Record<string, Adventure> = {};
-        for (const [key, value] of Object.entries(result.adventures)) {
-          const normalized = normalizeAdventure(value);
-          if (normalized) {
-            normalizedAdventures[key] = normalized;
-          }
-        }
-        this.adventures.set(normalizedAdventures);
+      const { raw, legacy } = readAdventures(all);
+      const normalizedAdventures: Record<string, Adventure> = {};
+      for (const [key, value] of Object.entries(raw)) {
+        const normalized = normalizeAdventure(value);
+        if (normalized) normalizedAdventures[key] = normalized;
+      }
+      this.adventures.set(normalizedAdventures);
+      // The same objects the store now holds, so nothing counts as changed until something is.
+      this.persisted = normalizedAdventures;
+
+      if (legacy) {
+        // One-time migration from the single blob to a key per adventure. New keys are written
+        // before the blob is removed, so a crash in between loses nothing: the next load reads both
+        // and the per-adventure copy wins.
+        const split: Record<string, Adventure> = {};
+        for (const adventure of Object.values(normalizedAdventures)) split[adventureKey(adventure.id)] = adventure;
+        await chrome.storage.local.set(JSON.parse(JSON.stringify(split)));
+        await chrome.storage.local.remove(LEGACY_ADVENTURES_KEY);
+        Debug.log("Migrated " + Object.keys(split).length + " adventure(s) to per-adventure storage.");
       }
 
-      if (Array.isArray(result.audioLibrary)) this.audioLibrary.set(result.audioLibrary);
-      if (result.selectedAdventureId && typeof result.selectedAdventureId === "string")
-        this.selectedAdventureId.set(result.selectedAdventureId);
+      if (Array.isArray(all.audioLibrary)) this.audioLibrary.set(all.audioLibrary);
+      if (all.selectedAdventureId && typeof all.selectedAdventureId === "string")
+        this.selectedAdventureId.set(all.selectedAdventureId);
 
       this.mapCards();
     } catch (error) {
@@ -563,7 +579,16 @@ export class Storage {
     this.adventures.subscribe((value) => {
       clearTimeout(adventureTimeout);
       adventureTimeout = setTimeout(() => {
-        chrome.storage.local.set({ adventures: JSON.parse(JSON.stringify(value)) });
+        // Only the adventures whose object changed are serialised and written, and only the keys
+        // of deleted ones are removed. Everything else on disk is left exactly as it is.
+        const { changed, removed } = diffAdventures(this.persisted, value);
+        if (changed.length > 0) {
+          const writes: Record<string, unknown> = {};
+          for (const adventure of changed) writes[adventureKey(adventure.id)] = JSON.parse(JSON.stringify(adventure));
+          chrome.storage.local.set(writes);
+        }
+        if (removed.length > 0) chrome.storage.local.remove(removed.map(adventureKey));
+        this.persisted = value;
       }, 200);
     });
 
