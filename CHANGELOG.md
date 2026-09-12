@@ -7,6 +7,53 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
+## v2.1.0
+
+### 🔓 No more permission prompt for image generation
+
+2.0.0 made everyone approve access to **openrouter.ai** and **civitai.com**, most for a feature they
+would never turn on. Those permissions turned out to be unnecessary: the calls are made from the page
+and allowed by the services' own rules, and they worked without them all along. They are gone.
+Removing a permission never prompts, so this update installs silently.
+
+### 🔁 Importing again keeps your cards current
+
+Import used to skip any card it had already brought over, so once imported, a set never followed AI
+Dungeon again. Cards you already have are now **updated in place**, matched by AI Dungeon's own id or
+by name, and only the parts AI Dungeon owns are touched: name, type and triggers. Your icons,
+portraits, audio and colours stay exactly as you set them. The Import tab reports what was new and
+what was updated.
+
+### ⚡ Faster editing with big card sets
+
+Every edit used to rewrite every adventure you have. Each adventure is now stored on its own, so a
+change costs one adventure, not all of them. Existing data moves over automatically the first time
+this version loads; there is nothing to do.
+
+### 🗜️ Images are compressed as you add them
+
+New uploads are shrunk on the way in, at the icon or portrait size for the slot you add them to, so a
+full-resolution photo never lands in storage. On by default, with a switch under **Image
+Compression** for anyone who wants originals kept. The cleanup pass is still there for images added
+before this.
+
+### 💾 Back up everything in one file
+
+A **Back up first** button next to Compress downloads every adventure as one file, and Import on the
+Adventure tab restores it, keeping ids so links survive.
+
+### ⌨️ Keyboard shortcut
+
+**Alt+Shift+D** opens the editor. Rebindable in your browser's extension shortcut settings.
+
+### 🔧 Under the hood
+
+- Two of the four "unsafe innerHTML" warnings AMO showed are gone; the remaining two are library
+  internals that cannot go.
+- Build tooling updated (WXT 0.21), with the stricter type checks it brings applied throughout.
+- The core logic (trigger matching, compression decisions, model resolution, storage) now has
+  automated tests.
+
 ## v2.0.0
 
 ### ⚠️ This update asks for new permissions

@@ -15,7 +15,7 @@
 [![Firefox users](https://img.shields.io/amo/users/dungeonextensionv2resurrect?style=flat-square&logo=firefoxbrowser&logoColor=white&label=firefox%20users)](https://addons.mozilla.org/firefox/addon/dungeonextensionv2resurrect/)
 [![Chrome users](https://img.shields.io/chrome-web-store/users/keegfhpckdjecndjlgmjnjlfhlnepiga?style=flat-square&logo=googlechrome&logoColor=white&label=chrome%20users)](https://chromewebstore.google.com/detail/dungeon-extension-v2-resu/keegfhpckdjecndjlgmjnjlfhlnepiga)
 
-[![WXT](https://img.shields.io/badge/WXT-0.20-67D74E?style=flat-square)](https://wxt.dev)
+[![WXT](https://img.shields.io/badge/WXT-0.21-67D74E?style=flat-square)](https://wxt.dev)
 [![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?style=flat-square&logo=svelte&logoColor=white)](https://svelte.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
