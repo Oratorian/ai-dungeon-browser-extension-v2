@@ -10,6 +10,7 @@
   import Diagnostics from "@/ui/components/diagnostics.svelte";
   import ImageCompression from "@/ui/components/image_compression.svelte";
   import ImageGenerationSettings from "@/ui/components/image_generation_settings.svelte";
+  import TrinetraSettings from "@/ui/components/trinetra_settings.svelte";
 
   /* Storage */
   import { settings } from "@/storage";
@@ -94,6 +95,10 @@
 
   <Item foldout icon="folder_open" label="GitHub Repos">
     <ScenarioRepos />
+  </Item>
+
+  <Item foldout icon="photo_library" label="Trinetra">
+    <TrinetraSettings />
   </Item>
 
   <Item foldout icon="auto_awesome" label="Image Generation">

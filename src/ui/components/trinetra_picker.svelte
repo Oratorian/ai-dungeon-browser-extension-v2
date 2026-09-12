@@ -1,6 +1,12 @@
 <script lang="ts">
+  import { onMount, untrack } from "svelte";
   import { settings } from "@/storage";
-  import { getMe, listFolders, listImages, TrinetraError, type TrinetraFolder, type TrinetraImage } from "@/media/trinetra";
+  import { listFolders, listImages, TrinetraError, type TrinetraFolder, type TrinetraImage } from "@/media/trinetra";
+
+  // Browse the user's Trinetra images and insert one as a link. The API key is set once under
+  // Settings > Extension > Trinetra rather than here, and the picker reopens in whichever folder it
+  // was last in, so editing several cards from the same folder does not mean clicking down the same
+  // path for every one of them.
 
   type Props = {
     // Called with the selected image's Trinetra URL. Returns true if it was accepted (not over the
@@ -15,11 +21,8 @@
   // Images picked this session (by Trinetra id), so we can show them as already-added.
   let addedIds = $state<Set<string>>(new Set());
 
-  // API key lives in settings so it's entered once and remembered.
-  let apiKey = $derived($settings.trinetraApiKey ?? "");
-  let keyInput = $state("");
+  const apiKey = $derived(($settings.trinetraApiKey ?? "").trim());
 
-  let authed = $state(false);
   let loading = $state(false);
   let error = $state("");
 
@@ -27,58 +30,38 @@
   let currentFolderId = $state<number | null>(null); // null = root
   let images = $state<TrinetraImage[]>([]);
 
-  // Subfolders of the current folder.
-  let subfolders = $derived(folders.filter((f) => f.parent_id === currentFolderId));
-  let currentFolder = $derived(currentFolderId === null ? null : folders.find((f) => f.id === currentFolderId));
-  let parentOfCurrent = $derived(currentFolder ? (currentFolder.parent_id ?? null) : null);
+  const subfolders = $derived(folders.filter((f) => f.parent_id === currentFolderId));
+  const currentFolder = $derived(currentFolderId === null ? null : (folders.find((f) => f.id === currentFolderId) ?? null));
 
-  async function connect() {
-    const key = (keyInput || apiKey).trim();
-    if (!key) {
-      error = "Enter your Trinetra API key.";
-      return;
+  // Root > ... > current, so a picker that reopens three folders deep still says where it is.
+  const path = $derived.by(() => {
+    const chain: TrinetraFolder[] = [];
+    let folder = currentFolder;
+    while (folder) {
+      chain.unshift(folder);
+      const parentId = folder.parent_id;
+      folder = parentId == null ? null : (folders.find((f) => f.id === parentId) ?? null);
     }
-    loading = true;
-    error = "";
-    try {
-      await getMe(key);
-      // Persist the working key.
-      $settings.trinetraApiKey = key;
-      authed = true;
-      await loadFolder(null);
-    } catch (e) {
-      error = e instanceof TrinetraError ? e.message : "Failed to connect to Trinetra.";
-      authed = false;
-    } finally {
-      loading = false;
-    }
-  }
+    return chain;
+  });
 
   async function loadFolder(folderId: number | null) {
-    const key = ($settings.trinetraApiKey ?? "").trim();
-    if (!key) return;
+    if (!apiKey) return;
     loading = true;
     error = "";
     try {
-      // Load the folder list once; refresh images every navigation.
-      if (folders.length === 0) folders = await listFolders(key);
+      // The folder list is loaded once; images are refreshed on every navigation.
+      if (folders.length === 0) folders = await listFolders(apiKey);
+      // A remembered folder that has since been deleted falls back to the root rather than erroring.
+      if (folderId !== null && !folders.some((f) => f.id === folderId)) folderId = null;
       currentFolderId = folderId;
-      const list = await listImages(key, folderId, { limit: 100 });
-      images = list.items;
+      $settings.trinetraLastFolderId = folderId;
+      images = (await listImages(apiKey, folderId, { limit: 100 })).items;
     } catch (e) {
       error = e instanceof TrinetraError ? e.message : "Failed to load images.";
     } finally {
       loading = false;
     }
-  }
-
-  function forgetKey() {
-    $settings.trinetraApiKey = "";
-    authed = false;
-    folders = [];
-    images = [];
-    currentFolderId = null;
-    keyInput = "";
   }
 
   // Store the image as a Trinetra link (not embedded) so adventure exports stay small; it loads
@@ -89,9 +72,11 @@
     if (accepted) addedIds = new Set(addedIds).add(img.id);
   }
 
-  // If a key is already saved, connect immediately.
-  $effect(() => {
-    if (apiKey && !authed && !loading) connect();
+  // Open where the user last was. Done once on mount rather than in an effect: the previous effect
+  // was keyed on `loading`, so a bad key or a network blip flipped it back to false and re-ran the
+  // connection attempt in a loop.
+  onMount(() => {
+    if (apiKey) loadFolder(untrack(() => $settings.trinetraLastFolderId));
   });
 </script>
 
@@ -101,51 +86,37 @@
     <button onclick={onclose} class="font-symbol text-lg text-theme-neutral-700 hover:text-theme-neutral-900">close</button>
   </div>
 
-  {#if !authed}
-    <div class="flex flex-col gap-2">
-      <span class="text-xs text-theme-neutral-700">
-        Enter your API key from
-        <a
-          href="https://trinetra.mahesvara.cloud/#register"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-pretty-theme hover:underline">trinetra.mahesvara.cloud</a
-        >
-        (API tab).
-      </span>
-      <div class="flex gap-2">
-        <input
-          bind:value={keyInput}
-          type="password"
-          placeholder="tri_..."
-          onkeydown={(e) => e.key === "Enter" && connect()}
-          class="flex-1 min-w-0 bg-theme-neutral-300 h-9 px-3 rounded-lg outline-0 text-sm"
-        />
-        <button
-          onclick={connect}
-          disabled={loading}
-          class="px-3 py-1.5 bg-pretty-theme text-theme-neutral-0 rounded-lg hover:opacity-90 disabled:opacity-40 transition-all text-sm"
-        >
-          {loading ? "..." : "Connect"}
-        </button>
-      </div>
-      {#if error}<span class="text-xs text-pretty-red px-1">{error}</span>{/if}
-    </div>
+  {#if !apiKey}
+    <span class="text-xs text-theme-neutral-700">
+      Add your Trinetra API key under <b>Settings &rsaquo; Extension &rsaquo; Trinetra</b> to browse your uploaded images
+      here and insert them as links.
+    </span>
   {:else}
-    <!-- Breadcrumb / navigation -->
-    <div class="flex items-center justify-between gap-2">
-      <div class="flex items-center gap-1 text-xs text-theme-neutral-700 min-w-0">
-        {#if currentFolderId !== null}
-          <button onclick={() => loadFolder(parentOfCurrent)} class="font-symbol text-base hover:text-theme-neutral-900">
-            arrow_back
-          </button>
-        {/if}
-        <span class="truncate">{currentFolder ? currentFolder.name : "Root"}</span>
-      </div>
-      <button onclick={forgetKey} class="text-xs text-theme-neutral-700 hover:text-pretty-red shrink-0">Sign out</button>
+    <!-- Breadcrumb: every segment is clickable, so backing out is one click from anywhere. -->
+    <div class="flex items-center gap-1 text-xs text-theme-neutral-700 min-w-0 flex-wrap">
+      <button
+        onclick={() => loadFolder(null)}
+        class="hover:text-theme-neutral-900 {currentFolderId === null ? 'font-bold text-theme-neutral-900' : ''}"
+      >
+        Root
+      </button>
+      {#each path as folder (folder.id)}
+        <span class="font-symbol text-sm">chevron_right</span>
+        <button
+          onclick={() => loadFolder(folder.id)}
+          class="truncate max-w-32 hover:text-theme-neutral-900 {folder.id === currentFolderId ? 'font-bold text-theme-neutral-900' : ''}"
+        >
+          {folder.name}
+        </button>
+      {/each}
     </div>
 
-    {#if error}<span class="text-xs text-pretty-red px-1">{error}</span>{/if}
+    {#if error}
+      <div class="flex items-center gap-2 px-1">
+        <span class="text-xs text-pretty-red">{error}</span>
+        <button onclick={() => loadFolder(currentFolderId)} class="text-xs text-pretty-theme hover:underline shrink-0">Retry</button>
+      </div>
+    {/if}
 
     <div class="max-h-64 overflow-y-auto flex flex-col gap-2">
       <!-- Subfolders -->

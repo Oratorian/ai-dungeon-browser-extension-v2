@@ -56,6 +56,9 @@ const defaultSettings = {
   floatingButtonY: -1,
 
   trinetraApiKey: "",
+  // Where the Trinetra picker was last, so the next card opens in the same folder instead of at
+  // the root. null is the root.
+  trinetraLastFolderId: null as number | null,
 
   // Image generation through OpenRouter (media/openrouter.ts). The key is the user's own and pays for
   // their own generations. `imageGenUpload` chooses where a result lands: true uploads it to Trinetra

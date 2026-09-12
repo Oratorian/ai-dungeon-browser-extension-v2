@@ -263,7 +263,7 @@
 
 <Field
   label="Upload to Trinetra"
-  info="Where a generated image is kept.<br><b>On</b>: uploaded to Trinetra, and the card stores only the link, which costs nothing locally.<br><b>Off</b>: compressed and stored inside the card, which is simpler but grows your local storage.<br><em>Needs a Trinetra API key, set where you browse images on a card.</em>"
+  info="Where a generated image is kept.<br><b>On</b>: uploaded to Trinetra, and the card stores only the link, which costs nothing locally.<br><b>Off</b>: compressed and stored inside the card, which is simpler but grows your local storage.<br><em>Needs a Trinetra API key, set under Extension &rsaquo; Trinetra.</em>"
 >
   <Switch bind:checked={$settings.imageGenUpload} />
 </Field>
