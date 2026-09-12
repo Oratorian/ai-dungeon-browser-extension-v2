@@ -178,7 +178,7 @@ export async function uploadImage(
 /** Decodes a data: URI into a Blob, so the upload goes out as bytes rather than base64 text. */
 function dataUriToBlob(dataUri: string): Blob {
   const [meta, base64] = dataUri.split(",", 2);
-  const mime = meta.match(/^data:([^;]+)/)?.[1] ?? "application/octet-stream";
+  const mime = meta?.match(/^data:([^;]+)/)?.[1] ?? "application/octet-stream";
   const binary = atob(base64 ?? "");
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);

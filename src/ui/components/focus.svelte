@@ -57,9 +57,10 @@
         const validated = AudioManager.validateClipIds(card.audioClips);
         validAudioClips = validated;
 
-        if (validated.length > 0) {
+        const first = validated[0];
+        if (first) {
           focusAudioState.setClipIndex(0);
-          AudioManager.play(validated[0]);
+          AudioManager.play(first);
         } else {
           focusAudioState.setClipIndex(0);
           AudioManager.stop();
@@ -96,10 +97,11 @@
   }
 
   function playClip(index: number) {
-    if (index >= 0 && index < validAudioClips.length) {
+    const clip = validAudioClips[index];
+    if (clip) {
       focusAudioState.setClipIndex(index);
       focusAudioState.setManuallyPaused(false);
-      AudioManager.play(validAudioClips[index]);
+      AudioManager.play(clip);
     }
   }
 
@@ -116,6 +118,7 @@
   function togglePlayback() {
     if (validAudioClips.length === 0) return;
     const currentClipId = validAudioClips[persistentState.currentClipIndex];
+    if (!currentClipId) return;
 
     if (isPlaying) {
       focusAudioState.setManuallyPaused(true);
@@ -140,8 +143,9 @@
     if (validAudioClips.length === 0) return;
 
     if (currentlyPlaying === null && persistentState.lastFocusCardId === focusCardId && !persistentState.wasManuallyPaused) {
-      if (validAudioClips.length === 1) {
-        AudioManager.play(validAudioClips[0]);
+      const only = validAudioClips[0];
+      if (validAudioClips.length === 1 && only) {
+        AudioManager.play(only);
       } else {
         playNext();
       }

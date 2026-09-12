@@ -4,7 +4,7 @@
   import Slider from "@/ui/components/slider.svelte";
   import Select from "@/ui/components/select.svelte";
   import { settings } from "@/storage";
-  import { getRemainingCredit, OPENROUTER_MODELS } from "@/media/openrouter";
+  import { getRemainingCredit, OPENROUTER_MODELS, OPENROUTER_DEFAULT_MODEL } from "@/media/openrouter";
   import { verifyKey as verifyCivitaiKey, resolveModel, CivitaiError, SCHEDULERS } from "@/media/civitai";
 
   // Provider, key and destination for prompt-based image generation. The generator itself lives on
@@ -89,7 +89,7 @@
     useCustomModel = !useCustomModel;
     // Coming back to the list with an id that is not on it would leave the control blank.
     if (!useCustomModel && !OPENROUTER_MODELS.some((m) => m.value === $settings.imageGenModel)) {
-      $settings.imageGenModel = OPENROUTER_MODELS[1].value;
+      $settings.imageGenModel = OPENROUTER_DEFAULT_MODEL;
     }
   }
   const hasTrinetra = $derived($settings.trinetraApiKey.trim().length > 0);

@@ -107,7 +107,7 @@ export async function resolvePixabayPage(pageUrl: string): Promise<ResolvedPixab
   for (const block of blocks) {
     let data: unknown;
     try {
-      data = JSON.parse(block[1].trim());
+      data = JSON.parse((block[1] ?? "").trim());
     } catch {
       continue;
     }

@@ -91,7 +91,7 @@ export default defineBackground(() => {
           const file = req.upload as { dataUri?: string; filename?: string; field?: string; fields?: Record<string, string> };
           if (typeof file.dataUri === "string") {
             const [meta, base64] = file.dataUri.split(",", 2);
-            const mime = meta.match(/^data:([^;]+)/)?.[1] ?? "application/octet-stream";
+            const mime = meta?.match(/^data:([^;]+)/)?.[1] ?? "application/octet-stream";
             const bytes = Uint8Array.from(atob(base64 ?? ""), (c) => c.charCodeAt(0));
             body = new FormData();
             for (const [key, value] of Object.entries(file.fields ?? {})) body.append(key, value);

@@ -1,5 +1,6 @@
-import { Adventure, AudioClip, StoryCard } from "@/shared/types";
-import { get, writable, Writable } from "svelte/store";
+import type { Adventure, AudioClip, StoryCard } from "@/shared/types";
+import { get, writable, type Writable } from "svelte/store";
+import { OPENROUTER_DEFAULT_MODEL } from "@/media/openrouter";
 import { Debug } from "@/shared/debug";
 import { untrack } from "svelte";
 
@@ -61,7 +62,7 @@ const defaultSettings = {
   // OpenRouter: one call returns the image. Model default matches upstream's stored default rather
   // than the -preview alias, which is the sort of thing that gets retired and breaks first run.
   imageGenKey: "",
-  imageGenModel: "google/gemini-2.5-flash-image",
+  imageGenModel: OPENROUTER_DEFAULT_MODEL,
 
   // Civitai: asynchronous, priced in Buzz, and addressed by AIR rather than a plain model name.
   civitaiKey: "",

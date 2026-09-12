@@ -50,7 +50,7 @@ function browserLabel(): string {
     const match = ua.match(pattern);
     if (match) {
       name = label;
-      version = match[1];
+      version = match[1] ?? "?";
       break;
     }
   }
@@ -239,7 +239,8 @@ export async function collectDiagnostics(): Promise<string> {
     }
   }
 
-  const probe = portraits.length > 0 ? await probeImage(portraits[0]) : null;
+  const firstPortrait = portraits[0];
+  const probe = firstPortrait ? await probeImage(firstPortrait) : null;
   const usage = await storageUsage();
   const errors = capturedErrors();
 
@@ -259,8 +260,8 @@ export async function collectDiagnostics(): Promise<string> {
     const shown = issues.slice(0, MAX_ISSUES).join(", ");
     detail.push(row("  unrendered", shown + (issues.length > MAX_ISSUES ? ", +" + (issues.length - MAX_ISSUES) + " more" : "")));
   }
-  if (containers.length > 0) {
-    const newest = containers[containers.length - 1];
+  const newest = containers.at(-1);
+  if (newest) {
     const host = DOM.pickTextHost(newest);
     const index = host ? Array.from(newest.children).indexOf(host) : -1;
     detail.push(

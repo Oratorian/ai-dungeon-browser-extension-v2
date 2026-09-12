@@ -69,8 +69,9 @@
   Storage.adventures.subscribe((adventures) => {
     if (adventureId && storyCardId) {
       const adventure = adventures[adventureId];
-      if (adventure && adventure.storyCards[storyCardId]) {
-        storyCard = adventure.storyCards[storyCardId];
+      const card = adventure?.storyCards[storyCardId];
+      if (card) {
+        storyCard = card;
       }
     }
   });

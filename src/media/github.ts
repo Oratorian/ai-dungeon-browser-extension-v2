@@ -77,7 +77,7 @@ export function parseRepo(input: string): ParsedRepo | null {
     }
     const parts = u.pathname.split("/").filter(Boolean);
     if (parts.length < 2) return null;
-    [owner, repo] = parts;
+    [owner, repo] = parts as [string, string]; // length >= 2 checked just above
     // .../tree/<branch>/<subpath...>
     if (parts[2] === "tree" && parts[3]) {
       branch = decodeURIComponent(parts[3]);
@@ -86,7 +86,7 @@ export function parseRepo(input: string): ParsedRepo | null {
   } else {
     const parts = trimmed.split("/").filter(Boolean);
     if (parts.length < 2) return null;
-    [owner, repo] = parts;
+    [owner, repo] = parts as [string, string]; // length >= 2 checked just above
     if (parts.length > 2) subpath = parts.slice(2).join("/");
   }
 

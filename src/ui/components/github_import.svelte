@@ -68,11 +68,12 @@
     const worker = async () => {
       while (true) {
         const idx = next++;
-        if (idx >= files.length || gen !== loadGen) return;
-        const name = await fetchAdventureName(files[idx]).catch(() => null);
+        const file = files[idx];
+        if (!file || gen !== loadGen) return;
+        const name = await fetchAdventureName(file).catch(() => null);
         if (gen !== loadGen) return;
-        files[idx].name = name;
-        files[idx].nameResolved = true;
+        file.name = name;
+        file.nameResolved = true;
       }
     };
     await Promise.all(Array.from({ length: 6 }, worker));

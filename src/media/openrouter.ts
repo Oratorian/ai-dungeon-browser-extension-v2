@@ -40,6 +40,9 @@ export type GeneratedImage = {
  * prices: that rate is per token and an image is worth roughly a thousand of them, so any figure here
  * would be a guess presented as fact.
  */
+/** What a fresh install starts on, and what the settings fall back to. Nano Banana: cheap and good. */
+export const OPENROUTER_DEFAULT_MODEL = "google/gemini-2.5-flash-image";
+
 export const OPENROUTER_MODELS: { value: string; label: string; note: string }[] = [
   { value: "openai/gpt-5-image-mini", label: "GPT-5 Image Mini", note: "cheapest" },
   { value: "google/gemini-2.5-flash-image", label: "Nano Banana", note: "good default" },

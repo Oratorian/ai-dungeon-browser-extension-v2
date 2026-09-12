@@ -36,8 +36,12 @@ export type CivitaiResult = {
  * SDXL is trained on fixed resolution buckets, and off-bucket sizes produce visibly worse images, so
  * an aspect ratio maps to the nearest official bucket rather than to arbitrary dimensions.
  */
-const BUCKETS: Record<string, { width: number; height: number }> = {
-  "1:1": { width: 1024, height: 1024 },
+type Bucket = { width: number; height: number };
+
+const SQUARE: Bucket = { width: 1024, height: 1024 };
+
+const BUCKETS: Record<string, Bucket> = {
+  "1:1": SQUARE,
   "3:2": { width: 1216, height: 832 },
   "2:3": { width: 832, height: 1216 },
   "16:9": { width: 1344, height: 768 },
@@ -87,8 +91,8 @@ function schedulerFrom(name: unknown): string | undefined {
   return SCHEDULERS.find((s) => flatten(s.value) === target || flatten(s.label) === target)?.value;
 }
 
-export function dimensionsFor(aspectRatio: string) {
-  return BUCKETS[aspectRatio] ?? BUCKETS["1:1"];
+export function dimensionsFor(aspectRatio: string): Bucket {
+  return BUCKETS[aspectRatio] ?? SQUARE;
 }
 
 function describe(status: number, body: any): CivitaiError {
