@@ -9,12 +9,11 @@ it, and keep the newest version at the top.
 
 ## v2.1.0
 
-### 🔓 No more permission prompt for image generation
+### 🔓 No new permissions
 
-2.0.0 made everyone approve access to **openrouter.ai** and **civitai.com**, most for a feature they
-would never turn on. Those permissions turned out to be unnecessary: the calls are made from the page
-and allowed by the services' own rules, and they worked without them all along. They are gone.
-Removing a permission never prompts, so this update installs silently.
+This update asks for nothing 2.0.0 did not already have, so it installs without a prompt. The
+openrouter.ai and civitai.com permissions stay: Firefox needs them for image generation to reach
+those services at all, even though Chrome does not.
 
 ### 🔁 Importing again keeps your cards current
 

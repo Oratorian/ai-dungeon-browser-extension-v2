@@ -29,13 +29,17 @@ export default defineConfig({
     },
     // Named hosts for the optional remote-media / remote-import features:
     //  - trinetra.mahesvara.cloud: story-card images (API + downloads + generated-image uploads)
+    //  - openrouter.ai, civitai.com/api, orchestration(-new).civitai.com: optional image generation
+    //    with the user's own key, called from the content script.
     //
-    // Deliberately NOT listed: openrouter.ai and the civitai.com hosts used for image generation.
-    // Those are only ever called from the content script, and a content script's fetch is
-    // governed by the page's CORS rules regardless of host permissions (Chrome MV3 enforces this;
-    // Firefox follows CORS when no permission matches). All of them send permissive CORS headers,
-    // verified against their preflights, so the calls work without a permission, and listing one
-    // would only make every user approve a warning on update for a feature most never enable.
+    //    Those four were removed once, on the reasoning that each sends permissive CORS (they do,
+    //    verified against the live responses) and that a content script's fetch obeys CORS whether
+    //    or not a host permission exists. That held on Chrome and failed on Firefox: with the
+    //    permissions gone, a plain GET to civitai.com/api from the content script rejected with a
+    //    bare network error, while the same build worked on Chrome and the same call had worked on
+    //    Firefox with the permissions present. AI Dungeon sends no CSP, so that is not it either.
+    //    Whatever Firefox does differently for a content-script request with no matching host
+    //    permission, the permission is what makes the request work there. Keep them.
     //  - pixabay.com: resolve a sound-effect page URL to its direct audio link (JSON-LD)
     //  - cdn.pixabay.com: stream the royalty-free ambient audio
     //  - api.github.com: list a scenario repo's .json files (git tree + latest release assets)
@@ -47,6 +51,10 @@ export default defineConfig({
     // Firefox does not allow permissions.request().
     host_permissions: [
       "https://trinetra.mahesvara.cloud/*",
+      "https://openrouter.ai/*",
+      "https://civitai.com/api/*",
+      "https://orchestration.civitai.com/*",
+      "https://orchestration-new.civitai.com/*",
       "https://pixabay.com/*",
       "https://cdn.pixabay.com/*",
       "https://api.github.com/*",

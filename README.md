@@ -253,8 +253,8 @@ secrets. It can also be run by hand to upload a draft without submitting it.
 The extension stores all of your data (adventures, story cards, settings, uploaded images) locally in
 your browser via `chrome.storage.local`. Nothing is sent anywhere by default.
 
-No host is contacted unless you use the optional feature that needs it. Most are declared as named
-host permissions; the image generation services are not, see below.
+The only external hosts the extension can reach are declared as named host permissions, and none is
+contacted unless you use its optional feature:
 
 - **Trinetra images** (`trinetra.mahesvara.cloud`): images added by URL/ID or through **Browse
   Trinetra** are stored as **links**, which keeps your exports small. The image is requested from
@@ -268,9 +268,7 @@ host permissions; the image generation services are not, see below.
   billed to your own account (dollars on OpenRouter, Buzz on Civitai), and the key is stored locally
   (in `chrome.storage.local`, unencrypted like all extension data). A generated image is either
   uploaded to Trinetra or compressed into the card, whichever you pick. Only the provider you have
-  configured is ever contacted. These are not extension permissions: the calls are made from the page
-  exactly as the website's own scripts could, allowed by those services' own CORS policy, so
-  installing or updating never asks you to grant access to them.
+  configured is ever contacted.
 - **Pixabay audio** (`pixabay.com`, `cdn.pixabay.com`): a pasted Pixabay sound-effect page URL is
   fetched once to read its public audio link, and the royalty-free audio is streamed from Pixabay's CDN
   when the clip plays.
