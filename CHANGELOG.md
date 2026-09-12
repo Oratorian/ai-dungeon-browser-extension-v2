@@ -45,6 +45,13 @@ Adventure tab restores it, keeping ids so links survive.
 
 **Alt+Shift+D** opens the editor. Rebindable in your browser's extension shortcut settings.
 
+### 🖼️ Trinetra: key in Settings, picker remembers your folder
+
+The API key now lives under **Settings › Extension › Trinetra**, entered once, with a Check key
+button that confirms the account. The image picker no longer asks for it. And the picker reopens in
+whichever folder you were last in, with a clickable path back to the root, so editing several cards
+from the same folder no longer means clicking down the same path each time.
+
 ### 🔧 Under the hood
 
 - Two of the four "unsafe innerHTML" warnings AMO showed are gone; the remaining two are library
