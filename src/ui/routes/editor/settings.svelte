@@ -64,7 +64,7 @@
   <Item foldout icon="drag_pan" label="Floating Button">
     <Field
       label="Show Floating Button"
-      info="Shows a small draggable button over the game that opens this editor.<br>- <b>Click</b> it to open the editor<br>- <b>Drag</b> it anywhere you like; it stays put<br><em>Turn this off if you would rather use the Editor entry in AI Dungeon's top menu.</em>"
+      info="Shows a small draggable button over the game that opens this editor.<br>- <b>Click</b> it to open the editor<br>- <b>Drag</b> it anywhere you like; it stays put<br><em>With it off, the editor opens with Ctrl+Shift+L, and the toggle shortcut below brings the button back.</em>"
     >
       <Switch bind:checked={$settings.floatingButton} />
     </Field>

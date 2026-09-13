@@ -42,8 +42,6 @@ export class Events {
       return;
     }
 
-    DOM.injectButton();
-
     if (this._gameplayOutput) {
       DOM.prettifyButBetter(this._gameplayOutput);
       return;

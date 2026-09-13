@@ -11,38 +11,15 @@ export class DOM {
   // sees no icons or portraits while everyone else does. Reset by cleanup().
   static skippedAnimated = 0;
 
-  // Session history for the Editor menu entry, which the diagnostics report has to rely on because a
-  // live probe can never see it: AI Dungeon closes its menu the moment our editor opens, so by the
-  // time anyone reaches the Diagnostics button the menu is always gone. Together these two tell
-  // "the menu was never opened, so we cannot say" (sawExitButton false) apart from "we found AID's
-  // button but failed to add our entry" (saw it, never injected), which is real breakage.
-  static sawExitButton = false;
-  static injectedMenuEntry = false;
-
   /** Live Response components, for the diagnostics report. */
   static get mountedCount(): number {
     return this.mountedComponents.size;
   }
 
-  static injectButton() {
-    if (document.getElementById(Config.ID_EDITOR_BUTTON)) return;
-    const baseButton = document.querySelector(Config.SELECTOR_EXIT_BUTTON);
-    if (!baseButton) return;
-    this.sawExitButton = true;
-
-    const button = baseButton.cloneNode(true) as HTMLElement;
-    button.id = Config.ID_EDITOR_BUTTON;
-    (button.querySelector("div > span") as HTMLElement).innerText = "w_wrench";
-    (button.querySelector(":scope > span") as HTMLElement).innerText = "Editor";
-    button.addEventListener("click", (e) => {
-      extensionState.isEditorOpen = true;
-    });
-    baseButton.parentElement?.insertBefore(button, baseButton);
-    // Only after the insert: the innerText lines above dereference AID's inner spans directly, so a
-    // structure change throws there and leaves this false, which is exactly what we want the report
-    // to be able to say.
-    this.injectedMenuEntry = true;
-  }
+  // There used to be an "Editor" entry cloned into AI Dungeon's own menu (the flame, top left). It
+  // went the way of the action-bar button: it depended on AID's markup for that menu, broke when
+  // that changed, and the floating button with its ring covers everything it did. The editor opens
+  // from the puck, the keyboard shortcut, or the toggle shortcut that brings the puck back.
 
   // AI Dungeon doesn't keep the response text in a fixed position: story paragraphs and the last
   // action hold it in the first child, but a player action now leads with an empty spacer <span>

@@ -25,7 +25,7 @@ import { adventureKey, LEGACY_ADVENTURES_KEY } from "@/storage/persist";
 //
 //  2. DON'T CRY WOLF. Several things AI Dungeon renders only exist while one of its menus is open,
 //     so a live query missing them means nothing on its own. Anything in that class must be reported
-//     as inconclusive, not as a failure, or the report trains people to ignore it. See sawExitButton.
+//     as inconclusive, not as a failure, or the report trains people to ignore it.
 
 type Level = "error" | "warn" | "ok";
 
@@ -231,7 +231,6 @@ export async function collectDiagnostics(): Promise<string> {
 
   const lastAction = document.querySelector(Config.SELECTOR_LAST_ACTION);
   const shadowHost = document.querySelector(Config.ID_EDITOR_ANCHOR);
-  const menuButton = document.getElementById(Config.ID_EDITOR_BUTTON);
   const wordFade = output?.querySelector(".word-fade") ?? null;
 
   /* -------------------------------------------------------------- Content */
@@ -292,23 +291,15 @@ export async function collectDiagnostics(): Promise<string> {
     );
   }
   detail.push(row("last action node", lastAction ? "found" : "MISSING"));
-  // Session history, not a live probe: opening our editor closes AID's menu, so by the time anyone
-  // runs this the menu is always shut and a live check would always look like a failure.
-  detail.push(row("aid menu opened", DOM.sawExitButton ? "yes, this session" : "not this session"));
+  detail.push(row("extension UI", shadowHost ? "mounted" : "MISSING"));
   detail.push(
     row(
-      "menu entry",
-      menuButton
-        ? "on page now"
-        : DOM.injectedMenuEntry
-          ? "injected earlier"
-          : DOM.sawExitButton
-            ? "FAILED, button was there"
-            : "untested, menu not opened"
+      "floating button",
+      (cfg.floatingButton ? "on" : "off") +
+        (cfg.floatingButtonQuickActions ? ", ring on" : ", ring off") +
+        (cfg.floatingButtonHotkey ? ", toggle " + cfg.floatingButtonHotkey : ", no toggle shortcut")
     )
   );
-  detail.push(row("extension UI", shadowHost ? "mounted" : "MISSING"));
-  detail.push(row("floating button", cfg.floatingButton ? "on" : "off"));
   detail.push(row("text animation", wordFade ? "DETECTED" : "off"));
   if (DOM.skippedAnimated > 0) detail.push(row("  skipped so far", String(DOM.skippedAnimated)));
   detail.push(row("live components", String(DOM.mountedCount)));
@@ -412,18 +403,12 @@ export async function collectDiagnostics(): Promise<string> {
     });
   }
 
-  // Judged on session history: we saw AID's button at some point but never managed to add our entry
-  // beside it. A live check cannot express this, because our editor has to be open to run the report
-  // and that always closes AID's menu first.
-  if (DOM.sawExitButton && !DOM.injectedMenuEntry) {
-    findings.push({
-      level: "error",
-      text: "AI Dungeon's menu was opened but the Editor entry could not be added to it, so AID has probably changed that button. Use the floating button to open the editor until this is fixed.",
-    });
-  } else if (!DOM.sawExitButton && !cfg.floatingButton) {
+  if (!cfg.floatingButton) {
     findings.push({
       level: "warn",
-      text: "The floating button is off and AI Dungeon's menu has not been opened this session, so there may be no way to reach the editor. If the Editor entry is missing from the menu, turn the floating button on.",
+      text:
+        "The floating button is off, so the editor only opens with the keyboard shortcut (Ctrl+Shift+L unless rebound)" +
+        (cfg.floatingButtonHotkey ? ", and " + cfg.floatingButtonHotkey + " brings the button back." : "."),
     });
   }
 

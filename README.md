@@ -76,8 +76,8 @@ release while a store review is pending.
 1. Open any adventure in AI Dungeon.
 2. Open the editor, either way works:
    - click the floating **DExtV2R** button sitting on top of the game, which you can drag anywhere;
-     hovering it slides out shortcuts straight to **Story Cards**, **AID Sync** and **Settings**, or
-   - open AI Dungeon's own menu (the flame, top left) and click **Editor**, or
+     hovering it brings up a ring of quick actions: **Sets** (switch, create or import a card set),
+     **Stamp** (bind the set to the story you are playing), **AID Sync** and **Settings**, or
    - press **Ctrl+Shift+L** (rebindable in your browser's extension shortcut settings).
 3. Bring your cards in: the **Import** tab pulls the story cards straight out of the adventure you have
    open. Or pick an adventure on the **Adventure** tab and add cards by hand.
