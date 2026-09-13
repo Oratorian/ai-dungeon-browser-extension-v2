@@ -1,7 +1,7 @@
 <script lang="ts">
   import Field from "@/ui/components/field.svelte";
   import { aidDetected } from "@/aid/bridge";
-  import { playedAdventureId, playedShortId } from "@/aid/adventure";
+  import { playedAdventureId, playedScenarioId, playedShortId } from "@/aid/adventure";
   import { Storage } from "@/storage";
   import type { Adventure } from "@/shared/types";
   import { EMPTY_STATS, type AidCard, type AidDetected } from "@/aid/protocol";
@@ -15,6 +15,9 @@
   // AI Dungeon adventure currently in the URL (reactive), used for the match check and binding.
   let playedId = $state<string | null>(null);
   playedAdventureId.subscribe((v) => (playedId = v));
+  // The scenario the open adventure was started from, once the page tap has read it.
+  let scenarioId = $state<string | null>(null);
+  playedScenarioId.subscribe((v) => (scenarioId = v));
   // Import into a fresh adventure (default) rather than whatever is currently selected, so switching
   // AI Dungeon adventures never dumps cards into the wrong extension adventure.
   let createScenario = $state(true);
@@ -32,15 +35,19 @@
 
   // The shortId of the adventure being imported (URL first, captured id as fallback).
   const importedShortId = $derived(playedId ?? detected.shortId);
-  // True when the currently selected adventure is already the one bound to that adventure.
-  const targetMatches = $derived(!!target?.aidShortId && !!importedShortId && target.aidShortId === importedShortId);
+  // True when the currently selected adventure is already the one bound to that adventure, by its
+  // id or by the scenario it came from (a duplicate of an adventure imported before).
+  const targetMatches = $derived(
+    (!!target?.aidShortId && !!importedShortId && target.aidShortId === importedShortId) ||
+      (!!target?.aidScenarioId && !!scenarioId && target.aidScenarioId === scenarioId)
+  );
 
   // Default the "Create new adventure" toggle: create a fresh one UNLESS the selected adventure is
   // already the match for what's being imported (then merging into it is the whole point, so leave
   // it unchecked). Recomputed when that context changes; a manual toggle sticks until then.
   let scenarioKey = "";
   $effect(() => {
-    const key = `${target?.id ?? ""}|${target?.aidShortId ?? ""}|${importedShortId ?? ""}`;
+    const key = `${target?.id ?? ""}|${target?.aidShortId ?? ""}|${target?.aidScenarioId ?? ""}|${importedShortId ?? ""}|${scenarioId ?? ""}`;
     if (key !== scenarioKey) {
       scenarioKey = key;
       createScenario = !targetMatches;
@@ -86,7 +93,10 @@
   const checkboxHint = $derived.by(() => {
     const targetName = target?.name ?? "the selected adventure";
     if (createScenario) {
-      if (!target) return `A new adventure "${newAdventureName}" will be created and linked to this AI Dungeon adventure.`;
+      if (!target)
+        return scenarioId
+          ? `A new adventure "${newAdventureName}" will be created and linked to this AI Dungeon adventure and its scenario, so it also loads for duplicates and restarts.`
+          : `A new adventure "${newAdventureName}" will be created and linked to this AI Dungeon adventure.`;
       if (targetMatches) return `"${targetName}" already matches this adventure, but a separate new one will be created.`;
       return `The selected "${targetName}" is a different adventure, so a new one is created and linked, keeping cards out of the wrong one.`;
     }
@@ -110,14 +120,16 @@
     if (selectedCards.length === 0) return;
 
     // With "Create new adventure" on (default), or when nothing is selected, make a fresh adventure
-    // named after the AI Dungeon adventure and bind it to that adventure's shortId, so it auto-loads
-    // on play and the import never lands in a previously-selected (wrong) adventure. Otherwise merge
-    // into the selected adventure, leaving its existing link untouched.
+    // named after the AI Dungeon adventure and bind it to that adventure's shortId and, when known,
+    // to its scenario, so it auto-loads on play (and on every duplicate or restart of the scenario)
+    // and the import never lands in a previously-selected (wrong) adventure. Otherwise merge into
+    // the selected adventure, leaving its existing links untouched.
     let adventure;
     if (createScenario || !target) {
       adventure = Storage.createAdventure(newAdventureName);
       Storage.selectAdventure(adventure.id);
       if (importedShortId) Storage.setAidShortId(adventure.id, importedShortId);
+      if (scenarioId) Storage.setAidScenarioId(adventure.id, scenarioId);
     } else {
       adventure = target;
     }
