@@ -14,7 +14,12 @@ export default defineUnlistedScript(() => {
 
   // Current adventure's captured cards, keyed by id so live edits upsert instead of replacing the
   // whole set. Kept so a late-loading content script can ask for it (see the request handler).
-  let latest: { shortId: string | null; title: string | null; byId: Map<string, AidCard> } | null = null;
+  let latest: {
+    shortId: string | null;
+    scenarioId: string | null;
+    title: string | null;
+    byId: Map<string, AidCard>;
+  } | null = null;
 
   // What the tap has seen this session. Posted even when no cards were found, so the diagnostics
   // report can say whether we saw no traffic, traffic without cards, or cards we failed to read.
@@ -23,12 +28,20 @@ export default defineUnlistedScript(() => {
   function post() {
     const cards = latest ? [...latest.byId.values()] : [];
     // Handy manual verification hook: type `__deAidCards` in the page console.
-    if (cards.length) (window as any).__deAidCards = { shortId: latest!.shortId, title: latest!.title, cards };
+    if (cards.length) {
+      (window as any).__deAidCards = {
+        shortId: latest!.shortId,
+        scenarioId: latest!.scenarioId,
+        title: latest!.title,
+        cards,
+      };
+    }
     window.postMessage(
       {
         source: AID_MSG.SOURCE,
         kind: AID_MSG.UPDATE,
         shortId: latest?.shortId ?? null,
+        scenarioId: latest?.scenarioId ?? null,
         title: latest?.title ?? null,
         cards,
         stats: { ...stats },
@@ -44,12 +57,14 @@ export default defineUnlistedScript(() => {
   //  - otherwise the cards are a live WS delta and are upserted, so editing one card in AID does not
   //    wipe the rest.
   // A new shortId resets the set (the user switched adventures).
-  function capture(shortId: string | null, title: string | null, cards: AidCard[], full: boolean) {
+  function capture(holder: Holder, full: boolean) {
+    const { shortId, scenarioId, title, cards } = holder;
     if (!cards.length && !full) return;
     if (!latest || (shortId && shortId !== latest.shortId)) {
-      latest = { shortId: shortId ?? null, title: title ?? null, byId: new Map() };
+      latest = { shortId: shortId ?? null, scenarioId: null, title: title ?? null, byId: new Map() };
     }
     if (shortId) latest.shortId = shortId;
+    if (scenarioId) latest.scenarioId = scenarioId;
     if (title) latest.title = title;
     if (full) {
       if (cards.length) latest.byId = new Map(cards.map((c) => [c.id, c]));
@@ -62,7 +77,22 @@ export default defineUnlistedScript(() => {
   /** The adventure shortId in the address bar, used to ignore captures for anything else. */
   const pageShortId = () => location.pathname.match(/adventure\/([^/]+)/)?.[1] ?? null;
 
-  type Holder = { shortId: string | null; title: string | null; cards: AidCard[] };
+  type Holder = { shortId: string | null; scenarioId: string | null; title: string | null; cards: AidCard[] };
+
+  /**
+   * The scenario an adventure object says it came from. AI Dungeon's Adventure type carries a plain
+   * `scenarioId`; some queries ask for the nested `scenario` instead, whose own id is the same
+   * number. Either is read, the plain field first so one adventure always yields the same value.
+   */
+  function scenarioIdOf(node: any): string | null {
+    if (node.scenarioId != null && node.scenarioId !== "") return String(node.scenarioId);
+    const nested = node.scenario;
+    if (nested && typeof nested === "object") {
+      if (nested.id != null && nested.id !== "") return String(nested.id);
+      if (nested.shortId != null && nested.shortId !== "") return String(nested.shortId);
+    }
+    return null;
+  }
 
   // Any object in a parsed GraphQL payload that carries a storyCards array, whatever the path to it.
   //
@@ -74,33 +104,41 @@ export default defineUnlistedScript(() => {
     const holders: Holder[] = [];
     const seen = new Set<any>();
 
-    // shortId/title are carried down from enclosing objects: whichever object holds storyCards need
-    // not be the one naming the adventure, so a holder inherits the nearest one that does.
-    const walk = (node: any, depth: number, shortId: string | null, title: string | null) => {
+    // shortId/scenarioId/title are carried down from enclosing objects: whichever object holds
+    // storyCards need not be the one naming the adventure, so a holder inherits the nearest one
+    // that does.
+    const walk = (
+      node: any,
+      depth: number,
+      shortId: string | null,
+      scenarioId: string | null,
+      title: string | null
+    ) => {
       if (!node || typeof node !== "object" || depth > 12 || seen.has(node)) return;
       seen.add(node);
 
       if (Array.isArray(node)) {
-        for (const item of node) walk(item, depth + 1, shortId, title);
+        for (const item of node) walk(item, depth + 1, shortId, scenarioId, title);
         return;
       }
 
       const id = node.shortId != null ? String(node.shortId) : shortId;
+      const scenario = scenarioIdOf(node) ?? scenarioId;
       const name = typeof node.title === "string" && node.title.trim() ? node.title : title;
 
       if (Array.isArray(node.storyCards)) {
-        holders.push({ shortId: id, title: name, cards: sanitizeCards(node.storyCards) });
+        holders.push({ shortId: id, scenarioId: scenario, title: name, cards: sanitizeCards(node.storyCards) });
       }
 
       for (const [key, value] of Object.entries(node)) {
         // Never descend into the cards themselves: a story card has its own `title`, which would
         // otherwise be inherited as if it were the adventure's name.
         if (key === "storyCards") continue;
-        walk(value, depth + 1, id, name);
+        walk(value, depth + 1, id, scenario, name);
       }
     };
 
-    walk(json, 0, null, null);
+    walk(json, 0, null, null, null);
     return holders;
   }
 
@@ -123,7 +161,7 @@ export default defineUnlistedScript(() => {
     const holders = findHolders(json);
     stats.holders += holders.length;
     const holder = pick(holders);
-    if (holder) capture(holder.shortId, holder.title, holder.cards, full);
+    if (holder) capture(holder, full);
   }
 
   // --- fetch (initial + refetched adventure loads: authoritative full sets) ---

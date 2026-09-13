@@ -34,6 +34,13 @@ export type AidStats = {
 
 export type AidDetected = {
   shortId: string | null;
+  /**
+   * The id of the scenario the adventure was started from, when AI Dungeon's response names it.
+   * Every adventure started or duplicated from one scenario shares it, which is what lets a card
+   * set follow the scenario rather than one adventure. Opaque: whatever id form the payload
+   * carried, compared only for equality.
+   */
+  scenarioId: string | null;
   title: string | null;
   cards: AidCard[];
   stats: AidStats;
@@ -55,6 +62,7 @@ export type AidMessage =
       source: typeof AID_MSG.SOURCE;
       kind: typeof AID_MSG.UPDATE;
       shortId: string | null;
+      scenarioId: string | null;
       title: string | null;
       cards: AidCard[];
       stats: AidStats;

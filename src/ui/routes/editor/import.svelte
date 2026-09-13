@@ -7,7 +7,7 @@
   import { EMPTY_STATS, type AidCard, type AidDetected } from "@/aid/protocol";
 
   // Story cards passively detected from the open AI Dungeon adventure (via the page interceptor).
-  let detected = $state<AidDetected>({ shortId: null, title: null, cards: [], stats: EMPTY_STATS });
+  let detected = $state<AidDetected>({ shortId: null, scenarioId: null, title: null, cards: [], stats: EMPTY_STATS });
   let adventures = $state<Record<string, Adventure>>({});
   let selectedId = $state<string | null>(null);
   let selectedTypes = $state<Set<string>>(new Set());
