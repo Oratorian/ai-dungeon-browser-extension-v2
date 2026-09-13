@@ -54,6 +54,8 @@ const defaultSettings = {
   floatingButton: true,
   floatingButtonX: -1,
   floatingButtonY: -1,
+  // Hovering the button fans out one shortcut per editor tab.
+  floatingButtonQuickActions: true,
 
   trinetraApiKey: "",
   // Where the Trinetra picker was last, so the next card opens in the same folder instead of at

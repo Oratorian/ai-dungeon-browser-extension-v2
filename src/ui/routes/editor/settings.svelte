@@ -68,6 +68,13 @@
     </Field>
 
     {#if $settings.floatingButton}
+      <Field
+        label="Quick Actions"
+        info="Hovering the button slides out three shortcuts: <b>Story Cards</b>, <b>AID Sync</b> and <b>Settings</b>. Each opens the editor straight on that tab, so importing from AI Dungeon is one click.<br><em>Off: the button only opens the editor where you last left it.</em>"
+      >
+        <Switch bind:checked={$settings.floatingButtonQuickActions} />
+      </Field>
+
       <Field label="Position" info="Moves the button back to the bottom-right corner">
         <button
           onclick={resetFloatingPosition}
