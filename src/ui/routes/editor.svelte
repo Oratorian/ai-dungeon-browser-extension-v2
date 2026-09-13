@@ -23,6 +23,7 @@
   let vinfo = $state<VersionInfo>({ current: "", latest: null, updateAvailable: false });
   versionInfo.subscribe((v) => (vinfo = v));
   const year = new Date().getFullYear();
+  const ORIGINAL_REPO_URL = "https://github.com/clauds-clauds/ai-dungeon-browser-extension-v2";
 
   // Check GitHub for a newer release the first time the editor is opened (checkForUpdate is
   // self-guarded to run once per session).
@@ -63,7 +64,22 @@
       <div
         class="flex items-center justify-between gap-2 shrink-0 px-4 py-2 border-t border-theme-neutral-100 text-theme-neutral-700"
       >
-        <span class="text-sm truncate">v{vinfo.current} &middot; &copy; {year} Oratorian &middot; Mahesvara</span>
+        <span class="flex flex-col min-w-0">
+          <span class="text-sm truncate">v{vinfo.current} &middot; &copy; {year} Oratorian &middot; Mahesvara</span>
+          <!-- The project began as Claudia's Dungeon Extension v2 (MIT); the shipped copy should say so,
+               not only the source tree. Quieter than the line above, but still readable. -->
+          <span class="text-xs text-theme-neutral-600 truncate">
+            Original source &copy; 2026 by
+            <a
+              href={ORIGINAL_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-theme-neutral-700 hover:text-theme-neutral-900 hover:underline"
+            >
+              Claudia
+            </a>
+          </span>
+        </span>
         {#if vinfo.updateAvailable}
           <a
             href={RELEASES_URL}
