@@ -77,11 +77,11 @@
     <button
       type="button"
       onclick={() => (value = "")}
-      aria-label="Clear shortcut"
-      title="Clear"
+      aria-label="Remove shortcut"
+      title="Remove the shortcut"
       class="font-symbol text-xl text-theme-neutral-800 hover:text-pretty-red transition-colors"
     >
-      close
+      delete
     </button>
   {/if}
 </div>
