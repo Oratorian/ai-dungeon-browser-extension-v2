@@ -7,6 +7,32 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
+## v2.3.0
+
+### 🧭 The floating button grows a ring
+
+Hover the floating button and four quick actions appear around it. Two of them work right there,
+without opening the editor:
+
+- **Sets**: switch the active card set, start a new one, restore one from a file, or jump to the
+  AI Dungeon import.
+- **Stamp**: bind the set to the story you are playing, by scenario or by adventure, or unbind it.
+
+**AID Sync** and **Settings** open the editor on that tab, and the button itself opens the editor
+where you last left it, so nothing on the ring repeats what the button does. Hovering a ring button
+opens its second level; clicking pins it open until you click elsewhere or press Escape.
+
+The ring uses whatever room the button has: the full cross in the open, a half ring against an
+edge, a quarter in a corner. The order of the actions never changes, only how much of the circle
+they use. This came from feedback in the AI Dungeon Discord, sketch included. Thank you.
+
+### 🗑️ The Editor entry in AI Dungeon's menu is gone
+
+It was cloned into AI Dungeon's own menu (the flame, top left), which meant it broke whenever that
+menu changed. The floating button, its ring and the keyboard shortcut cover everything it did. The
+Diagnostics report no longer mentions it and instead shows the button, ring and toggle shortcut
+state.
+
 ## v2.2.0
 
 ### 🎯 Stamp once per scenario, not once per adventure
