@@ -6,7 +6,7 @@ import type { PublicPath } from "wxt/browser";
  */
 export const FLOATING_BUTTON_MIN_SIZE = 24;
 export const FLOATING_BUTTON_MAX_SIZE = 128;
-export const FLOATING_BUTTON_DEFAULT_SIZE = 44;
+export const FLOATING_BUTTON_DEFAULT_SIZE = 45;
 
 /** Whatever is stored, coerced into the allowed range (a non-number falls to the default). */
 export function floatingButtonSize(value: unknown): number {
