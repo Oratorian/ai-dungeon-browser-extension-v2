@@ -6,7 +6,7 @@
   import { extensionState } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
   import { fade, fly } from "svelte/transition";
-  import { floatingButtonIconFile, floatingButtonSize } from "@/shared/floating_button";
+  import { FLOATING_BUTTON_ICON, floatingButtonSize } from "@/shared/floating_button";
 
   // A draggable quick-access puck that opens the editor. It replaces the button we used to clone
   // into AI Dungeon's Do/Say/Story/Guide/See action bar: other extensions inject there too, so we
@@ -33,13 +33,12 @@
   // Tracked so the puck re-clamps itself into view when the window is resized.
   let vw = $state(window.innerWidth);
   let vh = $state(window.innerHeight);
-  let dpr = $state(window.devicePixelRatio || 1);
 
-  // Drawn size, chosen in Settings from the icon sizes the manifest ships.
+  // Drawn size, set by the slider in Settings; the browser scales the icon to it.
   const SIZE = $derived(floatingButtonSize($settings.floatingButtonSize));
-  // The extension's own icon as the face of the puck, at a file size that covers the screen's
-  // physical pixels; the folder is listed under web_accessible_resources so the page may load it.
-  const iconUrl = $derived(browser.runtime.getURL(floatingButtonIconFile(SIZE, dpr)));
+  // The extension's own icon as the face of the puck; the folder is listed under
+  // web_accessible_resources so the page may load it.
+  const iconUrl = browser.runtime.getURL(FLOATING_BUTTON_ICON);
   // Shortcuts scale with the puck, within reason: a 16px puck still needs a tappable shortcut and a
   // 128px puck does not need shortcuts the size of a fist.
   const fanSize = $derived(Math.min(56, Math.max(28, Math.round(SIZE * 0.8))));
@@ -141,7 +140,7 @@
   }
 </script>
 
-<svelte:window bind:innerWidth={vw} bind:innerHeight={vh} onresize={() => (dpr = window.devicePixelRatio || 1)} />
+<svelte:window bind:innerWidth={vw} bind:innerHeight={vh} />
 
 <!-- Hidden while the editor is open: it would only sit dimmed under the modal's backdrop. -->
 {#if $settings.floatingButton && !extensionState.isEditorOpen}

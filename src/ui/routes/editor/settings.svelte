@@ -5,8 +5,7 @@
   import Item from "@/ui/components/item.svelte";
   import Slider from "@/ui/components/slider.svelte";
   import Switch from "@/ui/components/switch.svelte";
-  import Select from "@/ui/components/select.svelte";
-  import { FLOATING_BUTTON_SIZES } from "@/shared/floating_button";
+  import { FLOATING_BUTTON_MIN_SIZE, FLOATING_BUTTON_MAX_SIZE } from "@/shared/floating_button";
   import AudioLibrary from "@/ui/components/audio_library.svelte";
   import ScenarioRepos from "@/ui/components/scenario_repos.svelte";
   import Diagnostics from "@/ui/components/diagnostics.svelte";
@@ -38,10 +37,6 @@
 
   // Send the floating button back to its default corner, for when it has been parked somewhere
   // awkward (or off the edge of a screen that has since gotten smaller).
-  // The icon sizes the manifest ships, offered as the floating button's size so each one is a PNG
-  // drawn at its native size.
-  const floatingSizeItems = FLOATING_BUTTON_SIZES.map((n) => ({ value: String(n), label: `${n} px` }));
-
   function resetFloatingPosition() {
     $settings = { ...$settings, floatingButtonX: -1, floatingButtonY: -1 };
   }
@@ -81,12 +76,8 @@
         <Switch bind:checked={$settings.floatingButtonQuickActions} />
       </Field>
 
-      <Field label="Size" info="How large the button is drawn. These are the sizes the extension icon ships in, so each one looks sharp.">
-        <Select
-          bind:value={() => String($settings.floatingButtonSize), (v) => ($settings = { ...$settings, floatingButtonSize: Number(v) })}
-          items={floatingSizeItems}
-          ariaLabel="Floating button size"
-        />
+      <Field label="Size" info="How large the button is drawn, in pixels. The shortcuts scale with it.">
+        <Slider bind:value={$settings.floatingButtonSize} min={FLOATING_BUTTON_MIN_SIZE} max={FLOATING_BUTTON_MAX_SIZE} step={1} />
       </Field>
 
       <Field label="Position" info="Moves the button back to the bottom-right corner">

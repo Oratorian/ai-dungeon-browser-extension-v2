@@ -57,8 +57,8 @@ const defaultSettings = {
   floatingButtonY: -1,
   // Hovering the button fans out one shortcut per editor tab.
   floatingButtonQuickActions: true,
-  // Drawn size in px, one of FLOATING_BUTTON_SIZES (the icon sizes the manifest ships).
-  floatingButtonSize: FLOATING_BUTTON_DEFAULT_SIZE as number,
+  // Drawn size in px, within FLOATING_BUTTON_MIN_SIZE..MAX_SIZE.
+  floatingButtonSize: FLOATING_BUTTON_DEFAULT_SIZE,
 
   trinetraApiKey: "",
   // Where the Trinetra picker was last, so the next card opens in the same folder instead of at
