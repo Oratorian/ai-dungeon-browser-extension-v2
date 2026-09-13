@@ -54,9 +54,8 @@
   // a 128px puck does not need buttons the size of a fist.
   const ringSize = $derived(Math.min(56, Math.max(30, Math.round(SIZE * 0.8))));
   const ringGap = $derived(Math.max(6, Math.round(ringSize / 5)));
-  const radius = $derived(SIZE / 2 + ringGap + ringSize / 2);
-  // How far the whole ring reaches from the puck's centre; the panel sits just outside it.
-  const reach = $derived(radius + ringSize / 2);
+  // The radius the ring wants; ringLayout may push it out when the puck is hemmed in.
+  const baseRadius = $derived(SIZE / 2 + ringGap + ringSize / 2);
 
   // Live position while a drag is in flight; null means "wherever the settings say".
   let drag = $state<{ x: number; y: number } | null>(null);
@@ -93,19 +92,22 @@
   // The ring stays shut while dragging: it would only get in the way of the drop.
   const ringOpen = $derived($settings.floatingButtonQuickActions && (hovered || focused || pinned) && !drag);
 
-  const placed = $derived.by(() => {
-    const slots = ringLayout({
+  const layout = $derived(
+    ringLayout({
       cx: pos.x + SIZE / 2,
       cy: pos.y + SIZE / 2,
-      radius,
+      radius: baseRadius,
       buttonSize: ringSize,
+      gap: ringGap,
       vw,
       vh,
       margin: MARGIN,
       count: actions.length,
-    });
-    return slots.map((slot, i) => ({ action: actions[i]!, slot }));
-  });
+    })
+  );
+  const placed = $derived(layout.slots.map((slot, i) => ({ action: actions[i]!, slot })));
+  // How far the whole ring reaches from the puck's centre; the panel sits just outside it.
+  const reach = $derived(layout.radius + ringSize / 2);
 
   // The panel opens toward the middle of the screen, so it never runs off the edge the puck is
   // parked against: to the left of the ring when the puck is on the right half, and growing upward
