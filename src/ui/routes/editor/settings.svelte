@@ -5,6 +5,8 @@
   import Item from "@/ui/components/item.svelte";
   import Slider from "@/ui/components/slider.svelte";
   import Switch from "@/ui/components/switch.svelte";
+  import Select from "@/ui/components/select.svelte";
+  import { FLOATING_BUTTON_SIZES } from "@/shared/floating_button";
   import AudioLibrary from "@/ui/components/audio_library.svelte";
   import ScenarioRepos from "@/ui/components/scenario_repos.svelte";
   import Diagnostics from "@/ui/components/diagnostics.svelte";
@@ -36,6 +38,10 @@
 
   // Send the floating button back to its default corner, for when it has been parked somewhere
   // awkward (or off the edge of a screen that has since gotten smaller).
+  // The icon sizes the manifest ships, offered as the floating button's size so each one is a PNG
+  // drawn at its native size.
+  const floatingSizeItems = FLOATING_BUTTON_SIZES.map((n) => ({ value: String(n), label: `${n} px` }));
+
   function resetFloatingPosition() {
     $settings = { ...$settings, floatingButtonX: -1, floatingButtonY: -1 };
   }
@@ -73,6 +79,14 @@
         info="Hovering the button slides out three shortcuts: <b>Story Cards</b>, <b>AID Sync</b> and <b>Settings</b>. Each opens the editor straight on that tab, so importing from AI Dungeon is one click.<br><em>Off: the button only opens the editor where you last left it.</em>"
       >
         <Switch bind:checked={$settings.floatingButtonQuickActions} />
+      </Field>
+
+      <Field label="Size" info="How large the button is drawn. These are the sizes the extension icon ships in, so each one looks sharp.">
+        <Select
+          bind:value={() => String($settings.floatingButtonSize), (v) => ($settings = { ...$settings, floatingButtonSize: Number(v) })}
+          items={floatingSizeItems}
+          ariaLabel="Floating button size"
+        />
       </Field>
 
       <Field label="Position" info="Moves the button back to the bottom-right corner">

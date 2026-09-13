@@ -6,6 +6,7 @@
   import { extensionState } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
   import { fade, fly } from "svelte/transition";
+  import { floatingButtonIconFile, floatingButtonSize } from "@/shared/floating_button";
 
   // A draggable quick-access puck that opens the editor. It replaces the button we used to clone
   // into AI Dungeon's Do/Say/Story/Guide/See action bar: other extensions inject there too, so we
@@ -17,7 +18,6 @@
   // instead of a click and a tab switch. A plain click on the puck still opens the editor where it
   // was last left.
 
-  const SIZE = 44; // px, must match the size-11 class below (used for edge clamping)
   const MARGIN = 16; // px of clearance kept from every viewport edge
   const DRAG_THRESHOLD = 4; // px of travel before a press counts as a drag instead of a click
 
@@ -30,14 +30,20 @@
     { icon: "settings", label: "Settings", tab: Tab.Settings },
   ];
 
-  // The extension's own icon as the face of the puck. 96px so it stays crisp on HiDPI screens at
-  // the 44px it is drawn at; the folder is listed under web_accessible_resources so the page may
-  // load it.
-  const iconUrl = browser.runtime.getURL("/icon/96.png");
-
   // Tracked so the puck re-clamps itself into view when the window is resized.
   let vw = $state(window.innerWidth);
   let vh = $state(window.innerHeight);
+  let dpr = $state(window.devicePixelRatio || 1);
+
+  // Drawn size, chosen in Settings from the icon sizes the manifest ships.
+  const SIZE = $derived(floatingButtonSize($settings.floatingButtonSize));
+  // The extension's own icon as the face of the puck, at a file size that covers the screen's
+  // physical pixels; the folder is listed under web_accessible_resources so the page may load it.
+  const iconUrl = $derived(browser.runtime.getURL(floatingButtonIconFile(SIZE, dpr)));
+  // Shortcuts scale with the puck, within reason: a 16px puck still needs a tappable shortcut and a
+  // 128px puck does not need shortcuts the size of a fist.
+  const fanSize = $derived(Math.min(56, Math.max(28, Math.round(SIZE * 0.8))));
+  const fanGap = $derived(Math.max(6, Math.round(fanSize / 6)));
 
   // Live position while a drag is in flight; null means "wherever the settings say".
   let drag = $state<{ x: number; y: number } | null>(null);
@@ -135,7 +141,7 @@
   }
 </script>
 
-<svelte:window bind:innerWidth={vw} bind:innerHeight={vh} />
+<svelte:window bind:innerWidth={vw} bind:innerHeight={vh} onresize={() => (dpr = window.devicePixelRatio || 1)} />
 
 <!-- Hidden while the editor is open: it would only sit dimmed under the modal's backdrop. -->
 {#if $settings.floatingButton && !extensionState.isEditorOpen}
@@ -146,28 +152,28 @@
     onpointerleave={() => (hovered = false)}
     onfocusin={() => (focused = true)}
     onfocusout={onFocusOut}
-    style="left: {pos.x}px; top: {pos.y}px;"
-    class="fixed z-999 size-11"
+    style="left: {pos.x}px; top: {pos.y}px; width: {SIZE}px; height: {SIZE}px;"
+    class="fixed z-999"
   >
     {#if fanOpen}
       <!-- The padding on the fan's inner edge keeps the pointer inside this group while it crosses
            the gap from the puck to the first shortcut, so the fan does not shut on the way over. -->
       <div
         transition:fly={{ duration: 150, x: fanLeft ? 12 : -12 }}
-        class="absolute top-1/2 -translate-y-1/2 flex items-center gap-1.5 {fanLeft
-          ? 'right-full pr-2 flex-row-reverse'
-          : 'left-full pl-2'}"
+        style="gap: {fanGap}px; padding-inline: {fanGap + 2}px;"
+        class="absolute top-1/2 -translate-y-1/2 flex items-center {fanLeft ? 'right-full flex-row-reverse' : 'left-full'}"
       >
         {#each actions as action (action.tab)}
           <button
             onclick={() => openAt(action.tab)}
             aria-label="Open {action.label}"
             title={action.label}
-            class="flex items-center justify-center size-9 rounded-full select-none
+            style="width: {fanSize}px; height: {fanSize}px; font-size: {Math.round(fanSize * 0.55)}px;"
+            class="flex items-center justify-center rounded-full select-none
                    bg-theme-neutral-200/95 ring-1 ring-pretty-theme/40 shadow-md backdrop-blur-sm
                    text-theme-neutral-800 hover:text-pretty-theme hover:ring-pretty-theme transition-colors"
           >
-            <span class="font-symbol text-lg pointer-events-none">{action.icon}</span>
+            <span class="font-symbol pointer-events-none" style="font-size: inherit;">{action.icon}</span>
           </button>
         {/each}
       </div>
@@ -181,8 +187,8 @@
       onclick={onClick}
       aria-label="Open the Dungeon Extension editor (drag to move)"
       title="Dungeon Extension , click to open, drag to move"
-      style="cursor: {drag ? 'grabbing' : 'grab'};"
-      class="relative block size-11 rounded-xl overflow-hidden touch-none select-none shadow-lg
+      style="cursor: {drag ? 'grabbing' : 'grab'}; border-radius: {Math.max(4, Math.round(SIZE / 4))}px;"
+      class="relative block size-full overflow-hidden touch-none select-none shadow-lg
              {fanOpen ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-opacity"
     >
       <img src={iconUrl} alt="" draggable="false" class="block size-full pointer-events-none" />

@@ -1,3 +1,4 @@
+import { FLOATING_BUTTON_DEFAULT_SIZE } from "@/shared/floating_button";
 import type { Adventure, AudioClip, StoryCard } from "@/shared/types";
 import { get, writable, type Writable } from "svelte/store";
 import { OPENROUTER_DEFAULT_MODEL } from "@/media/openrouter";
@@ -56,6 +57,8 @@ const defaultSettings = {
   floatingButtonY: -1,
   // Hovering the button fans out one shortcut per editor tab.
   floatingButtonQuickActions: true,
+  // Drawn size in px, one of FLOATING_BUTTON_SIZES (the icon sizes the manifest ships).
+  floatingButtonSize: FLOATING_BUTTON_DEFAULT_SIZE as number,
 
   trinetraApiKey: "",
   // Where the Trinetra picker was last, so the next card opens in the same folder instead of at
