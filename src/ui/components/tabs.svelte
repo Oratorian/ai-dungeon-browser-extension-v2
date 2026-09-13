@@ -11,17 +11,17 @@
 
   const tabBtns: TabButton[] = [
     {
-      icon: "swords",
+      icon: "style",
       label: "Adventure",
       tab: Tab.Adventure,
     },
     {
-      icon: "download",
+      icon: "sync",
       label: "Import",
       tab: Tab.Import,
     },
     {
-      icon: "discover_tune",
+      icon: "settings",
       label: "Settings",
       tab: Tab.Settings,
     },

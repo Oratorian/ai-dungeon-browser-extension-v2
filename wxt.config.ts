@@ -75,7 +75,8 @@ export default defineConfig({
     web_accessible_resources: [
       {
         // interceptor.js is the page-world GraphQL tap, injected by aid-inject.content.ts.
-        resources: ["fonts/*", "interceptor.js"],
+        // icon/* is the extension icon, shown as the face of the floating button.
+        resources: ["fonts/*", "icon/*", "interceptor.js"],
         matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
       },
     ],

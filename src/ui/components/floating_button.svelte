@@ -25,10 +25,15 @@
 
   // Same icons as the editor's tab strip, so the shortcut and the tab it opens look alike.
   const actions: QuickAction[] = [
-    { icon: "swords", label: "Story Cards", tab: Tab.Adventure },
-    { icon: "download", label: "AID Sync", tab: Tab.Import },
-    { icon: "discover_tune", label: "Settings", tab: Tab.Settings },
+    { icon: "style", label: "Story Cards", tab: Tab.Adventure },
+    { icon: "sync", label: "AID Sync", tab: Tab.Import },
+    { icon: "settings", label: "Settings", tab: Tab.Settings },
   ];
+
+  // The extension's own icon as the face of the puck. 96px so it stays crisp on HiDPI screens at
+  // the 44px it is drawn at; the folder is listed under web_accessible_resources so the page may
+  // load it.
+  const iconUrl = browser.runtime.getURL("/icon/96.png");
 
   // Tracked so the puck re-clamps itself into view when the window is resized.
   let vw = $state(window.innerWidth);
@@ -177,11 +182,10 @@
       aria-label="Open the Dungeon Extension editor (drag to move)"
       title="Dungeon Extension , click to open, drag to move"
       style="cursor: {drag ? 'grabbing' : 'grab'};"
-      class="relative flex items-center justify-center size-11 rounded-full touch-none select-none
-             bg-theme-neutral-200/90 ring-1 ring-pretty-theme/50 shadow-lg backdrop-blur-sm
-             {fanOpen ? 'opacity-100' : 'opacity-70'} hover:opacity-100 transition-opacity"
+      class="relative block size-11 rounded-xl overflow-hidden touch-none select-none shadow-lg
+             {fanOpen ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-opacity"
     >
-      <span class="font-symbol text-2xl text-pretty-theme pointer-events-none">handyman</span>
+      <img src={iconUrl} alt="" draggable="false" class="block size-full pointer-events-none" />
     </button>
   </div>
 {/if}
