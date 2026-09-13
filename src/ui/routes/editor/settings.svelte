@@ -79,7 +79,7 @@
     {#if $settings.floatingButton}
       <Field
         label="Quick Actions"
-        info="Hovering the button slides out three shortcuts: <b>Story Cards</b>, <b>AID Sync</b> and <b>Settings</b>. Each opens the editor straight on that tab, so importing from AI Dungeon is one click.<br><em>Off: the button only opens the editor where you last left it.</em>"
+        info="Hovering the button brings up a ring of quick actions around it: <b>Sets</b> to switch, create or import a card set, <b>Stamp</b> to bind the set to the story you are playing, <b>AID Sync</b> and <b>Settings</b>. Sets and Stamp open right there; click one to pin it open.<br><em>Off: the button only opens the editor where you last left it.</em>"
       >
         <Switch bind:checked={$settings.floatingButtonQuickActions} />
       </Field>

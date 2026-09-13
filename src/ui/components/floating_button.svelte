@@ -5,29 +5,40 @@
   /* Other */
   import { extensionState } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
-  import { fade, fly } from "svelte/transition";
-  import { FLOATING_BUTTON_ICON, floatingButtonSize } from "@/shared/floating_button";
+  import { fade, scale } from "svelte/transition";
+  import { FLOATING_BUTTON_ICON, floatingButtonSize, ringLayout } from "@/shared/floating_button";
+  import SetSwitcher from "./set_switcher.svelte";
+  import StampBinding from "./stamp_binding.svelte";
 
   // A draggable quick-access puck that opens the editor. It replaces the button we used to clone
   // into AI Dungeon's Do/Say/Story/Guide/See action bar: other extensions inject there too, so we
   // stopped fighting them for that row. This one lives in our own shadow root, so nothing of AID's
   // can restyle or re-render it away, and the user can park it wherever it isn't in the way.
   //
-  // Hovering it (or tabbing onto it) slides out one shortcut per editor tab, so the things people
-  // reach for most, the card set, the AI Dungeon import and the settings, are one click away
-  // instead of a click and a tab switch. A plain click on the puck still opens the editor where it
-  // was last left.
+  // Hovering it (or tabbing onto it) brings up a ring of quick actions around it. Two of them open a
+  // second level in place: Sets switches, creates or imports a card set, Stamp binds the set to the
+  // story being played. Both are things people do every time they start or duplicate an adventure,
+  // and the editor was a detour for them. The other two jump into the editor on a tab. A plain click
+  // on the puck still opens the editor where it was last left.
+  //
+  // The second level opens on hover, like the ring, and a click pins it so it survives the pointer
+  // wandering off; a click outside or Escape unpins. The ring buttons sit wherever they fit around
+  // the puck (see ringLayout), so a puck parked in a corner shows a quarter ring instead of hiding
+  // half its actions off screen.
 
   const MARGIN = 16; // px of clearance kept from every viewport edge
   const DRAG_THRESHOLD = 4; // px of travel before a press counts as a drag instead of a click
+  const CLOSE_GRACE = 250; // ms the ring survives the pointer crossing a gap between its parts
 
-  type QuickAction = { icon: string; label: string; tab: Tab };
+  type ActionId = "sets" | "stamp" | "sync" | "settings";
+  type QuickAction = { id: ActionId; icon: string; label: string; panel: boolean };
 
-  // Same icons as the editor's tab strip, so the shortcut and the tab it opens look alike.
+  // Clockwise order around the ring, always this sequence however much of the ring fits.
   const actions: QuickAction[] = [
-    { icon: "style", label: "Story Cards", tab: Tab.Adventure },
-    { icon: "sync", label: "AID Sync", tab: Tab.Import },
-    { icon: "settings", label: "Settings", tab: Tab.Settings },
+    { id: "sets", icon: "swap_horiz", label: "Sets", panel: true },
+    { id: "stamp", icon: "approval", label: "Stamp", panel: true },
+    { id: "sync", icon: "sync", label: "AID Sync", panel: false },
+    { id: "settings", icon: "settings", label: "Settings", panel: false },
   ];
 
   // Tracked so the puck re-clamps itself into view when the window is resized.
@@ -39,10 +50,13 @@
   // The extension's own icon as the face of the puck; the folder is listed under
   // web_accessible_resources so the page may load it.
   const iconUrl = browser.runtime.getURL(FLOATING_BUTTON_ICON);
-  // Shortcuts scale with the puck, within reason: a 16px puck still needs a tappable shortcut and a
-  // 128px puck does not need shortcuts the size of a fist.
-  const fanSize = $derived(Math.min(56, Math.max(28, Math.round(SIZE * 0.8))));
-  const fanGap = $derived(Math.max(6, Math.round(fanSize / 6)));
+  // Ring buttons scale with the puck, within reason: a 24px puck still needs a tappable button and
+  // a 128px puck does not need buttons the size of a fist.
+  const ringSize = $derived(Math.min(56, Math.max(30, Math.round(SIZE * 0.8))));
+  const ringGap = $derived(Math.max(6, Math.round(ringSize / 5)));
+  const radius = $derived(SIZE / 2 + ringGap + ringSize / 2);
+  // How far the whole ring reaches from the puck's centre; the panel sits just outside it.
+  const reach = $derived(radius + ringSize / 2);
 
   // Live position while a drag is in flight; null means "wherever the settings say".
   let drag = $state<{ x: number; y: number } | null>(null);
@@ -51,9 +65,15 @@
   // Set when a press turned into a drag, so the click that follows it doesn't also open the editor.
   let suppressClick = false;
 
-  // Pointer over the puck or its shortcuts, and keyboard focus inside them. Either shows the fan.
+  // Pointer over any part of the group, and keyboard focus inside it. Either shows the ring.
   let hovered = $state(false);
   let focused = $state(false);
+  // Which second level is showing, and whether a click pinned it.
+  let panel = $state<ActionId | null>(null);
+  let pinned = $state(false);
+  let closeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  let group: HTMLElement | undefined = $state();
 
   const bounds = $derived({
     maxX: Math.max(MARGIN, vw - SIZE - MARGIN),
@@ -70,20 +90,89 @@
     return { x: clamp(x, bounds.maxX), y: clamp(y, bounds.maxY) };
   });
 
-  // The fan stays shut while dragging: the shortcuts would only get in the way of the drop.
-  const fanOpen = $derived($settings.floatingButtonQuickActions && (hovered || focused) && !drag);
-  // Slide out toward the side with more room, so a puck parked on the right edge fans left.
-  const fanLeft = $derived(pos.x + SIZE / 2 > vw / 2);
+  // The ring stays shut while dragging: it would only get in the way of the drop.
+  const ringOpen = $derived($settings.floatingButtonQuickActions && (hovered || focused || pinned) && !drag);
+
+  const placed = $derived.by(() => {
+    const slots = ringLayout({
+      cx: pos.x + SIZE / 2,
+      cy: pos.y + SIZE / 2,
+      radius,
+      buttonSize: ringSize,
+      vw,
+      vh,
+      margin: MARGIN,
+      count: actions.length,
+    });
+    return slots.map((slot, i) => ({ action: actions[i]!, slot }));
+  });
+
+  // The panel opens toward the middle of the screen, so it never runs off the edge the puck is
+  // parked against: to the left of the ring when the puck is on the right half, and growing upward
+  // from the puck's bottom edge when it is on the lower half.
+  const panelLeft = $derived(pos.x + SIZE / 2 > vw / 2);
+  const panelUp = $derived(pos.y + SIZE / 2 > vh / 2);
+  const panelOffset = $derived(Math.round(SIZE / 2 + reach + 8));
+
+  const panelAction = $derived(panel ? actions.find((a) => a.id === panel) : undefined);
 
   // The puck unmounts when the editor opens, and a pointerleave never fires for an element that is
-  // gone, so the hover state has to be reset by hand or the fan is open again when the editor
+  // gone, so the hover state has to be reset by hand or the ring is open again when the editor
   // closes, with the pointer nowhere near it.
   $effect(() => {
-    if (extensionState.isEditorOpen) {
-      hovered = false;
-      focused = false;
-    }
+    if (extensionState.isEditorOpen) closeAll();
   });
+
+  function cancelClose() {
+    if (closeTimer) {
+      clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+  }
+
+  function closeAll() {
+    cancelClose();
+    hovered = false;
+    focused = false;
+    panel = null;
+    pinned = false;
+  }
+
+  function onGroupEnter() {
+    cancelClose();
+    hovered = true;
+  }
+
+  // The ring, its buttons and the panel are separate boxes with page showing between them, so the
+  // pointer leaves the group on every hop. A short grace keeps the ring up across the hop and lets
+  // a real departure close it.
+  function onGroupLeave() {
+    cancelClose();
+    closeTimer = setTimeout(() => {
+      closeTimer = null;
+      hovered = false;
+      if (!pinned) panel = null;
+    }, CLOSE_GRACE);
+  }
+
+  function onActionEnter(action: QuickAction) {
+    if (pinned) return; // a pinned panel stays until it is clicked away
+    panel = action.panel ? action.id : null;
+  }
+
+  function onActionClick(action: QuickAction) {
+    if (!action.panel) {
+      openAt(action.id === "sync" ? Tab.Import : Tab.Settings);
+      return;
+    }
+    if (panel === action.id && pinned) {
+      pinned = false;
+      panel = null;
+      return;
+    }
+    panel = action.id;
+    pinned = true;
+  }
 
   function onPointerDown(e: PointerEvent) {
     if (e.button !== 0) return; // primary button only, so right-click still opens the context menu
@@ -134,48 +223,94 @@
   }
 
   function onFocusOut(e: FocusEvent) {
-    // Focus moving between the puck and a shortcut stays "inside"; only leaving the group closes.
+    // Focus moving between the puck, a ring button and the panel stays "inside"; only leaving the
+    // group closes.
     const next = e.relatedTarget as Node | null;
     if (!next || !(e.currentTarget as HTMLElement).contains(next)) focused = false;
   }
+
+  // A click anywhere else, or Escape, unpins and closes. Listened for in the capture phase on the
+  // window so it works whatever AI Dungeon's page does with the event afterwards.
+  function onWindowPointerDown(e: PointerEvent) {
+    if (!pinned && !panel) return;
+    if (group && e.composedPath().includes(group)) return;
+    closeAll();
+  }
+
+  function onWindowKeyDown(e: KeyboardEvent) {
+    if (e.key === "Escape" && (pinned || panel)) closeAll();
+  }
 </script>
 
-<svelte:window bind:innerWidth={vw} bind:innerHeight={vh} />
+<svelte:window
+  bind:innerWidth={vw}
+  bind:innerHeight={vh}
+  onpointerdowncapture={onWindowPointerDown}
+  onkeydowncapture={onWindowKeyDown}
+/>
 
 <!-- Hidden while the editor is open: it would only sit dimmed under the modal's backdrop. -->
 {#if $settings.floatingButton && !extensionState.isEditorOpen}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
+    bind:this={group}
     transition:fade={{ duration: 150 }}
-    onpointerenter={() => (hovered = true)}
-    onpointerleave={() => (hovered = false)}
+    onpointerenter={onGroupEnter}
+    onpointerleave={onGroupLeave}
     onfocusin={() => (focused = true)}
     onfocusout={onFocusOut}
     style="left: {pos.x}px; top: {pos.y}px; width: {SIZE}px; height: {SIZE}px;"
     class="fixed z-999"
   >
-    {#if fanOpen}
-      <!-- The padding on the fan's inner edge keeps the pointer inside this group while it crosses
-           the gap from the puck to the first shortcut, so the fan does not shut on the way over. -->
+    {#if ringOpen}
+      <!-- Invisible disc under the ring, so the pointer crossing from the puck to a button never
+           leaves the group. Only exists while the ring is up. -->
       <div
-        transition:fly={{ duration: 150, x: fanLeft ? 12 : -12 }}
-        style="gap: {fanGap}px; padding-inline: {fanGap + 2}px;"
-        class="absolute top-1/2 -translate-y-1/2 flex items-center {fanLeft ? 'right-full flex-row-reverse' : 'left-full'}"
-      >
-        {#each actions as action (action.tab)}
-          <button
-            onclick={() => openAt(action.tab)}
-            aria-label="Open {action.label}"
-            title={action.label}
-            style="width: {fanSize}px; height: {fanSize}px; font-size: {Math.round(fanSize * 0.55)}px;"
-            class="flex items-center justify-center rounded-full select-none
-                   bg-theme-neutral-200/95 ring-1 ring-pretty-theme/40 shadow-md backdrop-blur-sm
-                   text-theme-neutral-800 hover:text-pretty-theme hover:ring-pretty-theme transition-colors"
-          >
-            <span class="font-symbol pointer-events-none" style="font-size: inherit;">{action.icon}</span>
-          </button>
-        {/each}
-      </div>
+        style="width: {reach * 2}px; height: {reach * 2}px; left: {SIZE / 2 - reach}px; top: {SIZE / 2 - reach}px;"
+        class="absolute rounded-full"
+      ></div>
+
+      {#each placed as { action, slot } (action.id)}
+        <button
+          transition:scale={{ duration: 120, start: 0.6 }}
+          onpointerenter={() => onActionEnter(action)}
+          onclick={() => onActionClick(action)}
+          aria-label={action.label}
+          aria-expanded={action.panel ? panel === action.id : undefined}
+          title={action.label}
+          style="width: {ringSize}px; height: {ringSize}px; font-size: {Math.round(ringSize * 0.55)}px;
+                 left: {SIZE / 2 + slot.dx - ringSize / 2}px; top: {SIZE / 2 + slot.dy - ringSize / 2}px;"
+          class="absolute flex items-center justify-center rounded-full select-none shadow-md backdrop-blur-sm
+                 bg-theme-neutral-200/95 ring-1 transition-colors
+                 {panel === action.id
+            ? 'text-pretty-theme ring-pretty-theme'
+            : 'text-theme-neutral-800 ring-pretty-theme/40 hover:text-pretty-theme hover:ring-pretty-theme'}"
+        >
+          <span class="font-symbol pointer-events-none" style="font-size: inherit;">{action.icon}</span>
+        </button>
+      {/each}
+
+      {#if panel && panelAction}
+        <div
+          transition:fade={{ duration: 120 }}
+          style="{panelLeft ? 'right' : 'left'}: {panelOffset}px; {panelUp ? 'bottom' : 'top'}: 0;"
+          class="absolute w-72 max-w-[calc(100vw-2rem)] p-2 rounded-xl bg-theme-neutral-200 ring-1 ring-theme-neutral-400 shadow-2xl text-theme-neutral-900"
+        >
+          <div class="flex items-center justify-between px-2 pb-1.5">
+            <span class="text-xs font-bold uppercase tracking-wide text-theme-neutral-700">{panelAction.label}</span>
+            {#if pinned}
+              <span class="font-symbol text-sm text-theme-neutral-600" title="Pinned; click outside or press Escape to close"
+                >keep</span
+              >
+            {/if}
+          </div>
+          {#if panel === "sets"}
+            <SetSwitcher onsync={() => openAt(Tab.Import)} />
+          {:else if panel === "stamp"}
+            <StampBinding standalone />
+          {/if}
+        </div>
+      {/if}
     {/if}
 
     <button
@@ -188,7 +323,7 @@
       title="Dungeon Extension , click to open, drag to move"
       style="cursor: {drag ? 'grabbing' : 'grab'}; border-radius: {Math.max(4, Math.round(SIZE / 4))}px;"
       class="relative block size-full overflow-hidden touch-none select-none shadow-lg
-             {fanOpen ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-opacity"
+             {ringOpen ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-opacity"
     >
       <img src={iconUrl} alt="" draggable="false" class="block size-full pointer-events-none" />
     </button>
