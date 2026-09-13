@@ -7,6 +7,9 @@ import { connectAidBridge } from "@/aid/bridge";
 import { autoSelectPlayedAdventure } from "@/aid/adventure";
 import { mount, unmount } from "svelte";
 import { installErrorCapture } from "@/shared/errors";
+import { matchesHotkey } from "@/shared/hotkey";
+import { Storage } from "@/storage";
+import { get } from "svelte/store";
 
 export default defineContentScript({
   matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
@@ -75,5 +78,25 @@ export default defineContentScript({
     browser.runtime.onMessage.addListener((message: unknown) => {
       if ((message as { type?: string } | null)?.type === "de-open-editor") extensionState.isEditorOpen = true;
     });
+
+    // The floating button's show/hide shortcut is our own, matched here on the page rather than
+    // through the browser's commands API, so it is set inside the extension's Settings and works
+    // for a temporary add-on too. Capture phase, so AI Dungeon's own handlers do not see it first.
+    // Events from inside our shadow root are skipped: the recorder in Settings must be able to
+    // record the same combination without toggling the button as it does.
+    ctx.addEventListener(
+      window,
+      "keydown",
+      (e: KeyboardEvent) => {
+        if (e.repeat) return;
+        if (e.composedPath().some((n) => (n as Element).tagName?.toLowerCase() === "de-editor-anchor")) return;
+        const hotkey = get(Storage.settings).floatingButtonHotkey;
+        if (!matchesHotkey(e, hotkey)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        Storage.settings.update((s) => ({ ...s, floatingButton: !s.floatingButton }));
+      },
+      { capture: true }
+    );
   },
 });

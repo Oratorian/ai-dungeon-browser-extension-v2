@@ -5,6 +5,7 @@
   import Item from "@/ui/components/item.svelte";
   import Slider from "@/ui/components/slider.svelte";
   import Switch from "@/ui/components/switch.svelte";
+  import HotkeyRecorder from "@/ui/components/hotkey_recorder.svelte";
   import { FLOATING_BUTTON_MIN_SIZE, FLOATING_BUTTON_MAX_SIZE } from "@/shared/floating_button";
   import AudioLibrary from "@/ui/components/audio_library.svelte";
   import ScenarioRepos from "@/ui/components/scenario_repos.svelte";
@@ -66,6 +67,13 @@
       info="Shows a small draggable button over the game that opens this editor.<br>- <b>Click</b> it to open the editor<br>- <b>Drag</b> it anywhere you like; it stays put<br><em>Turn this off if you would rather use the Editor entry in AI Dungeon's top menu.</em>"
     >
       <Switch bind:checked={$settings.floatingButton} />
+    </Field>
+
+    <Field
+      label="Toggle Shortcut"
+      info="A key combination that shows or hides the floating button while you play, so it can get out of the way mid-story without a trip back here.<br>Click the field and press the combination. It needs Ctrl, Alt or Meta in it, so typing never triggers it. Backspace clears it."
+    >
+      <HotkeyRecorder bind:value={$settings.floatingButtonHotkey} ariaLabel="Floating button toggle shortcut" />
     </Field>
 
     {#if $settings.floatingButton}
