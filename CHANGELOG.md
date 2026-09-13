@@ -7,6 +7,35 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
+## v2.2.0
+
+### 🎯 Stamp once per scenario, not once per adventure
+
+A card set can now follow the **scenario** an adventure was started from. Stamp it once and it
+loads for every adventure you start or duplicate from that scenario, so restarting a story no longer
+means picking the set and stamping it again. Sets you import from AI Dungeon get this link
+automatically. The old per-adventure stamp is still there as **This adventure only**, and it wins
+over the scenario link, so one adventure of a scenario can carry its own set. Importing into a
+duplicate of an adventure you already imported now recognises it and merges instead of creating a
+second set.
+
+The scenario link only works when AI Dungeon's own adventure data names its scenario. If it does
+not, the Stamp Scenario button explains that, and the per-adventure stamp still works.
+
+### 🧭 Shortcuts on the floating button
+
+Hover the floating button and three shortcuts slide out: **Story Cards**, **AID Sync** and
+**Settings**. Each opens the editor straight on that tab, so bringing cards in from AI Dungeon is one
+click. The shortcuts open toward whichever side has room, stay hidden while you drag the button, and
+can be turned off under **Settings → Floating Button → Quick Actions**.
+
+Both ideas came from feedback in the AI Dungeon Discord. Thank you.
+
+### 🩺 Diagnostics
+
+The report now says whether a set is linked by adventure or by scenario, and whether AI Dungeon's
+response carried a scenario id at all.
+
 ## v2.1.0
 
 ### 🔓 No new permissions

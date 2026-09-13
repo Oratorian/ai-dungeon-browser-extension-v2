@@ -75,7 +75,8 @@ release while a store review is pending.
 
 1. Open any adventure in AI Dungeon.
 2. Open the editor, either way works:
-   - click the floating **DExtV2R** button sitting on top of the game, which you can drag anywhere, or
+   - click the floating **DExtV2R** button sitting on top of the game, which you can drag anywhere;
+     hovering it slides out shortcuts straight to **Story Cards**, **AID Sync** and **Settings**, or
    - open AI Dungeon's own menu (the flame, top left) and click **Editor**, or
    - press **Ctrl+Shift+L** (rebindable in your browser's extension shortcut settings).
 3. Bring your cards in: the **Import** tab pulls the story cards straight out of the adventure you have
@@ -91,8 +92,10 @@ If something looks wrong, **Settings → Support → Diagnostics** will usually 
 
 - **Import from AI Dungeon**: The **Import** tab reads the story cards of the adventure you are playing
   and brings them over, filtered by type, so you do not rebuild anything by hand
-- **Auto-load**: Each imported set is linked to its AI Dungeon adventure and loads itself when you play
-  that adventure. Older hand-built sets can be linked retroactively with **Stamp Adventure-ID**
+- **Auto-load**: Each imported set is linked to its AI Dungeon adventure and to the scenario it was
+  started from, so it loads itself when you play that adventure and every one you start or duplicate
+  from the same scenario. Older hand-built sets can be linked retroactively with **Stamp Scenario**
+  (or **This adventure only** for a set that belongs to one adventure)
 - **Organised by type**: Cards are grouped into collapsible sections, with a search across names and
   trigger words, and per-type filters with counts
 - **Story Card Types**: Characters, locations, items, factions, events, and races
@@ -138,7 +141,7 @@ When enabled, the extension parses and renders markdown-style formatting in stor
 
 ### Settings
 
-- **Interface**: Show or hide the floating editor button, and reset its position
+- **Interface**: Show or hide the floating editor button, its hover shortcuts, and reset its position
 - **Icons**: Size, roundness, border thickness
 - **Text**: Bold highlighting toggle, markdown formatting toggle, default color
 - **Tooltips**: Hide delay, max width, max height
