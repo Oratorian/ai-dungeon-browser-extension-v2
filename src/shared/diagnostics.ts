@@ -243,8 +243,11 @@ export async function collectDiagnostics(): Promise<string> {
   const portraits = cards.flatMap((c) => c.graphics);
   const portraitHosts = hostsOf(portraits);
   const cardMap = get(Storage.cardMap);
-  const linked = Boolean(adventure && shortId && adventure.aidShortId === shortId);
   const detected = get(aidDetected);
+  const scenarioId = shortId && detected.shortId === shortId ? detected.scenarioId : null;
+  const linkedByAdventure = Boolean(adventure && shortId && adventure.aidShortId === shortId);
+  const linkedByScenario = Boolean(adventure && scenarioId && adventure.aidScenarioId === scenarioId);
+  const linked = linkedByAdventure || linkedByScenario;
 
   // Do the card triggers actually match anything on screen? This separates "highlighting is broken"
   // from "nothing on this page happens to mention a card".
@@ -311,7 +314,19 @@ export async function collectDiagnostics(): Promise<string> {
   detail.push(row("live components", String(DOM.mountedCount)));
 
   detail.push("", "[Content]");
-  detail.push(row("linked card set", adventure ? (linked ? "yes" : "selected, NOT linked") : "none selected"));
+  detail.push(
+    row(
+      "linked card set",
+      adventure
+        ? linkedByAdventure
+          ? "yes, by adventure"
+          : linkedByScenario
+            ? "yes, by scenario"
+            : "selected, NOT linked"
+        : "none selected"
+    )
+  );
+  detail.push(row("scenario id", shortId ? (scenarioId ? "seen" : "not seen in AID's response") : "n/a"));
   detail.push(row("story cards", cards.length + " (icons " + withIcons + ", portraits " + withPortraits + ")"));
   detail.push(row("trigger map", String(cardMap.size)));
   detail.push(row("trigger matches", matches + " in " + containers.length + " visible"));

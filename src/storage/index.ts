@@ -178,6 +178,7 @@ function normalizeAdventure(adventure: unknown): Adventure | null {
     // Preserve the played-adventure link across reloads (dropping it here made the binding vanish
     // on every F5, so the "Stamp" button kept reappearing).
     aidShortId: typeof a.aidShortId === "string" ? a.aidShortId : undefined,
+    aidScenarioId: typeof a.aidScenarioId === "string" ? a.aidScenarioId : undefined,
   };
 }
 
@@ -385,13 +386,30 @@ export class Storage {
   }
 
   /**
-   * Selects the adventure that was imported from the given AI Dungeon shortId, if one exists, so its
-   * story cards (and highlighting) apply automatically. Non-destructive: if nothing matches, the
-   * current selection is left untouched. Returns whether a match was selected.
+   * The card set that belongs to an AI Dungeon adventure: the one stamped with its shortId, or
+   * failing that the one stamped with the scenario it was started from. The adventure binding wins
+   * so a single adventure of a scenario can carry a set of its own. Null when nothing is bound.
    */
-  static selectAdventureByAidId(shortId: string): boolean {
-    if (!shortId) return false;
-    const match = Object.values(get(this.adventures)).find((a) => a.aidShortId === shortId);
+  static findAdventureForAid(shortId: string | null, scenarioId: string | null): Adventure | null {
+    const all = Object.values(get(this.adventures));
+    if (shortId) {
+      const byAdventure = all.find((a) => a.aidShortId === shortId);
+      if (byAdventure) return byAdventure;
+    }
+    if (scenarioId) {
+      const byScenario = all.find((a) => a.aidScenarioId === scenarioId);
+      if (byScenario) return byScenario;
+    }
+    return null;
+  }
+
+  /**
+   * Selects the card set bound to the given AI Dungeon adventure (by shortId, else by the scenario
+   * it came from), so its story cards (and highlighting) apply automatically. Non-destructive: if
+   * nothing matches, the current selection is left untouched. Returns whether a match was selected.
+   */
+  static selectAdventureByAidId(shortId: string | null, scenarioId: string | null = null): boolean {
+    const match = this.findAdventureForAid(shortId, scenarioId);
     if (!match) return false;
     if (get(this.selectedAdventureId) !== match.id) this.selectAdventure(match.id);
     return true;
@@ -399,20 +417,32 @@ export class Storage {
 
   /**
    * Binds an adventure to an AI Dungeon shortId (or clears it with null). Keeps the binding unique:
-   * any other adventure carrying the same shortId is unbound, so selectAdventureByAidId is
+   * any other adventure carrying the same shortId is unbound, so findAdventureForAid is
    * deterministic.
    */
   static setAidShortId(adventureId: string, shortId: string | null): void {
+    this.setAidLink(adventureId, "aidShortId", shortId);
+  }
+
+  /**
+   * Binds an adventure to an AI Dungeon scenario id (or clears it with null), so it auto-loads for
+   * every adventure started or duplicated from that scenario. Unique per scenario, like the shortId.
+   */
+  static setAidScenarioId(adventureId: string, scenarioId: string | null): void {
+    this.setAidLink(adventureId, "aidScenarioId", scenarioId);
+  }
+
+  private static setAidLink(adventureId: string, field: "aidShortId" | "aidScenarioId", value: string | null): void {
     this.adventures.update((advs) => {
       const target = advs[adventureId];
       if (!target) return advs;
       const next: Record<string, Adventure> = { ...advs };
-      if (shortId) {
+      if (value) {
         for (const [id, a] of Object.entries(next)) {
-          if (id !== adventureId && a.aidShortId === shortId) next[id] = { ...a, aidShortId: undefined };
+          if (id !== adventureId && a[field] === value) next[id] = { ...a, [field]: undefined };
         }
       }
-      next[adventureId] = { ...target, aidShortId: shortId ?? undefined };
+      next[adventureId] = { ...target, [field]: value ?? undefined };
       return next;
     });
   }
