@@ -76,7 +76,8 @@ export function ringLayout(input: RingLayoutInput): RingSlot[] {
     const x = cx + dx;
     const y = cy + dy;
     const fits = x - half >= margin && x + half <= vw - margin && y - half >= margin && y + half <= vh - margin;
-    if (fits) chosen.push({ angle, dx: Math.round(dx), dy: Math.round(dy) });
+    // `|| 0` turns the -0 that Math.round makes of a tiny negative into a plain 0.
+    if (fits) chosen.push({ angle, dx: Math.round(dx) || 0, dy: Math.round(dy) || 0 });
   }
   return chosen.sort((a, b) => a.angle - b.angle);
 }
