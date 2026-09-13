@@ -6,44 +6,16 @@
   import { Storage } from "@/storage";
   import type { Adventure, StoryCard } from "@/shared/types";
   import Field from "@/ui/components/field.svelte";
-  import { playedAdventureId, playedScenarioId } from "@/aid/adventure";
+  import StampBinding from "@/ui/components/stamp_binding.svelte";
   import { cardTypeMeta, cardTypeOrder } from "@/shared/card_types";
   import { slide } from "svelte/transition";
 
   let adventures = $state<Record<string, Adventure>>({});
   let selectedId = $state<string | null>(null);
-  // The AI Dungeon adventure currently in the URL (reactive, so the button tracks navigation). Used
-  // to retro-link an older card set to the adventure being played (see aid/adventure.ts).
-  let playedId = $state<string | null>(null);
-  // The scenario that adventure was started from, once the page tap has read it (null until then).
-  let scenarioId = $state<string | null>(null);
-
   Storage.adventures.subscribe((a) => (adventures = a));
   Storage.selectedAdventureId.subscribe((id) => (selectedId = id));
-  playedAdventureId.subscribe((v) => (playedId = v));
-  playedScenarioId.subscribe((v) => (scenarioId = v));
-
   const selectedAdventure = $derived(selectedId ? (adventures[selectedId] ?? null) : null);
 
-  /* How the selected set is bound. A scenario stamp makes it load for every adventure started or
-     duplicated from that scenario, which is what most people want; an adventure stamp pins it to
-     one adventure and takes precedence, for the odd adventure that needs its own set. */
-  const stampedScenario = $derived(!!selectedAdventure?.aidScenarioId);
-  const stampedAdventure = $derived(!!selectedAdventure?.aidShortId);
-  const stamped = $derived(stampedScenario || stampedAdventure);
-  // Whether the stamps point at what is open right now, so a set bound to some other story is not
-  // described as loading for this one.
-  const stampMatchesOpen = $derived(
-    (stampedAdventure && selectedAdventure?.aidShortId === playedId) ||
-      (stampedScenario && !!scenarioId && selectedAdventure?.aidScenarioId === scenarioId)
-  );
-  const stampSummary = $derived(
-    stampedScenario && stampedAdventure
-      ? "Auto-loads for every adventure of its scenario, and for one adventure by id"
-      : stampedScenario
-        ? "Auto-loads for every adventure started from its scenario"
-        : "Auto-loads for one AI Dungeon adventure"
-  );
   const storyCards = $derived(selectedAdventure ? Object.values(selectedAdventure.storyCards) : []);
 
   /* Browsing state. A big card set is unusable as one flat list, so it is grouped by type, each
@@ -136,21 +108,6 @@
     }
   }
 
-  function stampScenarioId() {
-    if (!selectedAdventure || !scenarioId) return;
-    Storage.setAidScenarioId(selectedAdventure.id, scenarioId);
-  }
-
-  function stampAdventureId() {
-    if (!selectedAdventure || !playedId) return;
-    Storage.setAidShortId(selectedAdventure.id, playedId);
-  }
-
-  function unbind() {
-    if (!selectedAdventure) return;
-    Storage.setAidShortId(selectedAdventure.id, null);
-    Storage.setAidScenarioId(selectedAdventure.id, null);
-  }
 </script>
 
 <div class="flex flex-col gap-4">
@@ -159,58 +116,7 @@
   </Field>
 
   {#if selectedAdventure}
-    <!-- Auto-load link: bind this card set to the scenario (every adventure started from it) or to
-         the one AI Dungeon adventure that is open. -->
-    <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-theme-neutral-200 rounded-lg">
-      {#if stamped}
-        <span class="text-xs text-theme-neutral-800 flex items-center gap-1.5 min-w-0">
-          <span class="font-symbol text-base {stampMatchesOpen || !playedId ? 'text-pretty-theme' : 'text-theme-neutral-600'}"
-            >bolt</span
-          >
-          <span class="truncate">
-            {stampSummary}{playedId && !stampMatchesOpen ? " (not the one open now)" : ""}
-          </span>
-        </span>
-        <span class="flex items-center gap-3 shrink-0">
-          {#if !stampedScenario && scenarioId}
-            <button
-              onclick={stampScenarioId}
-              title="Also load this set for every adventure started or duplicated from the open adventure's scenario"
-              class="text-xs text-pretty-theme hover:underline"
-            >
-              Also follow scenario
-            </button>
-          {/if}
-          <button onclick={unbind} class="text-xs text-theme-neutral-700 hover:text-pretty-red">Unbind</button>
-        </span>
-      {:else}
-        <span class="text-xs text-theme-neutral-700 min-w-0 truncate">Not linked to an AI Dungeon adventure</span>
-        <span class="flex items-center gap-1.5 shrink-0">
-          <button
-            onclick={stampScenarioId}
-            disabled={!scenarioId}
-            title={scenarioId
-              ? "Auto-load this set for every adventure started or duplicated from the open adventure's scenario"
-              : playedId
-                ? "AI Dungeon has not told us which scenario this adventure came from yet; reload the page or stamp the adventure instead"
-                : "Open the adventure in AI Dungeon first"}
-            class="text-xs px-2 py-1.5 bg-pretty-theme text-theme-neutral-0 rounded-md hover:opacity-90 disabled:opacity-40 transition-all"
-          >
-            Stamp Scenario
-          </button>
-          <button
-            onclick={stampAdventureId}
-            disabled={!playedId}
-            title={playedId
-              ? "Auto-load this set for this one AI Dungeon adventure only"
-              : "Open the adventure in AI Dungeon first"}
-            class="text-xs px-2 py-1.5 bg-theme-neutral-300 text-theme-neutral-900 rounded-md hover:bg-theme-neutral-400 disabled:opacity-40 transition-all"
-          >
-            This adventure only
-          </button>
-        </span>
-      {/if}
-    </div>
+    <StampBinding />
 
     <!-- Search + add -->
     <div class="flex items-center gap-2">
