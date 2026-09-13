@@ -1,8 +1,8 @@
 <script lang="ts">
   import { Storage } from "@/storage";
   import { ResponseType, type StoryCard } from "@/shared/types";
-  import DOMPurify from "dompurify";
   import { parseResponse } from "@/rendering/parser";
+  import { RESPONSE_SANITIZE_CONFIG, sanitizeResponseHtml } from "@/rendering/sanitize";
   import Highlight from "./highlight.svelte";
   import Focus from "./focus.svelte";
   import { safeHtml } from "@/ui/actions/safe_html";
@@ -17,18 +17,11 @@
 
   let { rawHtml, type }: Props = $props();
 
-  // AI Dungeon injects transparent theme/spacer <img> elements whose class is atomic-CSS soup full
-  // of underscores (e.g. "_View _pos-relative _fd-column ..."). Our markdown parser treats those
-  // underscores as italic/bold markers and shreds the tags, leaking raw class/src/style text into
-  // the story. So we sanitize down to plain text plus inline formatting and line breaks, dropping
-  // every attribute and the spacer images before anything reaches the parser. This also keeps us
-  // resilient to AID reshuffling its presentational markup.
-  const SANITIZE_CONFIG = {
-    ALLOWED_TAGS: ["b", "strong", "i", "em", "u", "s", "strike", "del", "mark", "sup", "sub", "code", "span", "p", "br"],
-    ALLOWED_ATTR: [],
-  };
+  // Reduced to text, inline formatting and line breaks before the parser sees it; see
+  // rendering/sanitize.ts for why every attribute has to go.
+  const SANITIZE_CONFIG = RESPONSE_SANITIZE_CONFIG;
 
-  let text = $derived(DOMPurify.sanitize(rawHtml, SANITIZE_CONFIG));
+  let text = $derived(sanitizeResponseHtml(rawHtml));
   let map = $state(new Map<string, StoryCard>());
 
   Storage.cardMap.subscribe((value) => {

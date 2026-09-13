@@ -46,6 +46,13 @@ Both ideas came from feedback in the AI Dungeon Discord. Thank you.
 The report now says whether a set is linked by adventure or by scenario, and whether AI Dungeon's
 response carried a scenario id at all.
 
+### 🩹 Fix: player actions with markdown no longer come out garbled
+
+AI Dungeon started labelling each player action for screen readers with a copy of the action's
+text. The extension let that label through and its markdown pass ran over it, so an action like
+`*I step back* ...` showed up twice with a stray `aria-level="3">` in the middle. Accessibility
+attributes are now stripped before any formatting happens.
+
 ## v2.1.0
 
 ### 🔓 No new permissions
