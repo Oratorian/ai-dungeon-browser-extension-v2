@@ -12,7 +12,7 @@
 
 import { bgFetch, BgFetchError } from "@/media/bg_fetch";
 
-const API_BASE = "https://trinetra.mahesvara.cloud/api";
+const API_BASE = "https://trinetra.mahesvara.cloud/api/v2";
 
 export type TrinetraFolder = {
   id: number;
