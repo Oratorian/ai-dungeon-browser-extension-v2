@@ -141,7 +141,8 @@ When enabled, the extension parses and renders markdown-style formatting in stor
 
 ### Settings
 
-- **Interface**: Show or hide the floating editor button, its hover shortcuts, and reset its position
+- **Interface**: Show or hide the floating editor button, its hover shortcuts, its size, a shortcut to
+  toggle it mid-story (Ctrl+Shift+F by default), and reset its position
 - **Icons**: Size, roundness, border thickness
 - **Text**: Bold highlighting toggle, markdown formatting toggle, default color
 - **Tooltips**: Hide delay, max width, max height

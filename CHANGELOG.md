@@ -29,6 +29,16 @@ Hover the floating button and three shortcuts slide out: **Story Cards**, **AID 
 click. The shortcuts open toward whichever side has room, stay hidden while you drag the button, and
 can be turned off under **Settings → Floating Button → Quick Actions**.
 
+The button itself now wears the extension's icon, and its size is a slider (24 to 128 px) in the
+same settings section. A **Toggle Shortcut** there, Ctrl+Shift+F by default, shows or hides the
+button mid-story. It is recorded inside the extension, not in the browser's shortcut settings, so
+click the field and press whatever combination you like.
+
+### 🙏 Credit
+
+The editor footer now names Claudia, whose Dungeon Extension v2 this project continues, and links
+her repository. The source always did; the installed copy should too.
+
 Both ideas came from feedback in the AI Dungeon Discord. Thank you.
 
 ### 🩺 Diagnostics
