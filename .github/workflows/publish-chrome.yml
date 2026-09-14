@@ -21,9 +21,13 @@ name: Publish to Chrome Web Store
 # (the Web Store rejects a version that already exists). If the secrets are not
 # set yet, this workflow fails loudly while the Release workflow still succeeds.
 #
-# Hardening note: mobilefirstllc/cws-publish is pinned to @latest for simplicity;
-# for supply-chain safety consider pinning it to a specific release tag or commit
-# SHA, since it handles your Web Store credentials.
+# The upload uses the chrome-webstore-upload CLI run through npx, the same shape as
+# the Firefox workflow's web-ext, so nothing here is a GitHub Action carrying its own
+# (now node16/node20) runtime. It is pinned to the CLI's major version; pin an exact
+# version if you want the run fully reproducible.
+#
+# NOTE: on a tag push this SUBMITS for review (the "publish" path), it does not merely
+# stage a draft. Pick "upload" on a manual run to stage a draft you publish by hand.
 
 on:
   push:
@@ -97,12 +101,21 @@ jobs:
           echo "Using ${zips[0]}"
 
       - name: Upload to Chrome Web Store
-        # On a tag push there is no chosen action, so default to the safe "upload" (draft only).
-        uses: mobilefirstllc/cws-publish@latest
-        with:
-          action: ${{ inputs.action || 'publish' }}
-          client_id: ${{ secrets.GOOGLE_CLIENT_ID }}
-          client_secret: ${{ secrets.GOOGLE_CLIENT_KEY }}
-          refresh_token: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
-          extension_id: ${{ secrets.GOOGLE_EXT_ID }}
-          zip_file: ${{ steps.zip.outputs.path }}
+        # The CLI reads CLIENT_ID / CLIENT_SECRET / REFRESH_TOKEN / EXTENSION_ID from the
+        # environment, so the credentials never appear on the command line. "upload" stages a new
+        # draft; "publish" then submits the last uploaded version for review. On a tag push there is
+        # no chosen action, so it publishes (see the NOTE in this file's header).
+        env:
+          EXTENSION_ID: ${{ secrets.GOOGLE_EXT_ID }}
+          CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_KEY }}
+          REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          ACTION: ${{ inputs.action || 'publish' }}
+          ZIP: ${{ steps.zip.outputs.path }}
+        run: |
+          set -euo pipefail
+          npm install -g chrome-webstore-upload-cli@4
+          chrome-webstore-upload upload --source "$ZIP"
+          if [ "$ACTION" = "publish" ]; then
+            chrome-webstore-upload publish
+          fi
