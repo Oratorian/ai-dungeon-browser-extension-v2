@@ -15,6 +15,7 @@ name: Publish to Chrome Web Store
 #   GOOGLE_CLIENT_KEY     OAuth client secret
 #   GOOGLE_REFRESH_TOKEN  OAuth refresh token
 #   GOOGLE_EXT_ID         the extension id from the Web Store dashboard
+#   GOOGLE_PUBLISHER_ID   publisher id from the dashboard's Publisher > Settings
 # Guide to creating the API credentials: https://developer.chrome.com/docs/webstore/using-api
 #
 # It publishes whatever version is in package.json, so bump that before tagging
@@ -68,6 +69,7 @@ jobs:
           GOOGLE_CLIENT_KEY: ${{ secrets.GOOGLE_CLIENT_KEY }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           GOOGLE_EXT_ID: ${{ secrets.GOOGLE_EXT_ID }}
+          GOOGLE_PUBLISHER_ID: ${{ secrets.GOOGLE_PUBLISHER_ID }}
         run: |
           set -euo pipefail
           missing=()
@@ -75,6 +77,7 @@ jobs:
           [ -n "${GOOGLE_CLIENT_KEY:-}" ]    || missing+=("GOOGLE_CLIENT_KEY")
           [ -n "${GOOGLE_REFRESH_TOKEN:-}" ] || missing+=("GOOGLE_REFRESH_TOKEN")
           [ -n "${GOOGLE_EXT_ID:-}" ]        || missing+=("GOOGLE_EXT_ID")
+          [ -n "${GOOGLE_PUBLISHER_ID:-}" ]  || missing+=("GOOGLE_PUBLISHER_ID")
           if [ ${#missing[@]} -ne 0 ]; then
             echo "::error::Missing Chrome Web Store secrets: ${missing[*]}. See the header of this workflow for setup."
             exit 1
@@ -101,12 +104,13 @@ jobs:
           echo "Using ${zips[0]}"
 
       - name: Upload to Chrome Web Store
-        # The CLI reads CLIENT_ID / CLIENT_SECRET / REFRESH_TOKEN / EXTENSION_ID from the
+        # The CLI reads CLIENT_ID / CLIENT_SECRET / REFRESH_TOKEN / EXTENSION_ID / PUBLISHER_ID from the
         # environment, so the credentials never appear on the command line. "upload" stages a new
         # draft; "publish" then submits the last uploaded version for review. On a tag push there is
         # no chosen action, so it publishes (see the NOTE in this file's header).
         env:
           EXTENSION_ID: ${{ secrets.GOOGLE_EXT_ID }}
+          PUBLISHER_ID: ${{ secrets.GOOGLE_PUBLISHER_ID }}
           CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_KEY }}
           REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
