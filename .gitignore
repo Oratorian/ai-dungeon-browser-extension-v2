@@ -34,3 +34,5 @@ web-ext-artifacts
 
 # Diagnostics reports pasted in for debugging, not part of the project.
 DExtV2R*diagnostics*.txt
+
+example/
