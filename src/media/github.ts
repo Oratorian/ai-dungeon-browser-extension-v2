@@ -111,7 +111,7 @@ function encodePath(path: string): string {
 async function api<T>(path: string): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, { headers: { Accept: "application/vnd.github+json" } });
+    res = await fetch(`${API_BASE}${path}`, { cache: "no-store", headers: { Accept: "application/vnd.github+json" } });
   } catch {
     throw new GitHubError("Couldn't reach GitHub. Check your connection.");
   }
@@ -150,7 +150,7 @@ async function resolveBranch(parsed: ParsedRepo): Promise<string> {
 export async function listJsonFiles(parsed: ParsedRepo): Promise<GitHubListing> {
   const branch = await resolveBranch(parsed);
   const tree = await api<{
-    tree: { path: string; type: string; size?: number }[];
+    tree: { path: string; type: string; size?: number; sha?: string }[];
     truncated?: boolean;
   }>(`/repos/${parsed.owner}/${parsed.repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`);
 
@@ -166,7 +166,8 @@ export async function listJsonFiles(parsed: ParsedRepo): Promise<GitHubListing> 
       path: e.path,
       filename: e.path.split("/").pop() || e.path,
       size: e.size ?? 0,
-      rawUrl: `${RAW_BASE}/${parsed.owner}/${parsed.repo}/${encodeURIComponent(branch)}/${encodePath(e.path)}`,
+      // A new blob gets a new URL, so an earlier header/body cached for this branch cannot mask it.
+      rawUrl: `${RAW_BASE}/${parsed.owner}/${parsed.repo}/${encodeURIComponent(branch)}/${encodePath(e.path)}${e.sha ? `?dext_revision=${encodeURIComponent(e.sha)}` : ""}`,
       release: false,
     }));
 
@@ -205,7 +206,7 @@ export async function listReleaseJsonAssets(parsed: ParsedRepo): Promise<GitHubF
 
 /** Reads at most `maxBytes` from the start of a raw URL, even if the CDN ignores the Range header. */
 async function readHead(rawUrl: string, maxBytes = NAME_HEAD_BYTES): Promise<string> {
-  const res = await fetch(rawUrl, { headers: { Range: `bytes=0-${maxBytes - 1}` } });
+  const res = await fetch(rawUrl, { cache: "no-store", headers: { Range: `bytes=0-${maxBytes - 1}` } });
   if (!res.ok && res.status !== 206) throw new GitHubError(`Couldn't read the file (${res.status}).`, res.status);
 
   const reader = res.body?.getReader();
@@ -268,7 +269,7 @@ export async function fetchFileText(file: GitHubFile): Promise<string> {
   // is CORS-blocked, so we fall back to the background proxy.
   if (file.release) {
     try {
-      const res = await fetch(file.rawUrl);
+      const res = await fetch(file.rawUrl, { cache: "no-store" });
       if (res.ok) return await res.text();
     } catch {
       // CORS-blocked (Chrome) or a network error; fall through to the background proxy below.
@@ -292,7 +293,7 @@ export async function fetchFileText(file: GitHubFile): Promise<string> {
 
   let res: Response;
   try {
-    res = await fetch(file.rawUrl);
+    res = await fetch(file.rawUrl, { cache: "no-store" });
   } catch {
     throw new GitHubError("Couldn't download the file.");
   }

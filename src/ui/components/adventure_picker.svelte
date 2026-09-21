@@ -171,7 +171,7 @@
             <div class="px-2 py-1 text-xs text-theme-neutral-700" role="status">Checking GitHub updates…</div>
           {/if}
           {#if adventureList.some(a => $githubUpdateErrors[a.id])}
-            <div class="px-2 py-1 text-xs text-pretty-red">Some update checks failed. Close and reopen in five minutes to retry.</div>
+            <div class="px-2 py-1 text-xs text-pretty-red">Some update checks failed. Use “Check for updates now” to retry.</div>
           {/if}
           {#if adventureList.length === 0}
             <div class="flex flex-col items-center py-6 text-theme-neutral-700">
@@ -260,6 +260,17 @@
           {/if}
 
           <DropdownMenu.Separator class="h-px bg-theme-neutral-400 my-2" />
+
+          {#if adventureList.some(a => a.githubSource)}
+            <DropdownMenu.Item
+              disabled={$checkingGitHubUpdates}
+              onSelect={() => { void checkGitHubUpdates(true); }}
+              class="flex items-center gap-2 p-2 rounded-lg hover:bg-theme-neutral-400 cursor-pointer text-pretty-theme"
+            >
+              <span class="font-symbol text-lg">refresh</span>
+              <span class="text-sm">Check for updates now</span>
+            </DropdownMenu.Item>
+          {/if}
 
           <DropdownMenu.Item
             class="flex items-center gap-2 p-2 rounded-lg hover:bg-pretty-theme/20 cursor-pointer transition-colors text-pretty-theme"

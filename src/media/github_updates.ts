@@ -1,5 +1,6 @@
 import { get, writable } from "svelte/store";
 import { Storage } from "@/storage";
+import type { Adventure } from "@/shared/types";
 import { newerVersion, contentVersion } from "@/storage/github_updates";
 import { listJsonFiles, listReleaseJsonAssets, fetchContentVersion, fetchFileText, parseRepo, type GitHubFile } from "./github";
 
@@ -10,26 +11,26 @@ export const checkingGitHubUpdates = writable(false);
 const checked = new Map<string, number>();
 let pending: Promise<void> | undefined;
 const COOLDOWN = 5 * 60_000;
-const fingerprint = (source: unknown) => JSON.stringify(source);
+const fingerprint = (source: Adventure["githubSource"]) =>
+  source ? JSON.stringify([source.repo, source.path, source.release, source.version]) : "";
 
 /** Menu-triggered, shared across picker instances, with one listing per repository. */
-export function checkGitHubUpdates(): Promise<void> {
+export function checkGitHubUpdates(force = false): Promise<void> {
   if (pending) return pending;
-  pending = check().finally(() => { pending = undefined; checkingGitHubUpdates.set(false); });
+  pending = check(force).finally(() => { pending = undefined; checkingGitHubUpdates.set(false); });
   return pending;
 }
 
-async function check() {
+async function check(force: boolean) {
   const all = get(Storage.adventures);
   githubUpdates.update(items => Object.fromEntries(Object.entries(items).filter(([id, update]) => fingerprint(all[id]?.githubSource) === update.source)));
-  const due = Object.values(all).filter(a => a.githubSource && Date.now() - (checked.get(fingerprint(a.githubSource)) ?? 0) >= COOLDOWN);
+  const due = Object.values(all).filter(a => a.githubSource && (force || !checked.has(a.id + fingerprint(a.githubSource)) || Date.now() - checked.get(a.id + fingerprint(a.githubSource))! >= COOLDOWN));
   if (!due.length) return;
   checkingGitHubUpdates.set(true);
   const listings = new Map<string, Promise<GitHubFile[]>>();
   for (const adventure of due) {
     const source = adventure.githubSource!;
     const key = fingerprint(source);
-    checked.set(key, Date.now());
     try {
       const listingKey = `${source.repo}:${source.release}`;
       if (!listings.has(listingKey)) {
@@ -46,6 +47,7 @@ async function check() {
       const version = await fetchContentVersion(file);
       if (!version) throw new Error("The source file has no supported version in its header.");
       if (fingerprint(Storage.getAdventureById(adventure.id)?.githubSource) !== key) continue;
+      checked.set(adventure.id + key, Date.now());
       githubUpdates.update(items => {
         const next = { ...items };
         delete next[adventure.id];
@@ -63,7 +65,10 @@ export async function installGitHubUpdate(id: string, update: GitHubUpdate, mode
   const text = await fetchFileText(update.file);
   const source = Storage.getAdventureById(id)?.githubSource;
   if (!source || fingerprint(source) !== update.source) throw new Error("This set changed. Close this dialog and reopen the picker to check again.");
-  if (contentVersion(JSON.parse(text).version) !== update.version) throw new Error("The remote version changed. Check for updates again before installing.");
+  if (contentVersion(JSON.parse(text).version) !== update.version) {
+    checked.delete(id + update.source);
+    throw new Error("The remote version changed. Close this dialog and reopen the picker to check again.");
+  }
   const result = Storage.importGitHubAdventure(text, source, id, mode);
   githubUpdates.update(items => { const next = { ...items }; delete next[id]; return next; });
   return result;
