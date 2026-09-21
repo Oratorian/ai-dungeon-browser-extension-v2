@@ -2,6 +2,7 @@ import { mount, unmount } from "svelte";
 import { Config } from "@/shared/config";
 import Response from "@/ui/components/response.svelte";
 import { ResponseType } from "@/shared/types";
+import { preserveTypography } from "./typography";
 
 export class DOM {
   private static mountedComponents = new Map<HTMLElement, ReturnType<typeof mount>>();
@@ -105,6 +106,7 @@ export class DOM {
         // would drop that styling and shrink the text. Cloning the host preserves its text context.
         const rawHtml = original.innerHTML;
         const host = original.cloneNode(false) as HTMLElement;
+        preserveTypography(original, host);
         original.style.display = "none";
         original.insertAdjacentElement("beforebegin", host);
         const component = mount(Response, {
