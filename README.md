@@ -86,6 +86,12 @@ release while a store review is pending.
 
 If something looks wrong, **Settings → Support → Diagnostics** will usually tell you what, in one click.
 
+Type **@** in AI Dungeon's action textbox to search the current adventure's story-card names.
+Click a suggestion, or choose with the arrow keys and press **Enter** or **Tab**. The full name
+replaces the `@...` text without submitting your action; **Escape** dismisses the suggestions.
+Names come from the story cards detected through AI Dungeon's API, so no extension import is
+required. This can be disabled under **Settings → Extension → Story Card Autocomplete**.
+
 ## Features
 
 ### Adventures & Story Cards

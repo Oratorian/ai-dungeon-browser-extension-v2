@@ -62,6 +62,8 @@ const defaultSettings = {
   floatingButtonHotkey: "Ctrl+Shift+F",
   // Drawn size in px, within FLOATING_BUTTON_MIN_SIZE..MAX_SIZE.
   floatingButtonSize: FLOATING_BUTTON_DEFAULT_SIZE,
+  // Suggest API story-card names when typing @ in AI Dungeon's action textbox.
+  storyCardAutocomplete: true,
 
   trinetraApiKey: "",
   // Where the Trinetra picker was last, so the next card opens in the same folder instead of at

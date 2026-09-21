@@ -61,6 +61,9 @@
 {#if extensionState.settingsSection === "extension"}
 <div in:fade={{ duration: 120 }} class="flex flex-col gap-4">
 <Field label="Extension">
+  <Field label="Story Card Autocomplete" info="Type @ in AI Dungeon's action textbox to find story-card names from the current adventure. Click a name, or use the arrow keys and Enter or Tab to insert it. Escape closes the suggestions.">
+    <Switch bind:checked={$settings.storyCardAutocomplete} />
+  </Field>
   <Item foldout icon="drag_pan" label="Floating Button">
     <Field
       label="Show Floating Button"
