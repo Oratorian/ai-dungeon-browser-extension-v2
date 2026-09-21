@@ -102,7 +102,19 @@ If something looks wrong, **Settings → Support → Diagnostics** will usually 
 - **Trigger Words**: Words or phrases that automatically highlight matching text in the story
 - **Import/Export**: Share adventures between devices or with other people as JSON files
 - **Import from GitHub**: Add public repos under Settings, then browse and import shared
-  adventure/scenario `.json` files straight from the import dialog
+  adventure/scenario `.json` files straight from the import dialog. Opening the Adventure Picker checks GitHub-imported sets for updates
+  (at most once every five minutes). An **Update available** badge appears beside newer versions.
+  Select the marked set to choose **Merge** (add new cards, keep local cards and edits),
+  **Overwrite** (replace all cards), or **Later**. Set names and adventure/scenario bindings stay.
+  Imports made before source tracking was added need to be imported from GitHub again to enable
+  checks; ordinary file imports are not tracked.
+
+Authors: increase the JSON file's top-level `version` for each content release, for example `1`,
+`2`, or `"1.2.0"`, and keep existing card IDs stable. Updates compare numeric version components;
+changing file contents without increasing the version does not show a badge. Keep `version` near
+the start of the file, before `adventure`, so checks can read only the header. GitHub imports
+preserve the version when exported again. Merge keeps the complete local copy of an existing card;
+it does not apply upstream edits to that card. Use Overwrite when you want the full upstream set.
 
 ### Visual Enhancements
 

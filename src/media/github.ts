@@ -185,7 +185,7 @@ export async function listJsonFiles(parsed: ParsedRepo): Promise<GitHubListing> 
 }
 
 /** The latest release's .json assets as direct-download files. Empty when there is no release. */
-async function listReleaseJsonAssets(parsed: ParsedRepo): Promise<GitHubFile[]> {
+export async function listReleaseJsonAssets(parsed: ParsedRepo): Promise<GitHubFile[]> {
   let release: { assets?: { name: string; size?: number; browser_download_url: string }[] };
   try {
     release = await api(`/repos/${parsed.owner}/${parsed.repo}/releases/latest`);

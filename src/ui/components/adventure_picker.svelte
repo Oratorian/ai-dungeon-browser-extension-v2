@@ -4,16 +4,44 @@
   import type { Adventure } from "@/shared/types";
   import GithubImport from "@/ui/components/github_import.svelte";
 
+  import { githubUpdates, githubUpdateErrors, checkingGitHubUpdates, checkGitHubUpdates, installGitHubUpdate, type GitHubUpdate } from "@/media/github_updates";
+  import { onDestroy } from "svelte";
+
+  let updateTarget = $state<{ id: string; name: string; update: GitHubUpdate } | null>(null);
+  let updateBusy = $state(false);
+  let updateError = $state("");
+  let updateDialogOpen = $state(false);
+
+  function reviewUpdate(adventure: Adventure) {
+    const update = $githubUpdates[adventure.id];
+    if (!update) return;
+    updateTarget = { id: adventure.id, name: adventure.name, update };
+    updateError = "";
+    updateDialogOpen = true;
+  }
+
+  async function applyUpdate(mode: "merge" | "overwrite") {
+    if (!updateTarget || updateBusy) return;
+    updateBusy = true;
+    try {
+      await installGitHubUpdate(updateTarget.id, updateTarget.update, mode);
+      updateDialogOpen = false;
+    } catch (error) { updateError = error instanceof Error ? error.message : "Update failed."; }
+    finally { updateBusy = false; }
+  }
+
   let adventures = $state<Record<string, Adventure>>({});
   let selectedId = $state<string | null>(null);
 
-  Storage.adventures.subscribe((value) => {
+  const unsubscribeAdventures = Storage.adventures.subscribe((value) => {
     adventures = value;
   });
 
-  Storage.selectedAdventureId.subscribe((value) => {
+  const unsubscribeSelected = Storage.selectedAdventureId.subscribe((value) => {
     selectedId = value;
   });
+
+  onDestroy(() => { unsubscribeAdventures(); unsubscribeSelected(); });
 
   let isCreateDialogOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
@@ -120,7 +148,7 @@
 
 <div class="flex flex-col gap-2 w-full">
   <div class="flex items-center gap-2">
-    <DropdownMenu.Root>
+    <DropdownMenu.Root onOpenChange={(open) => { if (open) void checkGitHubUpdates(); }}>
       <DropdownMenu.Trigger
         class="flex items-center gap-2 flex-1 h-12 px-4 bg-theme-neutral-200 hover:bg-theme-neutral-300 rounded-xl transition-colors"
       >
@@ -128,6 +156,9 @@
         <span class="flex-1 text-left truncate">
           {selectedAdventure?.name ?? "Select Adventure"}
         </span>
+        {#if selectedId && $githubUpdates[selectedId]}
+          <span class="shrink-0 rounded-full px-2 py-0.5 text-xs bg-pretty-theme/20 text-pretty-theme">Update available</span>
+        {/if}
         <span class="font-symbol text-theme-neutral-700">unfold_more</span>
       </DropdownMenu.Trigger>
 
@@ -136,6 +167,12 @@
           sideOffset={8}
           class="z-50 min-w-56 max-h-80 overflow-y-auto bg-theme-neutral-300 rounded-xl p-2 shadow-popover animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
         >
+          {#if $checkingGitHubUpdates}
+            <div class="px-2 py-1 text-xs text-theme-neutral-700" role="status">Checking GitHub updates…</div>
+          {/if}
+          {#if adventureList.some(a => $githubUpdateErrors[a.id])}
+            <div class="px-2 py-1 text-xs text-pretty-red">Some update checks failed. Close and reopen in five minutes to retry.</div>
+          {/if}
           {#if adventureList.length === 0}
             <div class="flex flex-col items-center py-6 text-theme-neutral-700">
               <span class="font-symbol text-3xl mb-2">explore_off</span>
@@ -148,7 +185,7 @@
                 adventure.id
                   ? 'bg-theme-neutral-400'
                   : ''}"
-                onSelect={() => Storage.selectAdventure(adventure.id)}
+                onSelect={() => { Storage.selectAdventure(adventure.id); reviewUpdate(adventure); }}
               >
                 <span
                   class="font-symbol text-lg {selectedId === adventure.id ? 'text-pretty-theme' : 'text-theme-neutral-700'}"
@@ -161,6 +198,9 @@
                     {Object.keys(adventure.storyCards).length} cards • {formatDate(adventure.createdAt)}
                   </span>
                 </div>
+                {#if $githubUpdates[adventure.id]}
+                  <span class="shrink-0 rounded-full px-2 py-0.5 text-xs bg-pretty-theme/20 text-pretty-theme">Update available</span>
+                {/if}
                 <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <div
                     role="button"
@@ -426,6 +466,26 @@
         >
           {importMode === "github" ? "Close" : "Cancel"}
         </button>
+      </div>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
+
+
+<Dialog.Root bind:open={updateDialogOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="fixed inset-0 bg-black/60 z-50" />
+    <Dialog.Content class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-theme-neutral-200 rounded-xl p-6 shadow-popover">
+      <Dialog.Title class="text-lg font-bold">Update {updateTarget?.name}</Dialog.Title>
+      <Dialog.Description class="text-sm mt-2">
+        Version {updateTarget?.update.installed} → {updateTarget?.update.version}.
+        Merge adds new cards and keeps existing local cards and edits. Overwrite replaces the entire card collection, including local additions and edits. Your set name and adventure/scenario bindings stay.
+      </Dialog.Description>
+      {#if updateError}<p role="alert" class="text-sm text-pretty-red mt-3">{updateError}</p>{/if}
+      <div class="flex justify-end gap-2 mt-4">
+        <button disabled={updateBusy} onclick={() => updateDialogOpen = false} class="p-2 rounded-lg hover:bg-theme-neutral-300">Later</button>
+        <button disabled={updateBusy} onclick={() => applyUpdate("merge")} class="p-2 rounded-lg bg-pretty-theme/20 text-pretty-theme">{updateBusy ? "Updating…" : "Merge"}</button>
+        <button disabled={updateBusy} onclick={() => applyUpdate("overwrite")} class="p-2 rounded-lg bg-pretty-red/20 text-pretty-red">Overwrite</button>
       </div>
     </Dialog.Content>
   </Dialog.Portal>
