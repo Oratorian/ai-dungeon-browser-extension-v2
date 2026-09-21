@@ -3,6 +3,7 @@ import { Config } from "@/shared/config";
 import Response from "@/ui/components/response.svelte";
 import { ResponseType } from "@/shared/types";
 import { preserveTypography } from "./typography";
+import { rememberNovelSource } from "./novel_dom";
 
 export class DOM {
   private static mountedComponents = new Map<HTMLElement, ReturnType<typeof mount>>();
@@ -59,6 +60,7 @@ export class DOM {
       const original = this.pickTextHost(element);
 
       if (original) {
+        rememberNovelSource(element, original);
         if (original.querySelector(".word-fade")) {
           // Counted (not just logged) so the diagnostics report can name this as the cause without
           // asking the user to open a console and scroll back through it.
@@ -100,6 +102,7 @@ export class DOM {
     if (type === ResponseType.Action) {
       const original = this.pickTextHost(element);
       if (original) {
+        rememberNovelSource(element, original);
         // Render into a shallow clone of the text host (same tag + classes) placed where it sits,
         // then hide the original. AID sometimes carries the font size/family/color on the text node
         // itself (player actions) rather than the row container, so mounting into the bare container

@@ -69,6 +69,12 @@
 {#if extensionState.settingsSection === "extension"}
 <div in:fade={{ duration: 120 }} class="flex flex-col gap-4">
 <Field label="Extension">
+  <Item foldout icon="theater_comedy" label="Visual Novel Mode">
+    <Field label="Enable Visual Novel Mode" info="Read the loaded story as scenes with character portraits and Back/Next dialogue controls. Write action returns to AI Dungeon's normal controls. Speaker detection uses explicit names and speech cues; you can choose a speaker when a line is ambiguous.">
+      <Switch bind:checked={$settings.visualNovelMode} />
+    </Field>
+    <p class="text-xs text-theme-neutral-800">Uses portraits from the selected card set. Speaker detection currently recognizes English speech cues. No AI calls are needed.</p>
+  </Item>
   <Item foldout icon="alternate_email" label="Story Card Autocomplete">
     <Field label="Enable Autocomplete" info="Type @ in AI Dungeon's action textbox to find story-card names from the current adventure. Click a name, or use the arrow keys and Enter or Tab to insert it. Escape closes the suggestions.">
       <Switch bind:checked={$settings.storyCardAutocomplete} />

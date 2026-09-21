@@ -65,6 +65,7 @@ const defaultSettings = {
   floatingButtonSize: FLOATING_BUTTON_DEFAULT_SIZE,
   // Suggest API story-card names when typing @ in AI Dungeon's action textbox.
   storyCardAutocomplete: true,
+  visualNovelMode: false,
   storyCardAutocompleteTypes: MENTION_CARD_TYPES.map(type => type.value),
 
   trinetraApiKey: "",
