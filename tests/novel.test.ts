@@ -34,4 +34,10 @@ describe("visual novel dialogue attribution", () => {
     expect(parseNovel(text, characters).map(f => f.text)).toEqual(['Sage says,', '"Hello."', 'The door opens.', '"An unfinished']);
     expect(parseNovel("", characters)).toEqual([]);
   });
+  it("labels same-paragraph pronoun inference and ignores names in speech", () => {
+    const frames = parseNovel('Nyxadra grips the sink. "Sage is not trouble," she mutters.', characters);
+    expect(frames.find(f => f.kind === "dialogue")).toMatchObject({ speakerId: "nyx", inferred: true });
+    expect(speakers('Nyxadra looks at Sage. "Hello," she mutters.')).toEqual([null]);
+    expect(speakers('Nyxadra grips the sink.\n"Hello," she mutters.')).toEqual([null]);
+  });
 });

@@ -94,6 +94,20 @@ required. Under **Settings → Extension → Story Card Autocomplete**, enable o
 and choose any combination of **Character, Class, Race, Location, Faction, and Custom** cards.
 All types are included by default; Custom also covers user-defined card types.
 
+Enable **Settings > Extension > Visual Novel Mode** to read loaded story passages in a scene
+with a portrait and a dialogue box. **Back** and **Next** move through narration and speech;
+**Latest passage** jumps to the beginning of the newest loaded passage. **Write action** returns
+to AI Dungeon's controls without changing your draft, and **Resume visual novel** reopens the scene.
+
+Speaker detection reads the story text directly, independently of AI Dungeon's highlighting.
+Explicit English speech cues identify speakers by name or trigger. A pronoun can infer a speaker
+when narration in the same paragraph names only one character; these matches are labelled
+**Inferred speaker**. Ambiguous lines stay **Unknown speaker**, with a selector to correct any
+dialogue line. Corrections last for the current loaded passage and reset when that line changes.
+Portraits come from the selected card set; detected API characters without artwork still appear
+by name. This is a local reader, with no additional AI requests. It reads passages currently
+loaded by AI Dungeon, rather than downloading the adventure's entire history.
+
 ## Features
 
 ### Adventures & Story Cards

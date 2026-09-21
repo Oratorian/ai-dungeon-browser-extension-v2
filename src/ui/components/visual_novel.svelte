@@ -32,11 +32,22 @@
         result.push({ id: `aid:${card.id}`, name: card.name, triggers: card.triggers });
       }
     }
+    result.push({ id: "player", name: "You", triggers: "you" });
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
   const frame = $derived(frames[index]);
   const speakerId = $derived(overrides[index] ?? frame?.speakerId ?? "");
   const speaker = $derived(characters.find(c => c.id === speakerId));
+  const stageSpeaker = $derived.by(() => {
+    if (frame?.kind === "dialogue") return speaker;
+    for (let i = index - 1; i >= 0 && frames[i]?.source === frame?.source; i--) {
+      if (frames[i]?.kind === "dialogue") {
+        const id = overrides[i] ?? frames[i]?.speakerId;
+        return characters.find(c => c.id === id);
+      }
+    }
+    return undefined;
+  });
   const active = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
 
   function refresh() {
@@ -163,16 +174,18 @@
         </div>
       </header>
       <div class="stage">
-        {#if speaker?.portrait}
-          <img src={speaker.portrait} alt={speaker.name} class="portrait" />
+        {#if stageSpeaker?.portrait}
+          <img src={stageSpeaker.portrait} alt={stageSpeaker.name} class="portrait" />
         {:else}
-          <div class="placeholder" aria-hidden="true">{speaker ? speaker.name.slice(0, 1) : "✦"}</div>
+          <div class="placeholder" aria-hidden="true">{stageSpeaker ? stageSpeaker.name.slice(0, 1) : "✦"}</div>
         {/if}
-        <span class="stage-caption">{speaker ? speaker.name : frame?.kind === "dialogue" ? "Unknown speaker" : "Narration"}</span>
+        <span class="stage-caption">{stageSpeaker ? stageSpeaker.name : frame?.kind === "dialogue" ? "Unknown speaker" : "Narration"}</span>
       </div>
       <div class="dialogue">
         <div class="speaker-row">
-          <strong>{speaker ? speaker.name : frame?.kind === "dialogue" ? "Unknown speaker" : "Narrator"}</strong>
+          <strong>{speaker ? speaker.name : frame?.kind === "dialogue" ? "Unknown speaker" : "Narrator"}
+            {#if frame?.inferred && overrides[index] === undefined}<small>Inferred speaker</small>{/if}
+          </strong>
           {#if frame?.kind === "dialogue"}
             <label>Speaker
               <select aria-label="Dialogue speaker" value={speakerId} onchange={e => correct(e.currentTarget.value)}>
