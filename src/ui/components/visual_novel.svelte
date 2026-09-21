@@ -7,6 +7,7 @@
   import { Tab } from "@/shared/types";
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
+  import NovelComposer from "./novel_composer.svelte";
 
   const adventures = Storage.adventures;
   const selected = Storage.selectedAdventureId;
@@ -14,6 +15,7 @@
   let frames = $state<Frame[]>([]);
   let index = $state(0);
   let paused = $state(false);
+  let composing = $state(false);
   let scene: HTMLElement | undefined = $state();
   let overrides = $state<Record<number, string>>({});
   let output: HTMLElement | null = null;
@@ -77,7 +79,7 @@
     const adventure = $playedAdventureId;
     const set = $selected;
     untrack(() => {
-      frames = []; index = 0; paused = false; overrides = {}; lastSignature = "";
+      frames = []; index = 0; paused = false; composing = false; overrides = {}; lastSignature = "";
       output = null; corrections = new WeakMap(); sourceIds = new WeakMap(); nextSourceId = 0;
     });
     if (!enabled || !adventure) return;
@@ -141,7 +143,7 @@
   function key(event: KeyboardEvent) {
     event.stopPropagation();
     if (event.key === "Tab" && scene) {
-      const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select")];
+      const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select, textarea:not(:disabled)")];
       const focused = (scene.getRootNode() as ShadowRoot).activeElement;
       if (event.shiftKey && (focused === controls[0] || focused === scene)) { event.preventDefault(); controls.at(-1)?.focus(); }
       else if (!event.shiftKey && focused === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
@@ -170,7 +172,8 @@
         <div class="tools">
           <button onclick={openSettings}>Settings</button>
           <button onclick={() => $settings.visualNovelMode = false}>Exit mode</button>
-          <button class="accent" onclick={write}>Write action</button>
+          <button onclick={write}>Return to game</button>
+          <button class="accent" onclick={() => composing = !composing}>Write action</button>
         </div>
       </header>
       <div class="stage">
@@ -195,13 +198,17 @@
             </label>
           {/if}
         </div>
-        <p class="prose" aria-live="polite">{frame?.text ?? "Waiting for story text. Use Write action to return to the game."}</p>
+        {#if composing}
+          <NovelComposer onclose={() => composing = false} onsubmitted={() => { composing = false; refresh(); latest(); }} />
+        {:else}
+        <p class="prose" aria-live="polite">{frame?.text ?? "Waiting for story text. Use Write action to take a turn."}</p>
         <footer>
           <button onclick={() => index--} disabled={index === 0 || !frames.length}>Back</button>
           <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
           <button onclick={latest} disabled={!frames.length}>Latest passage</button>
           <button class="accent" onclick={() => index++} disabled={index >= frames.length - 1}>Next</button>
         </footer>
+        {/if}
       </div>
     </div>
   {/if}

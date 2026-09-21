@@ -70,7 +70,7 @@
 <div in:fade={{ duration: 120 }} class="flex flex-col gap-4">
 <Field label="Extension">
   <Item foldout icon="theater_comedy" label="Visual Novel Mode">
-    <Field label="Enable Visual Novel Mode" info="Read the loaded story as scenes with character portraits and Back/Next dialogue controls. Write action returns to AI Dungeon's normal controls. Speaker detection uses explicit names and speech cues; you can choose a speaker when a line is ambiguous.">
+    <Field label="Enable Visual Novel Mode" info="Read the loaded story as scenes with character portraits and Back/Next dialogue controls. Write action opens Do, Say, Story and Guide inside the scene. Return to game exposes AI Dungeon's normal controls. Speaker detection uses explicit names and speech cues; you can choose a speaker when a line is ambiguous.">
       <Switch bind:checked={$settings.visualNovelMode} />
     </Field>
     <p class="text-xs text-theme-neutral-800">Uses portraits from the selected card set. English speech cues identify speakers; pronouns with one named character in the same paragraph are marked as inferred. You can correct any dialogue speaker. No AI calls are needed.</p>

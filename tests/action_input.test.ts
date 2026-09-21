@@ -1,0 +1,86 @@
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it } from "vitest";
+import { ACTION_MODES, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft } from "@/aid/action_input";
+
+let sent: { value: string; mode: string | null }[];
+beforeEach(() => {
+  document.body.innerHTML = `<textarea id="game-text-input"></textarea><button aria-label="Change input mode"><span>Do</span></button><div role="button" aria-label="Submit action" aria-disabled="true"></div><div id="menu"></div>`;
+  sent = [];
+  const field = document.querySelector<HTMLTextAreaElement>("textarea")!;
+  // React's value tracker must be bypassed for the input event to represent a change.
+  const native = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!;
+  let tracked = "";
+  Object.defineProperty(field, "value", { get() { return native.get!.call(this); }, set(value) { tracked = value; native.set!.call(this, value); } });
+  field.addEventListener("input", () => {
+    if (field.value !== tracked) {
+      tracked = field.value;
+      document.querySelector('[aria-label="Submit action"]')!.setAttribute("aria-disabled", String(!tracked.trim()));
+    }
+  });
+  document.querySelector<HTMLElement>('[aria-label="Submit action"]')!.onclick = () => sent.push({ value: field.value, mode: readActionInput().mode });
+  document.querySelector<HTMLElement>('[aria-label="Change input mode"]')!.onclick = () => {
+    const menu = document.querySelector("#menu")!;
+    menu.replaceChildren();
+    for (const mode of ACTION_MODES) {
+      const option = document.createElement("button");
+      option.setAttribute("aria-label", `Set to '${mode}' mode`);
+      option.onclick = () => {
+        document.querySelector('[aria-label="Change input mode"] span')!.textContent = mode;
+        menu.replaceChildren();
+      };
+      menu.append(option);
+    }
+    const close = document.createElement("button");
+    close.setAttribute("aria-label", "Close 'Input Mode' menu");
+    close.onclick = () => menu.replaceChildren();
+    menu.append(close);
+  };
+});
+
+describe("visual novel native action adapter", () => {
+  it("changes all four modes without sending or clearing the draft", async () => {
+    const signal = new AbortController().signal;
+    writeActionDraft("My existing draft");
+    for (const mode of ACTION_MODES) {
+      await setActionMode(mode, signal);
+      expect(readActionInput()).toMatchObject({ value: "My existing draft", mode, canSubmit: true });
+    }
+    expect(sent).toEqual([]);
+  });
+  it("sends exactly through the native button with the requested mode and React draft", async () => {
+    await submitAction("Hello there", "Say", new AbortController().signal);
+    expect(sent).toEqual([{ value: "Hello there", mode: "Say" }]);
+  });
+  it("never sends empty, cancelled or disabled actions", async () => {
+    await expect(submitAction(" ", "Do", new AbortController().signal)).rejects.toThrow("Write an action");
+    const abort = new AbortController(); abort.abort();
+    await expect(submitAction("Must not send", "Guide", abort.signal)).rejects.toThrow();
+    document.querySelector<HTMLTextAreaElement>("textarea")!.readOnly = true;
+    await expect(submitAction("Must not send", "Do", new AbortController().signal)).rejects.toThrow("not ready");
+    expect(sent).toEqual([]);
+  });
+  it("opens a collapsed native input without submitting", async () => {
+    const field = document.querySelector("textarea")!;
+    field.setAttribute("aria-hidden", "true");
+    const button = document.createElement("button");
+    button.setAttribute("aria-label", "Command: take a turn");
+    button.onclick = () => field.removeAttribute("aria-hidden");
+    document.body.append(button);
+    await openActionInput(new AbortController().signal);
+    expect(field.hasAttribute("aria-hidden")).toBe(false);
+    expect(sent).toEqual([]);
+  });
+  it("does not submit into a different adventure after an asynchronous mode change", async () => {
+    const previous = location.pathname;
+    const button = document.querySelector<HTMLElement>('[aria-label="Change input mode"]')!;
+    const open = button.onclick!;
+    button.onclick = event => {
+      open.call(button, event);
+      history.pushState({}, "", "/adventure/another/play");
+    };
+    try {
+      await expect(submitAction("Stay in my adventure", "Say", new AbortController().signal)).rejects.toThrow("adventure changed");
+      expect(sent).toEqual([]);
+    } finally { history.replaceState({}, "", previous); }
+  });
+});

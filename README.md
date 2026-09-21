@@ -96,8 +96,11 @@ All types are included by default; Custom also covers user-defined card types.
 
 Enable **Settings > Extension > Visual Novel Mode** to read loaded story passages in a scene
 with a portrait and a dialogue box. **Back** and **Next** move through narration and speech;
-**Latest passage** jumps to the beginning of the newest loaded passage. **Write action** returns
-to AI Dungeon's controls without changing your draft, and **Resume visual novel** reopens the scene.
+**Latest passage** jumps to the beginning of the newest loaded passage. **Write action** opens a
+composer inside the scene with **Do**, **Say**, **Story**, and **Guide**. These use AI Dungeon's
+native mode and submit controls. Your draft is shared with the game's textbox; Enter adds a new
+line, and only **Send** submits. **Read story** closes the composer. **Return to game** exposes
+AI Dungeon's normal controls, and **Resume visual novel** reopens the scene.
 
 Speaker detection reads the story text directly, independently of AI Dungeon's highlighting.
 Explicit English speech cues identify speakers by name or trigger. A pronoun can infer a speaker
