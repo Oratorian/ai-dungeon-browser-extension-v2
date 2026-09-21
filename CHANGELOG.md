@@ -7,6 +7,53 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
+## v2.3.3
+
+### ✨ Story Card names at your fingertips
+
+Type `@` in the action textbox to search the current adventure's Story Card names. Click a
+suggestion, or use the arrow keys and Enter or Tab, to insert the full name without sending your
+action. The suggestions use Story Cards detected directly from AI Dungeon, so no import is needed.
+
+The new **Story Card Autocomplete** dropdown under **Settings > Extension** lets you turn the
+feature on or off and choose which types appear: Character, Class, Race, Location, Faction and
+Custom. All types are enabled by default, and user-defined types are included under Custom.
+
+### 🔄 Updates for GitHub card sets
+
+Sets imported from GitHub now remember their source and installed version. Opening the editor
+or a set picker checks for updates, with a short cooldown between automatic checks. You can also
+use **Check for updates now** in the editor's adventure picker.
+
+An **Update available** badge appears beside the set in both the editor picker and the floating
+**Sets** menu. Review the update and choose how to install it:
+
+- **Merge** adds new cards and keeps your existing cards and local edits.
+- **Overwrite** replaces the entire card collection, including local additions and edits.
+
+Both options preserve the set's name and adventure/scenario bindings. Updates are only installed
+when you choose to apply them. Tracking is available for GitHub imports with a saved source;
+local file imports are not checked.
+
+Version checks support both whole numbers and dotted versions such as `9.2.1`. Successive updates
+are detected reliably, and the version reviewed and the file downloaded stay consistent.
+
+### 📦 Choose a version when exporting
+
+Exporting a card set now offers a version dialog. Keep the current version, accept the suggested
+bump, or enter a higher version yourself. The suggestion increments the last component, such as
+`1` to `2` or `9.2.1` to `9.2.2`.
+
+The chosen version is written to the top-level `version` field at the beginning of the exported
+JSON and remembered for your next export.
+
+### 🩹 Re-add deleted Trinetra images
+
+Deleting an image makes it selectable again in the Trinetra picker immediately, even while the
+picker stays open. Images still in your library remain disabled to prevent duplicates.
+
+🔓 No new permissions.
+
 ## v2.3.2
 
 ### 🩹 Player actions keep their text size
@@ -15,7 +62,7 @@ Fixed player actions appearing much smaller than the surrounding story when AI D
 text styling inside nested elements. The extension now preserves the original font size, font
 family, line spacing and letter spacing when rendering these actions.
 
-🔓 No new permissions. / Keine neuen Berechtigungen.
+🔓 No new permissions.
 
 ## v2.3.0
 
