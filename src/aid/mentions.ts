@@ -3,6 +3,22 @@ import type { AidCard } from "./protocol";
 export type MentionQuery = { start: number; end: number; query: string };
 export type MentionName = { name: string; type: string; search: string };
 
+export const MENTION_CARD_TYPES = [
+  { value: "character", label: "Character" },
+  { value: "class", label: "Class" },
+  { value: "race", label: "Race" },
+  { value: "location", label: "Location" },
+  { value: "faction", label: "Faction" },
+  { value: "custom", label: "Custom" },
+] as const;
+export type MentionCardType = typeof MENTION_CARD_TYPES[number]["value"];
+
+/** AI Dungeon custom cards may carry the author's own type name in the API. */
+function mentionCardType(type: string): MentionCardType {
+  const normalized = type.trim().toLowerCase();
+  return MENTION_CARD_TYPES.find(t => t.value === normalized)?.value ?? "custom";
+}
+
 /** Only an @ at a word boundary starts a mention, never the middle of an email address. */
 export function mentionAtCaret(text: string, caret: number, selectionEnd = caret): MentionQuery | null {
   if (caret !== selectionEnd || caret < 0 || caret > text.length) return null;
@@ -15,9 +31,12 @@ export function mentionAtCaret(text: string, caret: number, selectionEnd = caret
 }
 
 /** Build once per API update, keeping typing cheap even with many story cards. */
-export function indexMentionNames(cards: AidCard[]): MentionName[] {
+export function indexMentionNames(cards: AidCard[], includedTypes?: readonly string[]): MentionName[] {
+  const enabled = new Set<string>(Array.isArray(includedTypes) ? includedTypes : MENTION_CARD_TYPES.map(t => t.value));
   const unique = new Map<string, MentionName>();
   for (const card of cards) {
+    // Filter before deduplicating: a disabled type must not hide an enabled card of the same name.
+    if (!enabled.has(mentionCardType(card.type))) continue;
     const name = card.name.trim().replace(/\s+/g, " ");
     const search = name.toLocaleLowerCase();
     if (name && !unique.has(search)) unique.set(search, { name, type: card.type, search });

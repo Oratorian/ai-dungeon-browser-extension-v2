@@ -3,6 +3,7 @@
   import { get } from "svelte/store";
   import { settings } from "@/storage";
   import { aidDetected } from "@/aid/bridge";
+  import type { AidCard } from "@/aid/protocol";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
   import { extensionState } from "@/shared/state.svelte";
   import { indexMentionNames, matchMentionNames, mentionAtCaret, insertMention, type MentionName } from "@/aid/mentions";
@@ -14,6 +15,7 @@
   let popup: HTMLDivElement | undefined = $state();
   let input: HTMLTextAreaElement | null = null;
   let names: MentionName[] = [];
+  let cards: AidCard[] = [];
   let sourceId: string | null = null;
   let composing = false;
   let dismissed = "", lastQuery = "";
@@ -90,22 +92,32 @@
   onMount(() => {
     const cardsSubscription = aidDetected.subscribe(detected => {
       sourceId = detected.shortId;
-      names = indexMentionNames(detected.cards);
+      cards = detected.cards;
+      names = indexMentionNames(cards, get(settings).storyCardAutocompleteTypes);
       refresh();
     });
-    const settingsSubscription = settings.subscribe(() => refresh());
+    let typesKey = "";
+    const settingsSubscription = settings.subscribe(value => {
+      const key = JSON.stringify(value.storyCardAutocompleteTypes);
+      if (key !== typesKey) {
+        typesKey = key;
+        names = indexMentionNames(cards, value.storyCardAutocompleteTypes);
+      }
+      refresh();
+    });
     const routeSubscription = playedAdventureId.subscribe(() => refresh());
     const onPointer = (event: PointerEvent) => {
       if (popup && event.composedPath().includes(popup)) return;
       if (event.target !== input) close(true);
     };
     const onBlur = () => { if (!gameInput()) close(true); };
+    const onInput = () => { if (gameInput()) dismissed = ""; refresh(); };
     const onCompositionStart = () => { composing = true; close(); };
     const onCompositionEnd = () => { composing = false; refresh(); };
     const reposition = () => { if (choices.length) position(); };
     const events: [EventTarget, string, EventListener][] = [
       [window, "keydown", onKey as EventListener],
-      [document, "input", refresh], [document, "click", refresh],
+      [document, "input", onInput], [document, "click", refresh],
       [document, "focusin", refresh], [document, "focusout", onBlur],
       [document, "selectionchange", refresh], [window, "pointerdown", onPointer as EventListener],
       [document, "compositionstart", onCompositionStart], [document, "compositionend", onCompositionEnd],

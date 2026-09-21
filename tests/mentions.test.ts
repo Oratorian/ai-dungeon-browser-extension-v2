@@ -39,3 +39,21 @@ it("replaces only the active mention and preserves the rest of the draft", () =>
   const multiple = "@Sage speaks to @Nyx";
   expect(completeMention(multiple, mentionAtCaret(multiple, multiple.length)!, "Nyxadra").text).toBe("@Sage speaks to Nyxadra ");
 });
+
+it("filters AI Dungeon's six types, grouping user-defined types under Custom", () => {
+  const types = ["character", "class", "race", "location", "faction", "custom", "Magic Spell", "other", " Character "];
+  const cards = types.map((type, i) => ({ id: String(i), name: `Card ${i}`, type, triggers: "" }));
+  expect(indexMentionNames(cards)).toHaveLength(9);
+  expect(indexMentionNames(cards, ["character", "class"]).map(c => c.name)).toEqual(["Card 0", "Card 1", "Card 8"]);
+  expect(indexMentionNames(cards, ["race", "location", "faction"]).map(c => c.name)).toEqual(["Card 2", "Card 3", "Card 4"]);
+  expect(indexMentionNames(cards, ["custom"]).map(c => c.name)).toEqual(["Card 5", "Card 6", "Card 7"]);
+  expect(indexMentionNames(cards, [])).toEqual([]);
+});
+
+it("keeps an enabled name when a disabled card type has the same name", () => {
+  const cards = [
+    { id: "1", name: "Paladin", type: "character", triggers: "" },
+    { id: "2", name: "Paladin", type: "class", triggers: "" },
+  ];
+  expect(indexMentionNames(cards, ["class"])).toEqual([{ name: "Paladin", type: "class", search: "paladin" }]);
+});

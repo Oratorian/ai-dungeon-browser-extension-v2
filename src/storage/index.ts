@@ -7,6 +7,7 @@ import { readAdventures, diffAdventures, adventureKey, LEGACY_ADVENTURES_KEY } f
 import { Debug } from "@/shared/debug";
 import { untrack } from "svelte";
 import { contentVersion, normalizeGitHubSource, newerVersion, applyGitHubUpdate } from "./github_updates";
+import { MENTION_CARD_TYPES } from "@/aid/mentions";
 
 const defaultSettings = {
   iconSize: 28,
@@ -64,6 +65,7 @@ const defaultSettings = {
   floatingButtonSize: FLOATING_BUTTON_DEFAULT_SIZE,
   // Suggest API story-card names when typing @ in AI Dungeon's action textbox.
   storyCardAutocomplete: true,
+  storyCardAutocompleteTypes: MENTION_CARD_TYPES.map(type => type.value),
 
   trinetraApiKey: "",
   // Where the Trinetra picker was last, so the next card opens in the same folder instead of at

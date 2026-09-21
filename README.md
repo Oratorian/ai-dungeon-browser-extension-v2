@@ -90,7 +90,9 @@ Type **@** in AI Dungeon's action textbox to search the current adventure's stor
 Click a suggestion, or choose with the arrow keys and press **Enter** or **Tab**. The full name
 replaces the `@...` text without submitting your action; **Escape** dismisses the suggestions.
 Names come from the story cards detected through AI Dungeon's API, so no extension import is
-required. This can be disabled under **Settings → Extension → Story Card Autocomplete**.
+required. Under **Settings → Extension → Story Card Autocomplete**, enable or disable suggestions
+and choose any combination of **Character, Class, Race, Location, Faction, and Custom** cards.
+All types are included by default; Custom also covers user-defined card types.
 
 ## Features
 

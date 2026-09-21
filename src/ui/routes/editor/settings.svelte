@@ -13,6 +13,7 @@
   import ImageCompression from "@/ui/components/image_compression.svelte";
   import ImageGenerationSettings from "@/ui/components/image_generation_settings.svelte";
   import TrinetraSettings from "@/ui/components/trinetra_settings.svelte";
+  import { MENTION_CARD_TYPES, type MentionCardType } from "@/aid/mentions";
 
   /* Storage */
   import { settings } from "@/storage";
@@ -41,6 +42,13 @@
   function resetFloatingPosition() {
     $settings = { ...$settings, floatingButtonX: -1, floatingButtonY: -1 };
   }
+
+  function toggleAutocompleteType(type: MentionCardType) {
+    const selected = $settings.storyCardAutocompleteTypes;
+    $settings.storyCardAutocompleteTypes = selected.includes(type)
+      ? selected.filter(value => value !== type)
+      : [...selected, type];
+  }
 </script>
 
 <div class="flex gap-1 p-1 bg-theme-neutral-200 rounded-xl">
@@ -61,9 +69,30 @@
 {#if extensionState.settingsSection === "extension"}
 <div in:fade={{ duration: 120 }} class="flex flex-col gap-4">
 <Field label="Extension">
-  <Field label="Story Card Autocomplete" info="Type @ in AI Dungeon's action textbox to find story-card names from the current adventure. Click a name, or use the arrow keys and Enter or Tab to insert it. Escape closes the suggestions.">
-    <Switch bind:checked={$settings.storyCardAutocomplete} />
-  </Field>
+  <Item foldout icon="alternate_email" label="Story Card Autocomplete">
+    <Field label="Enable Autocomplete" info="Type @ in AI Dungeon's action textbox to find story-card names from the current adventure. Click a name, or use the arrow keys and Enter or Tab to insert it. Escape closes the suggestions.">
+      <Switch bind:checked={$settings.storyCardAutocomplete} />
+    </Field>
+    <Field label="Card Types" info="Choose which story-card types appear in the suggestions. Custom includes user-defined types.">
+      <div class="flex justify-end gap-3 text-xs">
+        <button class="text-pretty-theme hover:underline" onclick={() => $settings.storyCardAutocompleteTypes = MENTION_CARD_TYPES.map(type => type.value)}>All</button>
+        <button class="text-theme-neutral-800 hover:underline" onclick={() => $settings.storyCardAutocompleteTypes = []}>None</button>
+      </div>
+      <div role="group" aria-label="Autocomplete card types" class="grid grid-cols-2 gap-2">
+        {#each MENTION_CARD_TYPES as type (type.value)}
+          {@const selected = $settings.storyCardAutocompleteTypes.includes(type.value)}
+          <button aria-pressed={selected} aria-label={type.label} onclick={() => toggleAutocompleteType(type.value)}
+            class="flex items-center gap-2 p-2 rounded-lg text-sm transition-colors {selected ? 'bg-pretty-theme/20 text-pretty-theme' : 'bg-theme-neutral-100 hover:bg-theme-neutral-300'}">
+            <span aria-hidden="true" class="font-symbol text-lg">{selected ? 'check_box' : 'check_box_outline_blank'}</span>
+            {type.label}
+          </button>
+        {/each}
+      </div>
+      {#if $settings.storyCardAutocompleteTypes.length === 0}
+        <span class="text-xs text-theme-neutral-800">Select at least one type to show suggestions.</span>
+      {/if}
+    </Field>
+  </Item>
   <Item foldout icon="drag_pan" label="Floating Button">
     <Field
       label="Show Floating Button"
