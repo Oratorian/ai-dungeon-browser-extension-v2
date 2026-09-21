@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 import { Storage } from "@/storage";
-import { checkGitHubUpdates, githubUpdates, installGitHubUpdate } from "@/media/github_updates";
+import { checkGitHubUpdates, checkGitHubFile, githubUpdates, installGitHubUpdate } from "@/media/github_updates";
 import { listJsonFiles, fetchContentVersion, fetchFileText } from "@/media/github";
 
 vi.mock("@/media/github", async importOriginal => ({
@@ -69,4 +69,39 @@ it("preserves a badge when source metadata is reconstructed in a different prope
   await checkGitHubUpdates();
   expect(get(githubUpdates)[adventure.id]?.version).toBe("2");
   expect(fetchContentVersion).toHaveBeenCalledTimes(1);
+});
+
+it("publishes importer discoveries to the picker and clears them after an importer install", async () => {
+  Storage.adventures.set({});
+  const source = { repo: "owner/repo@HEAD", path: "importer.json", release: false };
+  const pack = (version: number) => JSON.stringify({ version, adventure: { name: "Importer", storyCards: {} } });
+  const adventure = Storage.importGitHubAdventure(pack(6), source);
+  const file = { path: source.path, filename: source.path, release: false, size: 1, rawUrl: "https://raw.githubusercontent.com/owner/repo/main/importer.json" };
+  vi.mocked(listJsonFiles).mockResolvedValue({ truncated: false, files: [file] });
+  vi.mocked(fetchContentVersion).mockResolvedValue("6");
+  await checkGitHubUpdates();
+  expect(get(githubUpdates)[adventure.id]).toBeUndefined();
+  vi.mocked(fetchContentVersion).mockResolvedValue("7");
+  expect(await checkGitHubFile(source.repo, file)).toBe("7");
+  expect(get(githubUpdates)[adventure.id]?.version).toBe("7");
+  // Reopening a picker during cooldown must retain what the importer found.
+  await checkGitHubUpdates();
+  expect(get(githubUpdates)[adventure.id]?.version).toBe("7");
+  Storage.importGitHubAdventure(pack(7), source, adventure.id, "merge");
+  expect(get(githubUpdates)[adventure.id]).toBeUndefined();
+});
+
+it("does not let an older in-flight check erase a newer importer result", async () => {
+  Storage.adventures.set({});
+  const source = { repo: "owner/repo@HEAD", path: "race.json", release: false };
+  const adventure = Storage.importGitHubAdventure(JSON.stringify({ version: 6, adventure: { name: "Race", storyCards: {} } }), source);
+  const file = { path: source.path, filename: source.path, release: false, size: 1, rawUrl: "https://raw.githubusercontent.com/owner/repo/main/race.json" };
+  let finish!: (version: string) => void;
+  vi.mocked(fetchContentVersion).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const old = checkGitHubFile(source.repo, file);
+  vi.mocked(fetchContentVersion).mockResolvedValueOnce("7");
+  await checkGitHubFile(source.repo, file);
+  finish("6");
+  await old;
+  expect(get(githubUpdates)[adventure.id]?.version).toBe("7");
 });

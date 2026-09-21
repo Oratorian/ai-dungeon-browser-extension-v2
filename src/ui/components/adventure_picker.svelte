@@ -171,7 +171,9 @@
             <div class="px-2 py-1 text-xs text-theme-neutral-700" role="status">Checking GitHub updates…</div>
           {/if}
           {#if adventureList.some(a => $githubUpdateErrors[a.id])}
-            <div class="px-2 py-1 text-xs text-pretty-red">Some update checks failed. Use “Check for updates now” to retry.</div>
+            {#each adventureList.filter(a => $githubUpdateErrors[a.id]) as failed (failed.id)}
+              <div class="px-2 py-1 text-xs text-pretty-red max-w-sm" role="status">{failed.name}: {$githubUpdateErrors[failed.id]}</div>
+            {/each}
           {/if}
           {#if adventureList.length === 0}
             <div class="flex flex-col items-center py-6 text-theme-neutral-700">

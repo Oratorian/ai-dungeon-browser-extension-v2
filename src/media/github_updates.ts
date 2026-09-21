@@ -13,6 +13,47 @@ let pending: Promise<void> | undefined;
 const COOLDOWN = 5 * 60_000;
 const fingerprint = (source: Adventure["githubSource"]) =>
   source ? JSON.stringify([source.repo, source.path, source.release, source.version]) : "";
+const reads = new Map<string, number>();
+
+// Importer updates and picker updates both change the installed version. Clear stale badges
+// immediately regardless of which UI performed the install, or whether the set was deleted.
+Storage.adventures.subscribe(all => {
+  githubUpdates.update(items => Object.fromEntries(Object.entries(items).filter(([id, update]) => fingerprint(all[id]?.githubSource) === update.source)));
+  githubUpdateErrors.update(items => Object.fromEntries(Object.entries(items).filter(([id]) => all[id]?.githubSource)));
+});
+
+/** Shared file check: every importer/picker result feeds the same badge state. */
+export async function checkGitHubFile(repo: string, file: GitHubFile): Promise<string> {
+  const targets = Object.values(get(Storage.adventures))
+    .filter(a => a.githubSource?.repo === repo && a.githubSource.path === file.path && a.githubSource.release === file.release)
+    .map(a => {
+      const sequence = (reads.get(a.id) ?? 0) + 1;
+      reads.set(a.id, sequence);
+      return { id: a.id, source: a.githubSource!, key: fingerprint(a.githubSource), sequence };
+    });
+  const current = (target: typeof targets[number]) =>
+    reads.get(target.id) === target.sequence && fingerprint(Storage.getAdventureById(target.id)?.githubSource) === target.key;
+  try {
+    const version = await fetchContentVersion(file);
+    if (!version) throw new Error("The source file has no supported version in its header.");
+    for (const target of targets.filter(current)) {
+      checked.set(target.id + target.key, Date.now());
+      githubUpdates.update(items => {
+        const next = { ...items };
+        delete next[target.id];
+        if (newerVersion(version, target.source.version)) next[target.id] = { file, version, installed: target.source.version, source: target.key };
+        return next;
+      });
+      githubUpdateErrors.update(items => { const next = { ...items }; delete next[target.id]; return next; });
+    }
+    return version;
+  } catch (error) {
+    for (const target of targets.filter(current)) {
+      githubUpdateErrors.update(items => ({ ...items, [target.id]: error instanceof Error ? error.message : "Update check failed." }));
+    }
+    throw error;
+  }
+}
 
 /** Menu-triggered, shared across picker instances, with one listing per repository. */
 export function checkGitHubUpdates(force = false): Promise<void> {
@@ -44,18 +85,11 @@ async function check(force: boolean) {
       const listing = await listings.get(listingKey)!;
       const file = listing.find(f => f.path === source.path && f.release === source.release);
       if (!file) throw new Error("The source file was not found on GitHub.");
-      const version = await fetchContentVersion(file);
-      if (!version) throw new Error("The source file has no supported version in its header.");
       if (fingerprint(Storage.getAdventureById(adventure.id)?.githubSource) !== key) continue;
-      checked.set(adventure.id + key, Date.now());
-      githubUpdates.update(items => {
-        const next = { ...items };
-        delete next[adventure.id];
-        if (newerVersion(version, source.version)) next[adventure.id] = { file, version, installed: source.version, source: key };
-        return next;
-      });
-      githubUpdateErrors.update(items => { const next = { ...items }; delete next[adventure.id]; return next; });
+      // File errors are published by the shared reader with its stale-request guard.
+      await checkGitHubFile(source.repo, file).catch(() => {});
     } catch (error) {
+      if (fingerprint(Storage.getAdventureById(adventure.id)?.githubSource) !== key) continue;
       githubUpdateErrors.update(items => ({ ...items, [adventure.id]: error instanceof Error ? error.message : "Update check failed." }));
     }
   }

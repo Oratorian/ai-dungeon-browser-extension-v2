@@ -1,8 +1,9 @@
 <script lang="ts">
   import { settings, Storage } from "@/storage";
-  import { parseRepo, listJsonFiles, fetchAdventureName, fetchContentVersion, fetchFileText, GitHubError, type GitHubFile } from "@/media/github";
+  import { parseRepo, listJsonFiles, fetchAdventureName, fetchFileText, GitHubError, type GitHubFile } from "@/media/github";
 
   import { get } from "svelte/store";
+  import { checkGitHubFile } from "@/media/github_updates";
   import { newerVersion, contentVersion } from "@/storage/github_updates";
 
   type Props = {
@@ -88,7 +89,7 @@
           file.targetId = linked.id;
           file.localVersion = linked.githubSource.version;
           try {
-            const version = await fetchContentVersion(file);
+            const version = await checkGitHubFile(repoIdentity(selectedRepo!), file);
             if (gen !== loadGen) return;
             if (version) file.remoteVersion = version;
             else file.updateError = "No valid version found in the file header.";
