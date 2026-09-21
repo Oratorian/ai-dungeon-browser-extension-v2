@@ -110,7 +110,10 @@
       if (popup && event.composedPath().includes(popup)) return;
       if (event.target !== input) close(true);
     };
-    const onBlur = () => { if (!gameInput()) close(true); };
+    let disposed = false;
+    // Chromium dispatches focusout synchronously when Svelte removes a focused scene control.
+    // Defer closing so this listener cannot mutate state during another component's render.
+    const onBlur = () => queueMicrotask(() => { if (!disposed && !gameInput()) close(true); });
     const onInput = () => { if (gameInput()) dismissed = ""; refresh(); };
     const onCompositionStart = () => { composing = true; close(); };
     const onCompositionEnd = () => { composing = false; refresh(); };
@@ -126,6 +129,7 @@
     if (window.visualViewport) events.push([window.visualViewport, "resize", reposition], [window.visualViewport, "scroll", reposition]);
     for (const [target, name, listener] of events) target.addEventListener(name, listener, true);
     return () => {
+      disposed = true;
       cardsSubscription(); settingsSubscription(); routeSubscription();
       for (const [target, name, listener] of events) target.removeEventListener(name, listener, true);
     };
