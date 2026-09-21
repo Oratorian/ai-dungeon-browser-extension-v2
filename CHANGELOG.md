@@ -7,6 +7,16 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
+## v2.3.1
+
+### 🩹 Player actions keep their text size
+
+Fixed player actions appearing much smaller than the surrounding story when AI Dungeon applies
+text styling inside nested elements. The extension now preserves the original font size, font
+family, line spacing and letter spacing when rendering these actions.
+
+🔓 No new permissions. / Keine neuen Berechtigungen.
+
 ## v2.3.0
 
 ### 🧭 The floating button grows a ring
