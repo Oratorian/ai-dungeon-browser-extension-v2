@@ -6,6 +6,7 @@ import { planAidSync, type IncomingCard } from "@/aid/sync";
 import { readAdventures, diffAdventures, adventureKey, LEGACY_ADVENTURES_KEY } from "@/storage/persist";
 import { Debug } from "@/shared/debug";
 import { untrack } from "svelte";
+import { contentVersion, normalizeGitHubSource, newerVersion, applyGitHubUpdate } from "./github_updates";
 
 const defaultSettings = {
   iconSize: 28,
@@ -186,6 +187,8 @@ function normalizeAdventure(adventure: unknown): Adventure | null {
     // on every F5, so the "Stamp" button kept reappearing).
     aidShortId: typeof a.aidShortId === "string" ? a.aidShortId : undefined,
     aidScenarioId: typeof a.aidScenarioId === "string" ? a.aidScenarioId : undefined,
+    contentVersion: contentVersion(a.contentVersion) ?? undefined,
+    githubSource: normalizeGitHubSource(a.githubSource),
   };
 }
 
@@ -219,7 +222,7 @@ export class Storage {
     if (!adventure) return null;
 
     const exportData = {
-      version: 1,
+      version: adventure.contentVersion ?? 1,
       exportedAt: Date.now(),
       adventure: adventure,
     };
@@ -300,6 +303,8 @@ export class Storage {
         id: newId,
         name: `${normalized.name} (Imported)`,
         createdAt: Date.now(),
+        contentVersion: contentVersion(data.version) ?? undefined,
+        githubSource: undefined,
       };
 
       const newStoryCards: Record<string, StoryCard> = {};
@@ -322,6 +327,30 @@ export class Storage {
 
   static getAdventureById(adventureId: string): Adventure | null {
     return get(this.adventures)[adventureId] ?? null;
+  }
+
+  static importGitHubAdventure(text: string, source: Omit<NonNullable<Adventure["githubSource"]>, "version">, targetId?: string, mode?: "merge" | "overwrite"): Adventure {
+    const data = JSON.parse(text);
+    const version = contentVersion(data?.version);
+    if (!version || !data?.adventure?.storyCards || typeof data.adventure.storyCards !== "object" || Array.isArray(data.adventure.storyCards)) {
+      throw new Error("GitHub updates require a single adventure export with a numeric or dotted version.");
+    }
+    const incoming = normalizeAdventure(data.adventure);
+    if (!incoming || Object.keys(incoming.storyCards).length !== Object.keys(data.adventure.storyCards).length) throw new Error("The export contains invalid cards.");
+    const ids = Object.entries(incoming.storyCards);
+    if (ids.some(([id, card]) => id !== card.id)) throw new Error("Card IDs must match their keys for GitHub updates.");
+    const provenance = { ...source, version };
+    let result: Adventure;
+    if (targetId) {
+      const local = this.getAdventureById(targetId);
+      if (!local || !mode || local.githubSource?.repo !== source.repo || local.githubSource.path !== source.path || local.githubSource.release !== source.release) throw new Error("The imported source no longer matches this set.");
+      if (!newerVersion(version, local.githubSource.version)) throw new Error("This file no longer has a newer version. Refresh the repository.");
+      result = applyGitHubUpdate(local, incoming, provenance, mode);
+    } else {
+      result = { ...incoming, id: crypto.randomUUID(), name: `${incoming.name} (Imported)`, createdAt: Date.now(), contentVersion: version, githubSource: provenance };
+    }
+    this.adventures.update(all => ({ ...all, [result.id]: result }));
+    return result;
   }
 
   static getSelectedAdventure(): Adventure | null {

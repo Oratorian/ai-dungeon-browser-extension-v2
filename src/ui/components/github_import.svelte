@@ -1,6 +1,9 @@
 <script lang="ts">
   import { settings, Storage } from "@/storage";
-  import { parseRepo, listJsonFiles, fetchAdventureName, fetchFileText, GitHubError, type GitHubFile } from "@/media/github";
+  import { parseRepo, listJsonFiles, fetchAdventureName, fetchContentVersion, fetchFileText, GitHubError, type GitHubFile } from "@/media/github";
+
+  import { get } from "svelte/store";
+  import { newerVersion, contentVersion } from "@/storage/github_updates";
 
   type Props = {
     onimported?: () => void;
@@ -8,7 +11,7 @@
 
   let { onimported }: Props = $props();
 
-  type FileRow = GitHubFile & { name: string | null; nameResolved: boolean; importing: boolean };
+  type FileRow = GitHubFile & { name: string | null; nameResolved: boolean; importing: boolean; targetId?: string; localVersion?: string; remoteVersion?: string; updateError?: string };
 
   let selectedRepo = $state<string | null>(null);
   let files = $state<FileRow[]>([]);
@@ -18,6 +21,11 @@
   let truncated = $state(false);
   // Bumped whenever we open a repo or go back, so stale async name/list results bail out.
   let loadGen = 0;
+
+  function repoIdentity(entry: string): string {
+    const p = parseRepo(entry)!;
+    return `${p.owner.toLowerCase()}/${p.repo.toLowerCase()}@${p.branch ?? "HEAD"}`;
+  }
 
   function formatSize(bytes: number): string {
     if (!bytes) return "";
@@ -74,6 +82,18 @@
         if (gen !== loadGen) return;
         file.name = name;
         file.nameResolved = true;
+        const linked = Object.values(get(Storage.adventures)).find(a =>
+          a.githubSource?.repo === repoIdentity(selectedRepo!) && a.githubSource.path === file.path && a.githubSource.release === file.release);
+        if (linked?.githubSource) {
+          file.targetId = linked.id;
+          file.localVersion = linked.githubSource.version;
+          try {
+            const version = await fetchContentVersion(file);
+            if (gen !== loadGen) return;
+            if (version) file.remoteVersion = version;
+            else file.updateError = "No valid version found in the file header.";
+          } catch { if (gen === loadGen) file.updateError = "Update check failed. Reopen this repo to retry."; }
+        }
       }
     };
     await Promise.all(Array.from({ length: 6 }, worker));
@@ -87,21 +107,29 @@
     importError = "";
   }
 
-  async function importFile(row: FileRow) {
+  async function importFile(row: FileRow, mode?: "merge" | "overwrite") {
+    const repo = selectedRepo;
+    const gen = loadGen;
+    if (!repo) return;
     if (row.importing) return;
     row.importing = true;
     importError = "";
     try {
       const text = await fetchFileText(row);
-      const result = Storage.importAdventure(text);
-      if (result.success && result.adventure) {
-        Storage.selectAdventure(result.adventure.id);
+      if (gen !== loadGen) return;
+      const data = JSON.parse(text);
+      if (mode || (data.adventure && contentVersion(data.version))) {
+        const adventure = Storage.importGitHubAdventure(text, { repo: repoIdentity(repo), path: row.path, release: row.release }, mode ? row.targetId : undefined, mode);
+        Storage.selectAdventure(adventure.id);
         onimported?.();
       } else {
-        importError = `${row.name ?? row.filename}: ${result.error ?? "not a valid adventure export."}`;
+        const result = Storage.importAdventure(text);
+        if (!result.success || !result.adventure) throw new Error(result.error ?? "Invalid export.");
+        Storage.selectAdventure(result.adventure.id);
+        onimported?.();
       }
     } catch (e) {
-      importError = e instanceof GitHubError ? e.message : "Couldn't import that file.";
+      importError = e instanceof Error ? e.message : "Couldn't import that file.";
     } finally {
       row.importing = false;
     }
@@ -191,6 +219,24 @@
                 {row.name ? row.filename : row.path}{row.size ? ` • ${formatSize(row.size)}` : ""}
               </span>
             </div>
+            {#if row.targetId}
+              <div class="flex flex-col gap-1 text-xs max-w-64">
+                {#if row.updateError}
+                  <span class="text-pretty-red">{row.updateError}</span>
+                {:else if !row.remoteVersion}
+                  <span>Checking for updates…</span>
+                {:else if newerVersion(row.remoteVersion, row.localVersion!)}
+                  <span>Update available: {row.localVersion} → {row.remoteVersion}</span>
+                  <span>Merge adds new cards and keeps yours. Overwrite replaces all cards, including local edits and additions. Your set name and bindings stay.</span>
+                  <div class="flex gap-2">
+                    <button class="p-2 bg-pretty-theme/20 rounded-lg" disabled={row.importing} onclick={() => importFile(row, "merge")}>Merge</button>
+                    <button class="p-2 bg-pretty-red/20 rounded-lg" disabled={row.importing} onclick={() => importFile(row, "overwrite")}>Overwrite</button>
+                  </div>
+                {:else}
+                  <span>Imported v{row.localVersion}; no newer version.</span>
+                {/if}
+              </div>
+            {:else}
             <button
               onclick={() => importFile(row)}
               disabled={row.importing}
@@ -204,6 +250,7 @@
                 Import
               {/if}
             </button>
+            {/if}
           </div>
         {/each}
       </div>

@@ -5,6 +5,7 @@
 // raw.githubusercontent.com (a CDN, not rate-limited) for file bytes.
 
 import { bgFetch } from "@/media/bg_fetch";
+import { contentVersion } from "@/storage/github_updates";
 
 const API_BASE = "https://api.github.com";
 const RAW_BASE = "https://raw.githubusercontent.com";
@@ -244,6 +245,14 @@ export async function fetchAdventureName(file: GitHubFile): Promise<string | nul
   } catch {
     return null;
   }
+}
+
+/** Version precedes adventure in our exports, so update checks need only the file head. */
+export async function fetchContentVersion(file: GitHubFile): Promise<string | null> {
+  const head = file.release ? await bgFetch(file.rawUrl, { head: true }) : await readHead(file.rawUrl);
+  const prefix = head.split('"adventure"')[0] ?? "";
+  const match = prefix.match(/"version"\s*:\s*("[^"\\]*"|\d+(?:\.\d+)?)(?=\s*[,}])/);
+  return match ? contentVersion(JSON.parse(match[1]!)) : null;
 }
 
 /** Git LFS serves a small text pointer from raw instead of the file; detect it to warn the user. */

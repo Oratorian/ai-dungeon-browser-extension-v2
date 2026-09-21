@@ -34,6 +34,8 @@ export type StoryCard = {
 };
 
 export type Adventure = {
+  contentVersion?: string;
+  githubSource?: { repo: string; path: string; release: boolean; version: string };
   id: string;
   name: string;
   createdAt: number;
