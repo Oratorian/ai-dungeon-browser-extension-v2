@@ -6,6 +6,13 @@ export function contentVersion(value: unknown): string | null {
   return /^\d+(?:\.\d+)*$/.test(text) ? text : null;
 }
 
+/** Suggest the next revision while keeping the author's number of version components. */
+export function nextContentVersion(value: unknown): string {
+  const parts = (contentVersion(value) ?? "1").split(".");
+  parts[parts.length - 1] = String(BigInt(parts[parts.length - 1]!) + 1n);
+  return parts.join(".");
+}
+
 export function newerVersion(remote: string, local: string): boolean {
   if (!contentVersion(remote) || !contentVersion(local)) return false;
   const a = remote.split(".").map(BigInt), b = local.split(".").map(BigInt);

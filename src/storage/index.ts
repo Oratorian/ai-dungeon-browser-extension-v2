@@ -217,14 +217,18 @@ export class Storage {
     );
   }
 
-  static exportAdventure(adventureId: string): string | null {
+  static exportAdventure(adventureId: string, exportVersion?: string): string | null {
     const adventure = this.getAdventureById(adventureId);
     if (!adventure) return null;
+    const version = exportVersion === undefined ? adventure.contentVersion ?? 1 : contentVersion(exportVersion);
+    if (version === null || newerVersion(adventure.contentVersion ?? "1", String(version))) {
+      throw new Error("Choose a numeric or dotted version at least as new as the current version.");
+    }
 
     const exportData = {
-      version: adventure.contentVersion ?? 1,
+      version,
       exportedAt: Date.now(),
-      adventure: adventure,
+      adventure: exportVersion === undefined ? adventure : { ...adventure, contentVersion: String(version) },
     };
 
     return JSON.stringify(exportData, null, 2);

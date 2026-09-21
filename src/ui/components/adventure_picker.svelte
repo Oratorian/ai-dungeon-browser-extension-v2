@@ -3,6 +3,7 @@
   import { Storage } from "@/storage";
   import type { Adventure } from "@/shared/types";
   import GithubImport from "@/ui/components/github_import.svelte";
+  import { contentVersion, newerVersion, nextContentVersion } from "@/storage/github_updates";
 
   import { githubUpdates, githubUpdateErrors, githubCheckedVersions, checkingGitHubUpdates, checkGitHubUpdates, installGitHubUpdate, type GitHubUpdate } from "@/media/github_updates";
   import { onDestroy } from "svelte";
@@ -54,6 +55,14 @@
   let importError = $state<string | null>(null);
   let importMode = $state<"local" | "github">("local");
   let fileInput: HTMLInputElement;
+  let pickerOpen = $state(false);
+  let exportDialogOpen = $state(false);
+  let exportTargetId = $state<string | null>(null);
+  let exportVersion = $state("");
+  let exportError = $state("");
+  const exportTarget = $derived(exportTargetId ? adventures[exportTargetId] : undefined);
+  const currentExportVersion = $derived(exportTarget?.contentVersion ?? "1");
+  const validExportBump = $derived(contentVersion(exportVersion) !== null && newerVersion(exportVersion.trim(), currentExportVersion));
 
   const adventureList = $derived(Object.values(adventures).sort((a, b) => b.createdAt - a.createdAt));
 
@@ -83,18 +92,38 @@
   }
 
   function handleExport(adventure: Adventure) {
-    const json = Storage.exportAdventure(adventure.id);
-    if (!json) return;
+    exportTargetId = adventure.id;
+    exportVersion = nextContentVersion(adventure.contentVersion);
+    exportError = "";
+    pickerOpen = false;
+    exportDialogOpen = true;
+  }
 
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${adventure.name.replace(/[^a-z0-9]/gi, "_")}_adventure.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  function downloadExport(bump: boolean) {
+    if (bump && !validExportBump) return;
+    exportError = "";
+    try {
+      const adventure = exportTarget;
+      if (!adventure) throw new Error("This adventure no longer exists.");
+      const version = bump ? contentVersion(exportVersion)! : undefined;
+      const json = Storage.exportAdventure(adventure.id, version);
+      if (!json) throw new Error("This adventure no longer exists.");
+      const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+      const a = document.createElement("a");
+      try {
+        a.href = url;
+        a.download = `${adventure.name.replace(/[^a-z0-9]/gi, "_")}_adventure.json`;
+        document.body.appendChild(a);
+        a.click();
+      } finally {
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      if (version) Storage.updateAdventure(adventure.id, { contentVersion: version });
+      exportDialogOpen = false;
+    } catch (error) {
+      exportError = error instanceof Error ? error.message : "Couldn't export this adventure.";
+    }
   }
 
   function handleImportClick() {
@@ -148,7 +177,7 @@
 
 <div class="flex flex-col gap-2 w-full">
   <div class="flex items-center gap-2">
-    <DropdownMenu.Root onOpenChange={(open) => { if (open) void checkGitHubUpdates(); }}>
+    <DropdownMenu.Root bind:open={pickerOpen} onOpenChange={(open) => { if (open) void checkGitHubUpdates(); }}>
       <DropdownMenu.Trigger
         class="flex items-center gap-2 flex-1 h-12 px-4 bg-theme-neutral-200 hover:bg-theme-neutral-300 rounded-xl transition-colors"
       >
@@ -213,6 +242,7 @@
                     }}
                     onkeydown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
                         e.stopPropagation();
                         handleExport(adventure);
                       }
@@ -383,6 +413,33 @@
           Delete
         </button>
       </div>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
+
+<Dialog.Root bind:open={exportDialogOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="fixed inset-0 bg-black/60 z-50" />
+    <Dialog.Content class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg bg-theme-neutral-200 rounded-2xl p-6 shadow-2xl">
+      <Dialog.Title class="text-lg font-bold mb-3">Export {exportTarget?.name ?? "adventure"}</Dialog.Title>
+      <Dialog.Description class="text-sm text-theme-neutral-700 mb-4">
+        Current version: {currentExportVersion}. Bump the version when sharing updated cards so GitHub subscribers can detect the update. Your chosen version will be remembered for the next export.
+      </Dialog.Description>
+      <form onsubmit={(e) => { e.preventDefault(); downloadExport(true); }}>
+        <label for="adventure-export-version" class="block text-sm mb-2">New version</label>
+        <input id="adventure-export-version" type="text" bind:value={exportVersion}
+          aria-describedby="adventure-export-version-help" aria-invalid={!validExportBump}
+          class="w-full h-12 px-4 bg-theme-neutral-100 rounded-xl outline-none" />
+        <p id="adventure-export-version-help" class="text-xs text-theme-neutral-700 mt-2">
+          Enter a higher version, such as 2 or 9.2.1.
+        </p>
+        {#if exportError}<p role="alert" class="text-sm text-pretty-red mt-3">{exportError}</p>{/if}
+        <div class="flex flex-wrap gap-2 justify-end mt-4">
+          <button type="button" onclick={() => exportDialogOpen = false} class="px-3 py-2 rounded-lg hover:bg-theme-neutral-300">Cancel</button>
+          <button type="button" onclick={() => downloadExport(false)} disabled={!exportTarget} class="px-3 py-2 rounded-lg hover:bg-theme-neutral-300">Export current version</button>
+          <button type="submit" disabled={!exportTarget || !validExportBump} class="px-3 py-2 rounded-lg bg-pretty-theme text-theme-neutral-0 disabled:opacity-50">Bump &amp; export</button>
+        </div>
+      </form>
     </Dialog.Content>
   </Dialog.Portal>
 </Dialog.Root>
