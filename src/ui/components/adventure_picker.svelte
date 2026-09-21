@@ -4,7 +4,7 @@
   import type { Adventure } from "@/shared/types";
   import GithubImport from "@/ui/components/github_import.svelte";
 
-  import { githubUpdates, githubUpdateErrors, checkingGitHubUpdates, checkGitHubUpdates, installGitHubUpdate, type GitHubUpdate } from "@/media/github_updates";
+  import { githubUpdates, githubUpdateErrors, githubCheckedVersions, checkingGitHubUpdates, checkGitHubUpdates, installGitHubUpdate, type GitHubUpdate } from "@/media/github_updates";
   import { onDestroy } from "svelte";
 
   let updateTarget = $state<{ id: string; name: string; update: GitHubUpdate } | null>(null);
@@ -297,6 +297,22 @@
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
   </div>
+  {#if selectedAdventure?.githubSource}
+    <div class="px-2 text-xs text-theme-neutral-700" role="status" aria-live="polite">
+      {#if $checkingGitHubUpdates}
+        Checking GitHub updates…
+      {:else if selectedId && $githubUpdateErrors[selectedId]}
+        <span class="text-pretty-red">{$githubUpdateErrors[selectedId]}</span>
+      {:else if selectedId && $githubCheckedVersions[selectedId]}
+        Installed v{selectedAdventure.githubSource.version}.
+        {#if selectedId && $githubUpdates[selectedId]}
+          Version {$githubUpdates[selectedId]?.version} available.
+        {:else}
+          No newer version found in the last check.
+        {/if}
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <Dialog.Root bind:open={isCreateDialogOpen}>

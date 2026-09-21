@@ -6,6 +6,7 @@
 
 import { bgFetch } from "@/media/bg_fetch";
 import { contentVersion } from "@/storage/github_updates";
+import type { Adventure } from "@/shared/types";
 
 const API_BASE = "https://api.github.com";
 const RAW_BASE = "https://raw.githubusercontent.com";
@@ -108,10 +109,28 @@ function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
+let updateRequest = 0;
+
+/** Known tree files can be checked directly, without spending GitHub API quota on a listing. */
+export function trackedTreeFile(source: NonNullable<Adventure["githubSource"]>): GitHubFile {
+  const at = source.repo.indexOf("@");
+  const parsed = parseRepo(source.repo.slice(0, at));
+  const branch = source.repo.slice(at + 1);
+  if (source.release || at < 0 || !parsed || !branch) throw new GitHubError("Invalid saved GitHub tree source.");
+  return {
+    path: source.path,
+    filename: source.path.split("/").pop() || source.path,
+    size: 0,
+    release: false,
+    // GitHub's HEAD ref follows the default branch. A fresh URL also avoids an old CDN response.
+    rawUrl: `${RAW_BASE}/${parsed.owner}/${parsed.repo}/${encodeURIComponent(branch)}/${encodePath(source.path)}?dext_check=${Date.now()}-${++updateRequest}`,
+  };
+}
+
 async function api<T>(path: string): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, { cache: "no-store", headers: { Accept: "application/vnd.github+json" } });
+    res = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(20000), cache: "no-store", headers: { Accept: "application/vnd.github+json" } });
   } catch {
     throw new GitHubError("Couldn't reach GitHub. Check your connection.");
   }
@@ -206,7 +225,7 @@ export async function listReleaseJsonAssets(parsed: ParsedRepo): Promise<GitHubF
 
 /** Reads at most `maxBytes` from the start of a raw URL, even if the CDN ignores the Range header. */
 async function readHead(rawUrl: string, maxBytes = NAME_HEAD_BYTES): Promise<string> {
-  const res = await fetch(rawUrl, { cache: "no-store", headers: { Range: `bytes=0-${maxBytes - 1}` } });
+  const res = await fetch(rawUrl, { signal: AbortSignal.timeout(20000), cache: "no-store", headers: { Range: `bytes=0-${maxBytes - 1}` } });
   if (!res.ok && res.status !== 206) throw new GitHubError(`Couldn't read the file (${res.status}).`, res.status);
 
   const reader = res.body?.getReader();

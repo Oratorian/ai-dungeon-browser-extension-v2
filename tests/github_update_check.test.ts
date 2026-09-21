@@ -11,7 +11,7 @@ vi.mock("@/media/github", async importOriginal => ({
 
 beforeEach(() => { vi.clearAllMocks(); githubUpdates.set({}); });
 
-it("checks only GitHub imports, shares listings, caches menu checks and applies only approved updates", async () => {
+it("checks only GitHub imports without repository listings, caches menu checks and applies only approved updates", async () => {
   Storage.adventures.set({});
   const pack = (version: number) => JSON.stringify({ version, adventure: { name: "Pack", storyCards: {} } });
   const first = Storage.importGitHubAdventure(pack(1), { repo: "owner/repo@HEAD", path: "first.json", release: false });
@@ -20,7 +20,7 @@ it("checks only GitHub imports, shares listings, caches menu checks and applies 
   vi.mocked(listJsonFiles).mockResolvedValue({ truncated: false, files: ["first.json", "second.json"].map(path => ({ path, filename: path, size: 1, release: false, rawUrl: `https://raw.githubusercontent.com/owner/repo/main/${path}` })) });
   vi.mocked(fetchContentVersion).mockResolvedValue("2");
   await Promise.all([checkGitHubUpdates(), checkGitHubUpdates()]);
-  expect(listJsonFiles).toHaveBeenCalledTimes(1);
+  expect(listJsonFiles).not.toHaveBeenCalled();
   expect(fetchContentVersion).toHaveBeenCalledTimes(2);
   expect(get(githubUpdates)[local.id]).toBeUndefined();
   expect(get(githubUpdates)[second.id]?.version).toBe("2");

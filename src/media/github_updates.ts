@@ -2,12 +2,13 @@ import { get, writable } from "svelte/store";
 import { Storage } from "@/storage";
 import type { Adventure } from "@/shared/types";
 import { newerVersion, contentVersion } from "@/storage/github_updates";
-import { listJsonFiles, listReleaseJsonAssets, fetchContentVersion, fetchFileText, parseRepo, type GitHubFile } from "./github";
+import { trackedTreeFile, listReleaseJsonAssets, fetchContentVersion, fetchFileText, parseRepo, type GitHubFile } from "./github";
 
 export type GitHubUpdate = { file: GitHubFile; version: string; installed: string; source: string };
 export const githubUpdates = writable<Record<string, GitHubUpdate>>({});
 export const githubUpdateErrors = writable<Record<string, string>>({});
 export const checkingGitHubUpdates = writable(false);
+export const githubCheckedVersions = writable<Record<string, { source: string; version: string }>>({});
 const checked = new Map<string, number>();
 let pending: Promise<void> | undefined;
 const COOLDOWN = 5 * 60_000;
@@ -19,6 +20,7 @@ const reads = new Map<string, number>();
 // immediately regardless of which UI performed the install, or whether the set was deleted.
 Storage.adventures.subscribe(all => {
   githubUpdates.update(items => Object.fromEntries(Object.entries(items).filter(([id, update]) => fingerprint(all[id]?.githubSource) === update.source)));
+  githubCheckedVersions.update(items => Object.fromEntries(Object.entries(items).filter(([id, result]) => fingerprint(all[id]?.githubSource) === result.source)));
   githubUpdateErrors.update(items => Object.fromEntries(Object.entries(items).filter(([id]) => all[id]?.githubSource)));
 });
 
@@ -38,6 +40,7 @@ export async function checkGitHubFile(repo: string, file: GitHubFile): Promise<s
     if (!version) throw new Error("The source file has no supported version in its header.");
     for (const target of targets.filter(current)) {
       checked.set(target.id + target.key, Date.now());
+      githubCheckedVersions.update(items => ({ ...items, [target.id]: { source: target.key, version } }));
       githubUpdates.update(items => {
         const next = { ...items };
         delete next[target.id];
@@ -55,7 +58,7 @@ export async function checkGitHubFile(repo: string, file: GitHubFile): Promise<s
   }
 }
 
-/** Menu-triggered, shared across picker instances, with one listing per repository. */
+/** Editor/menu-triggered. Tree files use their saved paths; releases share one API listing. */
 export function checkGitHubUpdates(force = false): Promise<void> {
   if (pending) return pending;
   pending = check(force).finally(() => { pending = undefined; checkingGitHubUpdates.set(false); });
@@ -73,17 +76,21 @@ async function check(force: boolean) {
     const source = adventure.githubSource!;
     const key = fingerprint(source);
     try {
-      const listingKey = `${source.repo}:${source.release}`;
-      if (!listings.has(listingKey)) {
-        const at = source.repo.indexOf("@");
-        const parsed = parseRepo(source.repo.slice(0, at));
-        if (at < 0 || !parsed) throw new Error("Invalid saved GitHub source.");
-        const branch = source.repo.slice(at + 1);
-        parsed.branch = branch === "HEAD" ? null : branch;
-        listings.set(listingKey, source.release ? listReleaseJsonAssets(parsed) : listJsonFiles(parsed).then(result => result.files));
+      let file: GitHubFile | undefined;
+      if (!source.release) {
+        file = trackedTreeFile(source);
+      } else {
+        if (!listings.has(source.repo)) {
+          const at = source.repo.indexOf("@");
+          const parsed = parseRepo(source.repo.slice(0, at));
+          if (at < 0 || !parsed) throw new Error("Invalid saved GitHub source.");
+          const branch = source.repo.slice(at + 1);
+          parsed.branch = branch === "HEAD" ? null : branch;
+          listings.set(source.repo, listReleaseJsonAssets(parsed));
+        }
+        const listing = await listings.get(source.repo)!;
+        file = listing.find(f => f.path === source.path && f.release);
       }
-      const listing = await listings.get(listingKey)!;
-      const file = listing.find(f => f.path === source.path && f.release === source.release);
       if (!file) throw new Error("The source file was not found on GitHub.");
       if (fingerprint(Storage.getAdventureById(adventure.id)?.githubSource) !== key) continue;
       // File errors are published by the shared reader with its stale-request guard.

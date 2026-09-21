@@ -15,6 +15,8 @@
   import FloatingButton from "@/ui/components/floating_button.svelte";
   import { versionInfo, checkForUpdate, RELEASES_URL, type VersionInfo } from "@/shared/version";
   import { fade, fly } from "svelte/transition";
+  import { untrack } from "svelte";
+  import { checkGitHubUpdates } from "@/media/github_updates";
 
   /* Editor */
   let portal: HTMLElement | undefined = $state();
@@ -28,7 +30,10 @@
   // Check GitHub for a newer release the first time the editor is opened (checkForUpdate is
   // self-guarded to run once per session).
   $effect(() => {
-    if (extensionState.isEditorOpen) checkForUpdate();
+    if (extensionState.isEditorOpen) untrack(() => {
+      void checkForUpdate();
+      void checkGitHubUpdates();
+    });
   });
 </script>
 

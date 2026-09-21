@@ -102,7 +102,7 @@ If something looks wrong, **Settings → Support → Diagnostics** will usually 
 - **Trigger Words**: Words or phrases that automatically highlight matching text in the story
 - **Import/Export**: Share adventures between devices or with other people as JSON files
 - **Import from GitHub**: Add public repos under Settings, then browse and import shared
-  adventure/scenario `.json` files straight from the import dialog. Opening the Adventure Picker checks GitHub-imported sets for updates
+  adventure/scenario `.json` files straight from the import dialog. Opening the editor or Adventure Picker checks GitHub-imported sets for updates
   (at most once every five minutes). Use **Check for updates now** in the picker to bypass that
   cooldown. An **Update available** badge appears beside newer versions.
   Select the marked set to choose **Merge** (add new cards, keep local cards and edits),
