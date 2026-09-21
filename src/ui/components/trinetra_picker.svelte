@@ -9,17 +9,17 @@
   // path for every one of them.
 
   type Props = {
-    // Called with the selected image's Trinetra URL. Returns true if it was accepted (not over the
-    // limit) so the picker can reflect state.
+    // The current library is the source of truth, including removals while the picker is open.
+    selectedUrls: string[];
+    // Called with the selected image's Trinetra URL. Returns true if it was accepted.
     onselect: (url: string) => boolean;
     canAddMore?: boolean;
     onclose: () => void;
   };
 
-  let { onselect, canAddMore = true, onclose }: Props = $props();
+  let { selectedUrls, onselect, canAddMore = true, onclose }: Props = $props();
 
-  // Images picked this session (by Trinetra id), so we can show them as already-added.
-  let addedIds = $state<Set<string>>(new Set());
+  const addedUrls = $derived(new Set(selectedUrls));
 
   const apiKey = $derived(($settings.trinetraApiKey ?? "").trim());
 
@@ -67,9 +67,8 @@
   // Store the image as a Trinetra link (not embedded) so adventure exports stay small; it loads
   // live from Trinetra when the card renders.
   function pick(img: TrinetraImage) {
-    if (!canAddMore || addedIds.has(img.id)) return;
-    const accepted = onselect(img.url);
-    if (accepted) addedIds = new Set(addedIds).add(img.id);
+    if (!canAddMore || addedUrls.has(img.url)) return;
+    onselect(img.url);
   }
 
   // Open where the user last was. Done once on mount rather than in an effect: the previous effect
@@ -143,7 +142,7 @@
       {:else}
         <div class="grid grid-cols-4 gap-2">
           {#each images as img (img.id)}
-            {@const added = addedIds.has(img.id)}
+            {@const added = addedUrls.has(img.url)}
             <button
               onclick={() => pick(img)}
               disabled={added || !canAddMore}

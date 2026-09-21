@@ -64,7 +64,7 @@
 
   // Called by the picker with the image's Trinetra URL. Returns whether it was added.
   function addFromPicker(url: string): boolean {
-    if (images.length >= maxImages) return false;
+    if (images.length >= maxImages || images.includes(url)) return false;
     addImage(url);
     return true;
   }
@@ -228,7 +228,7 @@
   {/if}
 
   {#if addMode === "trinetra"}
-    <TrinetraPicker onselect={addFromPicker} canAddMore={!full} onclose={closeAdd} />
+    <TrinetraPicker selectedUrls={images} onselect={addFromPicker} canAddMore={!full} onclose={closeAdd} />
   {/if}
 
   {#if addMode === "generate"}
