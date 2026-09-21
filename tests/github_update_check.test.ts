@@ -2,11 +2,11 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 import { Storage } from "@/storage";
 import { checkGitHubUpdates, checkGitHubFile, githubUpdates, installGitHubUpdate } from "@/media/github_updates";
-import { listJsonFiles, fetchContentVersion, fetchFileText } from "@/media/github";
+import { listJsonFiles, fetchContentVersion, fetchSourceFileText } from "@/media/github";
 
 vi.mock("@/media/github", async importOriginal => ({
   ...await importOriginal<typeof import("@/media/github")>(),
-  listJsonFiles: vi.fn(), fetchContentVersion: vi.fn(), fetchFileText: vi.fn(),
+  listJsonFiles: vi.fn(), fetchContentVersion: vi.fn(), fetchSourceFileText: vi.fn(),
 }));
 
 beforeEach(() => { vi.clearAllMocks(); githubUpdates.set({}); });
@@ -27,11 +27,11 @@ it("checks only GitHub imports without repository listings, caches menu checks a
   expect(Storage.getAdventureById(first.id)?.githubSource?.version).toBe("1");
   await checkGitHubUpdates();
   expect(fetchContentVersion).toHaveBeenCalledTimes(2);
-  vi.mocked(fetchFileText).mockResolvedValue(pack(2));
+  vi.mocked(fetchSourceFileText).mockResolvedValue(pack(2));
   await installGitHubUpdate(first.id, get(githubUpdates)[first.id]!, "merge");
   expect(Storage.getAdventureById(first.id)?.githubSource?.version).toBe("2");
   expect(get(githubUpdates)[first.id]).toBeUndefined();
-  vi.mocked(fetchFileText).mockResolvedValue(pack(3));
+  vi.mocked(fetchSourceFileText).mockResolvedValue(pack(3));
   await expect(installGitHubUpdate(second.id, get(githubUpdates)[second.id]!, "overwrite")).rejects.toThrow("remote version changed");
   expect(Storage.getAdventureById(second.id)?.githubSource?.version).toBe("1");
 });
@@ -44,7 +44,7 @@ it("finds a second remote update immediately with a manual check after installin
   vi.mocked(fetchContentVersion).mockResolvedValue("2");
   await checkGitHubUpdates();
   expect(get(githubUpdates)[adventure.id]?.version).toBe("2");
-  vi.mocked(fetchFileText).mockResolvedValue(pack(2));
+  vi.mocked(fetchSourceFileText).mockResolvedValue(pack(2));
   await installGitHubUpdate(adventure.id, get(githubUpdates)[adventure.id]!, "merge");
   expect(get(githubUpdates)[adventure.id]).toBeUndefined();
   // Checking just before the author publishes the next version caches "up to date".
@@ -54,7 +54,7 @@ it("finds a second remote update immediately with a manual check after installin
   expect(get(githubUpdates)[adventure.id]).toBeUndefined();
   await checkGitHubUpdates(true);
   expect(get(githubUpdates)[adventure.id]?.version).toBe("3");
-  vi.mocked(fetchFileText).mockResolvedValue(pack(3));
+  vi.mocked(fetchSourceFileText).mockResolvedValue(pack(3));
   await installGitHubUpdate(adventure.id, get(githubUpdates)[adventure.id]!, "overwrite");
   expect(Storage.getAdventureById(adventure.id)?.githubSource?.version).toBe("3");
 });

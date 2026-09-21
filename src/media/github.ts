@@ -122,9 +122,23 @@ export function trackedTreeFile(source: NonNullable<Adventure["githubSource"]>):
     filename: source.path.split("/").pop() || source.path,
     size: 0,
     release: false,
-    // GitHub's HEAD ref follows the default branch. A fresh URL also avoids an old CDN response.
+    // HEAD follows the default branch. Full downloads resolve a commit separately, since
+    // GitHub can cache Range and full responses for a branch at different revisions.
     rawUrl: `${RAW_BASE}/${parsed.owner}/${parsed.repo}/${encodeURIComponent(branch)}/${encodePath(source.path)}?dext_check=${Date.now()}-${++updateRequest}`,
   };
+}
+
+/** Resolve a moving branch once at import time, then download its immutable contents. */
+export async function fetchSourceFileText(source: Pick<NonNullable<Adventure["githubSource"]>, "repo" | "path" | "release">, file: GitHubFile): Promise<string> {
+  if (source.path !== file.path || source.release !== file.release) throw new GitHubError("The GitHub file source changed.");
+  if (file.release) return fetchFileText(file);
+  const at = source.repo.indexOf("@");
+  const parsed = parseRepo(source.repo.slice(0, at));
+  const ref = source.repo.slice(at + 1);
+  if (at < 0 || !parsed || !ref) throw new GitHubError("Invalid saved GitHub tree source.");
+  const commit = await api<{ sha: string }>(`/repos/${parsed.owner}/${parsed.repo}/commits/${encodeURIComponent(ref)}`);
+  if (!/^[a-f0-9]{40}$/i.test(commit.sha)) throw new GitHubError("Couldn't resolve the GitHub file revision.");
+  return fetchFileText({ ...file, rawUrl: `${RAW_BASE}/${parsed.owner}/${parsed.repo}/${commit.sha}/${encodePath(source.path)}` });
 }
 
 async function api<T>(path: string): Promise<T> {

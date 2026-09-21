@@ -1,9 +1,9 @@
 <script lang="ts">
   import { settings, Storage } from "@/storage";
-  import { parseRepo, listJsonFiles, fetchAdventureName, fetchFileText, GitHubError, type GitHubFile } from "@/media/github";
+  import { parseRepo, listJsonFiles, fetchAdventureName, fetchSourceFileText, GitHubError, type GitHubFile } from "@/media/github";
 
   import { get } from "svelte/store";
-  import { checkGitHubFile } from "@/media/github_updates";
+  import { checkGitHubFile, githubUpdates, installGitHubUpdate } from "@/media/github_updates";
   import { newerVersion, contentVersion } from "@/storage/github_updates";
 
   type Props = {
@@ -116,11 +116,23 @@
     row.importing = true;
     importError = "";
     try {
-      const text = await fetchFileText(row);
+      if (mode) {
+        const update = row.targetId ? get(githubUpdates)[row.targetId] : undefined;
+        if (!update || update.version !== row.remoteVersion || update.installed !== row.localVersion) {
+          throw new Error("This update changed. Reopen this repo to check again.");
+        }
+        const adventure = await installGitHubUpdate(row.targetId!, update, mode);
+        if (gen !== loadGen) return;
+        Storage.selectAdventure(adventure.id);
+        onimported?.();
+        return;
+      }
+      const source = { repo: repoIdentity(repo), path: row.path, release: row.release };
+      const text = await fetchSourceFileText(source, row);
       if (gen !== loadGen) return;
       const data = JSON.parse(text);
-      if (mode || (data.adventure && contentVersion(data.version))) {
-        const adventure = Storage.importGitHubAdventure(text, { repo: repoIdentity(repo), path: row.path, release: row.release }, mode ? row.targetId : undefined, mode);
+      if (data.adventure && contentVersion(data.version)) {
+        const adventure = Storage.importGitHubAdventure(text, source);
         Storage.selectAdventure(adventure.id);
         onimported?.();
       } else {
