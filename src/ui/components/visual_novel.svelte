@@ -1,11 +1,10 @@
 <script lang="ts">
   import { tick, untrack } from "svelte";
   import { Storage, settings } from "@/storage";
-  import { aidDetected } from "@/aid/bridge";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
   import { extensionState, type SettingsSection } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
-  import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
+  import { createNovelParser, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
   import NovelComposer from "./novel_composer.svelte";
 
@@ -28,16 +27,11 @@
     const cards = $selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [];
     const result: NovelCharacter[] = cards.filter(c => c.type.trim().toLowerCase() === "character")
       .map(c => ({ id: c.id, name: c.name, triggers: c.triggers, portrait: c.graphics[c.graphicIndex] || c.icons[c.iconIndex] }));
-    if ($aidDetected.shortId === $playedAdventureId) {
-      for (const card of $aidDetected.cards.filter(c => c.type.trim().toLowerCase() === "character")) {
-        if (cards.some(c => c.aidId === card.id) || result.some(c => c.name.toLowerCase() === card.name.toLowerCase())) continue;
-        result.push({ id: `aid:${card.id}`, name: card.name, triggers: card.triggers });
-      }
-    }
     result.push({ id: "player", name: "You", triggers: "you" });
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
   const frame = $derived(frames[index]);
+  const parsePassage = $derived(createNovelParser(characters));
   const speakerId = $derived(overrides[index] ?? frame?.speakerId ?? "");
   const speaker = $derived(characters.find(c => c.id === speakerId));
   const stageSpeaker = $derived.by(() => {
@@ -64,7 +58,7 @@
     if (signature === lastSignature) return;
     lastSignature = signature;
     const previous = frames[index];
-    frames = passages.flatMap(p => parseNovel(p.text, characters).map((f, offset) => ({ ...f, source: p.element, offset })));
+    frames = passages.flatMap(p => parsePassage(p.text).map((f, offset) => ({ ...f, source: p.element, offset })));
     const retained = previous ? frames.findIndex(f => f.source === previous.source && f.offset === previous.offset) : -1;
     const latest = passages.at(-1)?.element;
     index = retained >= 0 ? retained : Math.max(0, frames.findIndex(f => f.source === latest));

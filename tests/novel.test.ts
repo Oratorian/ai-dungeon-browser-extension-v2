@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseNovel, type NovelCharacter } from "@/rendering/novel";
+import { createNovelParser, parseNovel, type NovelCharacter } from "@/rendering/novel";
 
 const characters: NovelCharacter[] = [
   { id: "sage", name: "Sage Harrow", triggers: "Sage" },
@@ -16,7 +16,7 @@ describe("visual novel dialogue attribution", () => {
   it("does not mistake names inside speech or mentioned listeners for speakers", () => {
     expect(speakers('"Sage says hello."')).toEqual([null]);
     expect(speakers('Sage watches Nyx. "Hello."')).toEqual([null]);
-    expect(speakers('Nyx tells Sage, "Hello."')).toEqual([null]);
+    expect(speakers('Nyx tells Sage, "Hello."')).toEqual(["nyx"]);
     expect(speakers('"Hello," Sage says to Nyx.')).toEqual(["sage"]);
   });
   it("keeps unattributed and contradictory speech unknown", () => {
@@ -38,6 +38,73 @@ describe("visual novel dialogue attribution", () => {
     const frames = parseNovel('Nyxadra grips the sink. "Sage is not trouble," she mutters.', characters);
     expect(frames.find(f => f.kind === "dialogue")).toMatchObject({ speakerId: "nyx", inferred: true });
     expect(speakers('Nyxadra looks at Sage. "Hello," she mutters.')).toEqual([null]);
-    expect(speakers('Nyxadra grips the sink.\n"Hello," she mutters.')).toEqual([null]);
+    expect(speakers('Nyxadra grips the sink.\n"Hello," she mutters.')).toEqual(["nyx"]);
+  });
+});
+
+const cast: NovelCharacter[] = [
+  ...characters,
+  { id: "coral", name: "Coral", triggers: "Corrilygos, food, drinks" },
+  { id: "sera", name: "Serastra", triggers: "Sera, chef, kitchen" },
+  { id: "player", name: "You", triggers: "you" },
+];
+const dialogue = (text: string) => parseNovel(text, cast).filter(f => f.kind === "dialogue");
+
+describe("speaker patterns from the browser adventure", () => {
+  it("uses an action beat and a possessive body-part subject before speech", () => {
+    expect(dialogue('Coral lets out a dramatic gasp, her wings fluttering. "Sarcasm! I am being mocked!" She flops backward.')[0])
+      .toMatchObject({ speakerId: "coral", inferred: true });
+    expect(dialogue('From your pocket, a chirp erupts. Coral\'s head pops up. "I heard that, Nyxadra!"')[0]?.speakerId).toBe("coral");
+  });
+  it("continues the same speaker across quotes within a paragraph", () => {
+    expect(dialogue('Nyxadra sighs. "She is loud," she whispers. "Everything is a symphony."').map(f => f.speakerId)).toEqual(["nyx", "nyx"]);
+    expect(dialogue('"A crescendo," you repeat softly. "A bold claim."').map(f => f.speakerId)).toEqual(["player", "player"]);
+  });
+  it("carries a clear narrative subject into the following pronoun-attributed paragraph", () => {
+    expect(dialogue('Serastra dismantles the apparatus. She wipes it clean. Her golden eyes flick up as you approach.\n\n"Cleanup," she says. "Wipe the counters first."').map(f => f.speakerId)).toEqual(["sera", "sera"]);
+    expect(dialogue('Serastra gives a stiff nod and pivots away.\n\n"Fine," she rasps. "But I am blaming you."').map(f => f.speakerId)).toEqual(["sera", "sera"]);
+  });
+  it("does not let a listener or possessive name replace the acting subject", () => {
+    expect(dialogue('Serastra descends from her perch. She hovers inches from Coral\'s nose. "An artist," she repeats.')[0]?.speakerId).toBe("sera");
+    expect(dialogue('"A visionary," Serastra adds, as the heat makes Coral shrink back. "An artist of chaos."').map(f => f.speakerId)).toEqual(["sera", "sera"]);
+  });
+  it("resolves a third-person pronoun to the NPC rather than the player", () => {
+    expect(dialogue('You slide Coral into your pocket, where she curls up. She peeks over the edge.\n\n"Mmm," she purrs. "This is nice."').map(f => f.speakerId)).toEqual(["coral", "coral"]);
+    expect(dialogue('Nyxadra jumps at your words. Her eyes dart toward you. "Coral is not trouble," she mutters.')[0]?.speakerId).toBe("nyx");
+  });
+  it("prioritizes names over environmental highlighting triggers", () => {
+    expect(dialogue('Serastra stands in the kitchen beside the dragon statue. "Welcome," she says.')[0]?.speakerId).toBe("sera");
+    expect(dialogue('The kitchen is quiet. "Hello," she says.')[0]?.speakerId).toBeNull();
+    expect(dialogue('The crimson dragon says, "Hello."')[0]?.speakerId).toBeNull();
+  });
+  it("switches speaker when another character takes an action", () => {
+    expect(dialogue('Nyxadra sighs. "Too loud," she whispers. Coral gasps. "I heard that!"').map(f => f.speakerId)).toEqual(["nyx", "coral"]);
+    expect(dialogue('Nyxadra sighs. "Too loud," she whispers.\nCoral gasps. "I heard that!"').map(f => f.speakerId)).toEqual(["nyx", "coral"]);
+  });
+  it("leaves a changed or ambiguous subject unresolved", () => {
+    expect(dialogue('Coral stiffens, her eyes darting toward Serastra. The crimson dragon is hovering nearby.\n"Stubborn?" she echoes.')[0]?.speakerId).toBeNull();
+    expect(dialogue('Nyxadra and Coral stand together. "Hello," she whispers.')[0]?.speakerId).toBeNull();
+    expect(dialogue('Nyxadra leaves.\nThe room falls silent.\n"Hello," she whispers.')[0]?.speakerId).toBeNull();
+  });
+  it("does not assume the next paragraph or next response has the same speaker", () => {
+    expect(dialogue('"Hello," Nyxadra says.\n"Goodbye."').map(f => f.speakerId)).toEqual(["nyx", null]);
+    dialogue('Nyxadra stands by the sink.');
+    expect(dialogue('"Hello," she whispers.')[0]?.speakerId).toBeNull();
+  });
+  it("uses extension trigger aliases as subjects and explicit speakers", () => {
+    expect(dialogue(' Corrilygos gasps. "I heard that!"')[0]?.speakerId).toBe("coral");
+    expect(dialogue('The chef whispers to Nyx, "Stay here."')[0]?.speakerId).toBe("sera");
+    expect(dialogue('Sage quietly says to Nyx, "Stay here."')[0]?.speakerId).toBe("sage");
+  });
+  it("prefers a whole name over a shorter trigger embedded inside it", () => {
+    const cards = [{ id: "mary", name: "Mary Ann", triggers: "" }, { id: "ann", name: "Ann", triggers: "" }];
+    expect(parseNovel('Mary Ann gasps. "Hello."', cards).find(f => f.kind === "dialogue")?.speakerId).toBe("mary");
+    expect(parseNovel('Mary Ann says, "Hello."', cards).find(f => f.kind === "dialogue")?.speakerId).toBe("mary");
+  });
+  it("reuses matchers without retaining a speaker from an earlier response", () => {
+    const parse = createNovelParser(cast);
+    parse('Coral gasps. "Hello!"');
+    expect(parse('"Hello," she says.')[0]?.speakerId).toBeNull();
+    expect(parse('Nyxadra sighs. "Quiet," she whispers.').find(f => f.kind === "dialogue")?.speakerId).toBe("nyx");
   });
 });
