@@ -1,6 +1,9 @@
 <script lang="ts">
   import { Storage } from "@/storage";
   import type { Adventure } from "@/shared/types";
+  import { onMount, onDestroy } from "svelte";
+  import { githubUpdates, checkGitHubUpdates, checkingGitHubUpdates, githubUpdateErrors } from "@/media/github_updates";
+  import { reviewUpdate } from "./github_update_dialog.svelte";
 
   // The floating button's Sets popover: switch the active card set, start a new one, or bring one
   // in, without opening the editor. A user who duplicates adventures often does this a lot, and the
@@ -15,8 +18,10 @@
 
   let adventures = $state<Record<string, Adventure>>({});
   let selectedId = $state<string | null>(null);
-  Storage.adventures.subscribe((a) => (adventures = a));
-  Storage.selectedAdventureId.subscribe((id) => (selectedId = id));
+  const unsubscribeAdventures = Storage.adventures.subscribe((a) => (adventures = a));
+  const unsubscribeSelected = Storage.selectedAdventureId.subscribe((id) => (selectedId = id));
+  onDestroy(() => { unsubscribeAdventures(); unsubscribeSelected(); });
+  onMount(() => { void checkGitHubUpdates(); });
 
   const list = $derived(Object.values(adventures).sort((a, b) => b.createdAt - a.createdAt));
 
@@ -56,6 +61,9 @@
 <input bind:this={fileInput} type="file" accept=".json" onchange={onFile} class="hidden" />
 
 <div class="flex flex-col gap-1">
+  {#if $checkingGitHubUpdates}
+    <div role="status" class="px-2 py-1 text-xs text-theme-neutral-700">Checking for updates…</div>
+  {/if}
   {#if list.length === 0}
     <div class="flex flex-col items-center py-4 text-theme-neutral-700">
       <span class="font-symbol text-2xl mb-1">explore_off</span>
@@ -66,7 +74,7 @@
       {#each list as adventure (adventure.id)}
         {@const active = adventure.id === selectedId}
         <button
-          onclick={() => Storage.selectAdventure(adventure.id)}
+          onclick={() => { Storage.selectAdventure(adventure.id); reviewUpdate(adventure); }}
           class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors {active
             ? 'bg-theme-neutral-400'
             : 'hover:bg-theme-neutral-300'}"
@@ -84,7 +92,13 @@
                   : ""}
             </span>
           </span>
+          {#if $githubUpdates[adventure.id]}
+            <span class="shrink-0 rounded-full px-1.5 py-0.5 text-xs bg-pretty-theme/20 text-pretty-theme">Update available</span>
+          {/if}
         </button>
+        {#if $githubUpdateErrors[adventure.id]}
+          <div role="status" class="px-2 text-xs text-pretty-red">{adventure.name}: {$githubUpdateErrors[adventure.id]}</div>
+        {/if}
       {/each}
     </div>
   {/if}

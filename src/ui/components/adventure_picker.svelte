@@ -5,31 +5,9 @@
   import GithubImport from "@/ui/components/github_import.svelte";
   import { contentVersion, newerVersion, nextContentVersion } from "@/storage/github_updates";
 
-  import { githubUpdates, githubUpdateErrors, githubCheckedVersions, checkingGitHubUpdates, checkGitHubUpdates, installGitHubUpdate, type GitHubUpdate } from "@/media/github_updates";
+  import { githubUpdates, githubUpdateErrors, githubCheckedVersions, checkingGitHubUpdates, checkGitHubUpdates } from "@/media/github_updates";
+  import { reviewUpdate } from "./github_update_dialog.svelte";
   import { onDestroy } from "svelte";
-
-  let updateTarget = $state<{ id: string; name: string; update: GitHubUpdate } | null>(null);
-  let updateBusy = $state(false);
-  let updateError = $state("");
-  let updateDialogOpen = $state(false);
-
-  function reviewUpdate(adventure: Adventure) {
-    const update = $githubUpdates[adventure.id];
-    if (!update) return;
-    updateTarget = { id: adventure.id, name: adventure.name, update };
-    updateError = "";
-    updateDialogOpen = true;
-  }
-
-  async function applyUpdate(mode: "merge" | "overwrite") {
-    if (!updateTarget || updateBusy) return;
-    updateBusy = true;
-    try {
-      await installGitHubUpdate(updateTarget.id, updateTarget.update, mode);
-      updateDialogOpen = false;
-    } catch (error) { updateError = error instanceof Error ? error.message : "Update failed."; }
-    finally { updateBusy = false; }
-  }
 
   let adventures = $state<Record<string, Adventure>>({});
   let selectedId = $state<string | null>(null);
@@ -552,26 +530,6 @@
         >
           {importMode === "github" ? "Close" : "Cancel"}
         </button>
-      </div>
-    </Dialog.Content>
-  </Dialog.Portal>
-</Dialog.Root>
-
-
-<Dialog.Root bind:open={updateDialogOpen}>
-  <Dialog.Portal>
-    <Dialog.Overlay class="fixed inset-0 bg-black/60 z-50" />
-    <Dialog.Content class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-theme-neutral-200 rounded-xl p-6 shadow-popover">
-      <Dialog.Title class="text-lg font-bold">Update {updateTarget?.name}</Dialog.Title>
-      <Dialog.Description class="text-sm mt-2">
-        Version {updateTarget?.update.installed} → {updateTarget?.update.version}.
-        Merge adds new cards and keeps existing local cards and edits. Overwrite replaces the entire card collection, including local additions and edits. Your set name and adventure/scenario bindings stay.
-      </Dialog.Description>
-      {#if updateError}<p role="alert" class="text-sm text-pretty-red mt-3">{updateError}</p>{/if}
-      <div class="flex justify-end gap-2 mt-4">
-        <button disabled={updateBusy} onclick={() => updateDialogOpen = false} class="p-2 rounded-lg hover:bg-theme-neutral-300">Later</button>
-        <button disabled={updateBusy} onclick={() => applyUpdate("merge")} class="p-2 rounded-lg bg-pretty-theme/20 text-pretty-theme">{updateBusy ? "Updating…" : "Merge"}</button>
-        <button disabled={updateBusy} onclick={() => applyUpdate("overwrite")} class="p-2 rounded-lg bg-pretty-red/20 text-pretty-red">Overwrite</button>
       </div>
     </Dialog.Content>
   </Dialog.Portal>

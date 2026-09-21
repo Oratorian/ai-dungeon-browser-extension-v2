@@ -13,6 +13,7 @@
   import Import from "./editor/import.svelte";
   import ScrollArea from "@/ui/components/scroll_area.svelte";
   import FloatingButton from "@/ui/components/floating_button.svelte";
+  import GitHubUpdateDialog from "@/ui/components/github_update_dialog.svelte";
   import { versionInfo, checkForUpdate, RELEASES_URL, type VersionInfo } from "@/shared/version";
   import { fade, fly } from "svelte/transition";
   import { untrack } from "svelte";
@@ -38,6 +39,10 @@
 </script>
 
 <FloatingButton />
+<!-- Mounted outside the editor and hover popover so either picker can review an update. -->
+<BitsConfig defaultPortalTo={portal}>
+  <GitHubUpdateDialog />
+</BitsConfig>
 
 {#if extensionState.isEditorOpen}
   <div
