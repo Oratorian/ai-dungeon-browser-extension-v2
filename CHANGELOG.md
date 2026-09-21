@@ -7,7 +7,7 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
-## v2.3.1
+## v2.3.2
 
 ### 🩹 Player actions keep their text size
 
