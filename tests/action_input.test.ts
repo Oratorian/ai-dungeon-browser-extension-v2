@@ -5,6 +5,7 @@ import { ACTION_MODES, continueStory, openActionInput, readActionInput, setActio
 let sent: { value: string; mode: string | null }[];
 beforeEach(() => {
   document.body.innerHTML = `<textarea id="game-text-input"></textarea><button aria-label="Change input mode"><span>Do</span></button><div role="button" aria-label="Submit action" aria-disabled="true"></div><div id="menu"></div>`;
+  writeActionDraft("");
   sent = [];
   const field = document.querySelector<HTMLTextAreaElement>("textarea")!;
   // React's value tracker must be bypassed for the input event to represent a change.
@@ -75,12 +76,12 @@ describe("visual novel native action adapter", () => {
     await expect(continueStory(controller.signal)).rejects.toThrow();
     expect(continued).toBe(1);
   });
-  it("reveals the native Continue command and restores a draft cleared by closing the input", async () => {
+  it("reveals Continue and defers draft restoration until the next composer open", async () => {
     writeActionDraft("Keep my draft");
     const close = document.createElement("button"); close.setAttribute("aria-label", "Close text input");
     let continued = 0;
     close.onclick = () => {
-      writeActionDraft("");
+      document.querySelector<HTMLTextAreaElement>("textarea")!.value = "";
       const command = document.createElement("button"); command.setAttribute("aria-label", "Command: continue");
       command.onclick = () => continued++;
       document.body.append(command);
@@ -89,6 +90,30 @@ describe("visual novel native action adapter", () => {
     await continueStory(new AbortController().signal);
     expect(continued).toBe(1);
     expect(readActionInput().value).toBe("Keep my draft");
+    expect(document.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("");
+    await openActionInput(new AbortController().signal);
+    expect(document.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("Keep my draft");
+    expect(sent).toEqual([]);
+  });
+  it("finishes Continue without waiting for action controls removed during generation", async () => {
+    writeActionDraft("Draft for later");
+    const field = document.querySelector<HTMLTextAreaElement>("textarea")!;
+    const mode = document.querySelector('[aria-label="Change input mode"]')!;
+    const close = document.createElement("button"); close.setAttribute("aria-label", "Close text input");
+    let continued = 0;
+    close.onclick = () => {
+      field.value = ""; mode.remove();
+      const command = document.createElement("button"); command.setAttribute("aria-label", "Command: continue");
+      command.onclick = () => { continued++; command.remove(); close.remove(); field.remove(); };
+      document.body.append(command);
+    };
+    document.body.append(close);
+    await continueStory(new AbortController().signal);
+    expect(continued).toBe(1);
+    expect(readActionInput()).toMatchObject({ available: false, value: "Draft for later" });
+    document.body.append(field, mode);
+    await openActionInput(new AbortController().signal);
+    expect(field.value).toBe("Draft for later");
     expect(sent).toEqual([]);
   });
   it("never clicks a disabled native Continue command", async () => {

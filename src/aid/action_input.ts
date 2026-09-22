@@ -5,6 +5,9 @@ export type ActionMode = typeof ACTION_MODES[number];
 const input = () => document.querySelector<HTMLTextAreaElement>("#game-text-input");
 const modeButton = () => document.querySelector<HTMLElement>('[aria-label="Change input mode"]');
 const submitButton = () => document.querySelector<HTMLElement>('[aria-label="Submit action"]');
+// Continue closes the native composer. Restore its draft when the user next opens it, rather
+// than reopening controls that AI Dungeon removes while generating the continuation.
+const deferredDrafts = new Map<string, string>();
 const disabled = (element: HTMLElement | null) => !element || element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true";
 const continueButton = () => [...document.querySelectorAll<HTMLElement>('[aria-label="Command: continue"]')]
   .find(button => !button.closest('[aria-hidden="true"]') && !disabled(button)) ?? null;
@@ -16,18 +19,20 @@ export async function continueStory(signal: AbortSignal) {
   const draft = input()?.value ?? "";
   const close = document.querySelector<HTMLElement>('[aria-label="Close text input"]');
   const restore = !continueButton() && !!close;
+  if (restore && draft) deferredDrafts.set(route, draft);
   try {
     if (restore) close!.click();
-    const button = await until(continueButton, signal);
+    const button = await until(continueButton, signal, "Continue is not available yet. Wait for AI Dungeon to finish generating, then try again.");
     signal.throwIfAborted();
     if (location.pathname !== route) throw new Error("The adventure changed. Continue was cancelled.");
     if (disabled(button)) throw new Error("AI Dungeon is not ready to continue yet.");
     button.click();
-  } finally {
+  } catch (error) {
     if (restore && !signal.aborted && location.pathname === route) {
-      await openActionInput(signal);
-      if (input()?.value !== draft) writeActionDraft(draft);
+      // Recovery must never replace the original failure with a textbox timeout.
+      try { await openActionInput(signal); } catch { /* The draft remains available for the next open. */ }
     }
+    throw error;
   }
 }
 
@@ -36,11 +41,11 @@ export function readActionInput() {
   const labels = [...(modeButton()?.querySelectorAll("span") ?? [])].map(span => span.textContent?.trim().toLowerCase());
   const mode = ACTION_MODES.find(mode => labels.includes(mode.toLowerCase())) ?? null;
   const available = !!field && !!mode && !field.closest('[aria-hidden="true"], .gameplay-action-input-dock[data-visible="false"]');
-  return { available, value: field?.value ?? "", placeholder: field?.placeholder ?? "Write your action...", mode,
+  return { available, value: deferredDrafts.get(location.pathname) ?? field?.value ?? "", placeholder: field?.placeholder ?? "Write your action...", mode,
     canSubmit: !!field && !field.disabled && !field.readOnly && !disabled(submitButton()) };
 }
 
-async function until<T>(read: () => T | null | false, signal: AbortSignal): Promise<T> {
+async function until<T>(read: () => T | null | false, signal: AbortSignal, message = "AI Dungeon's action controls are unavailable. Use Return to game to check them."): Promise<T> {
   const deadline = Date.now() + 1800;
   while (Date.now() < deadline) {
     signal.throwIfAborted();
@@ -48,7 +53,7 @@ async function until<T>(read: () => T | null | false, signal: AbortSignal): Prom
     if (value) return value;
     await new Promise(resolve => setTimeout(resolve, 30));
   }
-  throw new Error("AI Dungeon's action controls are unavailable. Use Return to game to check them.");
+  throw new Error(message);
 }
 
 export async function openActionInput(signal: AbortSignal) {
@@ -56,7 +61,15 @@ export async function openActionInput(signal: AbortSignal) {
   const attempted = new WeakSet<HTMLElement>();
   return until(() => {
     const state = readActionInput();
-    if (state.available) return state;
+    if (state.available) {
+      const draft = deferredDrafts.get(location.pathname);
+      if (draft !== undefined) {
+        const field = input()!;
+        if (field.disabled || field.readOnly) return null;
+        writeActionDraft(draft);
+      }
+      return readActionInput();
+    }
     const open = [...document.querySelectorAll<HTMLElement>('[aria-label="Command: take a turn"]')]
       .find(button => !button.closest('[aria-hidden="true"]') && !disabled(button));
     if (open && !attempted.has(open)) { attempted.add(open); open.click(); }
@@ -84,6 +97,7 @@ export async function setActionMode(mode: ActionMode, signal: AbortSignal) {
 export function writeActionDraft(value: string) {
   const field = input();
   if (!field || field.disabled || field.readOnly) throw new Error("AI Dungeon's input is not ready. Your draft is kept here.");
+  deferredDrafts.delete(location.pathname);
   if (field.value === value) return;
   // Use the native setter to notify React's controlled field, just like the @ autocomplete.
   Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(field, value);

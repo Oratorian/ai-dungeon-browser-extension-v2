@@ -103,8 +103,9 @@ line, and only **Send** submits. **Read story** closes the composer. **Return to
 AI Dungeon's normal controls, and **Resume visual novel** reopens the scene.
 The floating button's **Visual Novel Mode** quick action toggles the same setting directly and
 is highlighted while enabled.
-**Continue** asks AI Dungeon to continue the story through its native command and preserves your
-action draft. Reaching the final loaded paragraph automatically opens **Write action** alongside
+**Continue** asks AI Dungeon to continue the story through its native command and keeps your draft
+in memory until you next open **Write action**, without reopening the textbox during generation.
+Reaching the final loaded paragraph automatically opens **Write action** alongside
 the story text. Closing it keeps it closed for that paragraph, including when navigating back.
 Submitting closes the composer and pauses automatic reopening until you navigate the story again,
 so incoming action and generation updates do not interrupt reading with another composer.
