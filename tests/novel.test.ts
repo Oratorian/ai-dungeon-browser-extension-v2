@@ -51,6 +51,11 @@ const cast: NovelCharacter[] = [
 const dialogue = (text: string) => parseNovel(text, cast).filter(f => f.kind === "dialogue");
 
 describe("speaker patterns from the browser adventure", () => {
+  it("resolves She whispers after Nyxadra rinses, despite earlier ambiguous narration", () => {
+    const passage = 'The kitchen hums around you as you continue wiping down the marble counter, the soft murmur of running water and the occasional clink of a dish meeting the warm glow of the dimming hearth. Coral remains nestled in your pocket, her tiny body a comforting weight against your chest, her wings occasionally twitching in irritated little spasms.\n\nNyxadra rinses the last of the vanilla pods, her orange eyes darting to you before returning to her task. She whispers, "A crescendo of cream," testing the words as if trying to imagine a world where such a thing could exist without chaos. She finishes drying the vanilla pods with deliberate care, then hesitates, her tiny claws hovering over the stack of clean dishes.';
+    expect(dialogue(passage)).toEqual([{ text: '"A crescendo of cream,"', kind: "dialogue", speakerId: "nyx", inferred: true }]);
+    expect(dialogue(passage.replace("rinses", "rinsed"))[0]?.speakerId).toBe("nyx");
+  });
   it("uses an action beat and a possessive body-part subject before speech", () => {
     expect(dialogue('Coral lets out a dramatic gasp, her wings fluttering. "Sarcasm! I am being mocked!" She flops backward.')[0])
       .toMatchObject({ speakerId: "coral", inferred: true });
