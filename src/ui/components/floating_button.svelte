@@ -18,7 +18,8 @@
   // Hovering it (or tabbing onto it) brings up a ring of quick actions around it. Two of them open a
   // second level in place: Sets switches, creates or imports a card set, Stamp binds the set to the
   // story being played. Both are things people do every time they start or duplicate an adventure,
-  // and the editor was a detour for them. The other two jump into the editor on a tab. A plain click
+  // and the editor was a detour for them. Sync and Settings open editor tabs; Visual Novel Mode
+  // toggles the scene reader directly. A plain click
   // on the puck still opens the editor where it was last left.
   //
   // The second level opens on hover, like the ring, and a click pins it so it survives the pointer
@@ -30,7 +31,7 @@
   const DRAG_THRESHOLD = 4; // px of travel before a press counts as a drag instead of a click
   const CLOSE_GRACE = 250; // ms the ring survives the pointer crossing a gap between its parts
 
-  type ActionId = "sets" | "stamp" | "sync" | "settings";
+  type ActionId = "sets" | "stamp" | "sync" | "novel" | "settings";
   type QuickAction = { id: ActionId; icon: string; label: string; panel: boolean };
 
   // Clockwise order around the ring, always this sequence however much of the ring fits.
@@ -38,6 +39,7 @@
     { id: "sets", icon: "swap_horiz", label: "Sets", panel: true },
     { id: "stamp", icon: "approval", label: "Stamp", panel: true },
     { id: "sync", icon: "sync", label: "AID Sync", panel: false },
+    { id: "novel", icon: "theater_comedy", label: "Visual Novel Mode", panel: false },
     { id: "settings", icon: "settings", label: "Settings", panel: false },
   ];
 
@@ -163,6 +165,11 @@
   }
 
   function onActionClick(action: QuickAction) {
+    if (action.id === "novel") {
+      $settings.visualNovelMode = !$settings.visualNovelMode;
+      closeAll();
+      return;
+    }
     if (!action.panel) {
       openAt(action.id === "sync" ? Tab.Import : Tab.Settings);
       return;
@@ -278,13 +285,14 @@
           onpointerenter={() => onActionEnter(action)}
           onclick={() => onActionClick(action)}
           aria-label={action.label}
+          aria-pressed={action.id === "novel" ? $settings.visualNovelMode : undefined}
           aria-expanded={action.panel ? panel === action.id : undefined}
-          title={action.label}
+          title={action.id === "novel" ? `Visual Novel Mode: ${$settings.visualNovelMode ? "On" : "Off"}` : action.label}
           style="width: {ringSize}px; height: {ringSize}px; font-size: {Math.round(ringSize * 0.55)}px;
                  left: {SIZE / 2 + slot.dx - ringSize / 2}px; top: {SIZE / 2 + slot.dy - ringSize / 2}px;"
           class="absolute flex items-center justify-center rounded-full select-none shadow-md backdrop-blur-sm
                  bg-theme-neutral-200/95 ring-1 transition-colors
-                 {panel === action.id
+                 {panel === action.id || (action.id === "novel" && $settings.visualNovelMode)
             ? 'text-pretty-theme ring-pretty-theme'
             : 'text-theme-neutral-800 ring-pretty-theme/40 hover:text-pretty-theme hover:ring-pretty-theme'}"
         >
