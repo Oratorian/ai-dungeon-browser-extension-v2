@@ -102,13 +102,13 @@ native mode and submit controls. Your draft is shared with the game's textbox; E
 line, and only **Send** submits. **Read story** closes the composer. **Return to game** exposes
 AI Dungeon's normal controls, and **Resume visual novel** reopens the scene.
 
-The scene keeps up to four characters on stage, two on each side, using names and story card
-triggers as they appear in the text. Characters retain their positions even when later lines
-do not mention them. When all four positions are occupied, a newcomer replaces the least recently
-mentioned character who is absent from the current line. Characters mentioned in the current line
-are protected; if more than four qualify, existing residents stay and remaining positions fill in
-mention order. Back and Next restore each line's scene. Replacements fade in and out, with fades
-disabled for reduced-motion preferences. There is no speaker detection or Narrator label.
+Each paragraph defines a scene with up to four characters, two on each side, matched through
+names and story card triggers anywhere in that paragraph. Narration and quoted dialogue still
+advance as individual reader lines, but share the same cast, including names after a quote.
+At the next paragraph, characters no longer mentioned fade out and new ones fade in. Recurring
+characters keep their positions. Paragraphs with no matching names or triggers clear the stage;
+if more than four match, the first four appear. Back and Next restore each paragraph's scene.
+Reduced-motion preferences disable fades. There is no speaker detection or Narrator label.
 
 This is a local reader with no additional AI requests. It reads passages currently loaded by
 AI Dungeon, rather than downloading the adventure's entire history.

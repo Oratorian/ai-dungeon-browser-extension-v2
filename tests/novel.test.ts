@@ -3,7 +3,7 @@ import { parseNovel } from "@/rendering/novel";
 
 describe("visual novel reader lines", () => {
   it("preserves narration, quotations and incomplete streaming text", () => {
-    expect(parseNovel('Sage says, "Hello."\nThe door opens.\n"An unfinished')).toEqual([
+    expect(parseNovel('Sage says, "Hello."\nThe door opens.\n"An unfinished').map(({text, kind}) => ({text, kind}))).toEqual([
       { text: "Sage says,", kind: "narration" },
       { text: '"Hello."', kind: "dialogue" },
       { text: "The door opens.", kind: "narration" },
@@ -21,6 +21,6 @@ describe("visual novel reader lines", () => {
   it("ignores blank paragraphs and never carries context between calls", () => {
     expect(parseNovel(" \n\n ")).toEqual([]);
     parseNovel('Nyx says, "Hello."');
-    expect(parseNovel('"Goodbye."')).toEqual([{ text: '"Goodbye."', kind: "dialogue" }]);
+    expect(parseNovel('"Goodbye."')).toEqual([{ text: '"Goodbye."', kind: "dialogue", paragraph: '"Goodbye."' }]);
   });
 });

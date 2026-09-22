@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNovelStageTracker } from "@/rendering/novel_stage";
-import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
+import { parseNovel, type NovelCharacter } from "@/rendering/novel";
 
 const cast: NovelCharacter[] = [
   { id: "nyx", name: "Nyxadra", triggers: "Nyx, dragon, kitchen" },
@@ -8,52 +8,44 @@ const cast: NovelCharacter[] = [
   { id: "sera", name: "Serastra", triggers: "chef, kitchen" },
   { id: "sage", name: "Sage", triggers: "" },
   { id: "faelar", name: "Faelar", triggers: "" },
-  { id: "lys", name: "Lysandra", triggers: "Lys" },
 ];
-const line = (text: string): NovelFrame => ({ text, kind: "narration" });
-const track = (texts: string[]) => createNovelStageTracker(cast)(texts.map(line));
+const track = (text: string) => createNovelStageTracker(cast)(parseNovel(text));
 
-describe("visual novel stage progression", () => {
-  it("fills four alternating left/right slots and keeps characters through unmentioned lines", () => {
-    expect(track(["Nyx arrives.", "Coral arrives.", "Serastra arrives.", "Sage arrives.", "The room is quiet."]))
-      .toEqual([
-        ["nyx", null, null, null], ["nyx", "coral", null, null],
-        ["nyx", "coral", "sera", null], ["nyx", "coral", "sera", "sage"], ["nyx", "coral", "sera", "sage"],
-      ]);
+describe("paragraph-based visual novel scenes", () => {
+  it("keeps the paragraph's cast through narration and quotes, including names after speech", () => {
+    const text = 'Nyx rinses the pods. She whispers, "A crescendo of cream." Coral nods.';
+    expect(track(text)).toEqual(Array.from({length: 3}, () => ["nyx", "coral", null, null]));
+    expect(track('"Hello," Nyx says.')).toEqual([["nyx", null, null, null], ["nyx", null, null, null]]);
   });
-  it("replaces the least recently mentioned resident only when a newcomer needs space", () => {
-    expect(track(["Nyx Coral Serastra Sage", "Nyx waves.", "Faelar arrives."]).at(-1))
-      .toEqual(["nyx", "faelar", "sera", "sage"]);
+  it("updates the cast at paragraph boundaries, preserving recurring characters' slots", () => {
+    expect(track('Nyx meets Coral.\n\nCoral welcomes Serastra.\n\nThe room is quiet.'))
+      .toEqual([["nyx", "coral", null, null], ["sera", "coral", null, null], [null, null, null, null]]);
   });
-  it("protects characters mentioned later in the current line and keeps their positions", () => {
-    expect(track(["Nyx Coral Serastra Sage", "Faelar greets Nyx."]).at(-1))
-      .toEqual(["nyx", "faelar", "sera", "sage"]);
-    expect(track(["Nyx Coral Serastra Sage", "Faelar and Lys greet Nyx and Sage."]).at(-1))
-      .toEqual(["nyx", "faelar", "lys", "sage"]);
-  });
-  it("never exceeds four or churns residents when a line mentions more than four", () => {
-    expect(track(["Nyx Coral Serastra Sage Faelar Lys"])[0]).toEqual(["nyx", "coral", "sera", "sage"]);
-    expect(track(["Nyx Coral Serastra Sage", "Faelar Nyx Coral Serastra Sage"])[1])
-      .toEqual(["nyx", "coral", "sera", "sage"]);
-  });
-  it("preserves earlier snapshots for Back and reconstructs after edits or a different adventure", () => {
+  it("does not borrow mentions from a following paragraph or response", () => {
+    expect(track('"Hello."\n\nNyx arrives.')).toEqual([[null, null, null, null], ["nyx", null, null, null]]);
     const tracker = createNovelStageTracker(cast);
-    const snapshots = tracker(["Nyx Coral Serastra Sage", "Faelar arrives."].map(line));
-    expect(snapshots[0]).toEqual(["nyx", "coral", "sera", "sage"]);
-    expect(snapshots[1]).toEqual(["faelar", "coral", "sera", "sage"]);
-    expect(tracker([line("Coral arrives.")])).toEqual([["coral", null, null, null]]);
+    expect(tracker([...parseNovel("Nyx arrives."), ...parseNovel('"Hello."')]))
+      .toEqual([["nyx", null, null, null], [null, null, null, null]]);
+  });
+  it("caps the paragraph cast at four in mention order and keeps it stable across quotes", () => {
+    expect(track('Nyx Coral Serastra Sage Faelar. "Welcome."'))
+      .toEqual([["nyx", "coral", "sera", "sage"], ["nyx", "coral", "sera", "sage"]]);
+  });
+  it("reconstructs independent snapshots after edits and handles repeated paragraph text", () => {
+    const tracker = createNovelStageTracker(cast);
+    const frames = parseNovel("Nyx Coral\n\nSage\n\nNyx Coral");
+    expect(tracker(frames)).toEqual([["nyx", "coral", null, null], ["sage", null, null, null], ["nyx", "coral", null, null]]);
+    expect(tracker(parseNovel("Coral"))).toEqual([["coral", null, null, null]]);
     expect(tracker([])).toEqual([]);
   });
-  it("keeps mentioned characters through quoted dialogue without inferring future speakers", () => {
-    expect(createNovelStageTracker(cast)(parseNovel('Nyx says, "Hello."')))
-      .toEqual([["nyx", null, null, null], ["nyx", null, null, null]]);
-    expect(createNovelStageTracker(cast)(parseNovel('"Hello," Nyx says.')))
-      .toEqual([[null, null, null, null], ["nyx", null, null, null]]);
+  it("updates the entire paragraph cast as streamed text adds a mention", () => {
+    expect(track('Nyx says, "Hello')).toEqual([["nyx", null, null, null]]);
+    expect(track('Nyx says, "Hello Coral."')).toEqual([["nyx", "coral", null, null], ["nyx", "coral", null, null]]);
   });
   it("matches full aliases and ignores ambiguous shared triggers", () => {
-    expect(track(["The kitchen is empty.", "Nyxie's chair is empty.", "NYX waves."]))
+    expect(track("The kitchen is empty.\nNyxie's chair is empty.\nNYX waves."))
       .toEqual([[null, null, null, null], [null, null, null, null], ["nyx", null, null, null]]);
-    const tracker = createNovelStageTracker([{ id: "mary", name: "Mary Ann", triggers: "" }, { id: "ann", name: "Ann", triggers: "" }]);
-    expect(tracker([line("Mary Ann appears.")])).toEqual([["mary", null, null, null]]);
+    const tracker = createNovelStageTracker([{id:"mary", name:"Mary Ann", triggers:""}, {id:"ann", name:"Ann", triggers:""}]);
+    expect(tracker(parseNovel("Mary Ann appears."))).toEqual([["mary",null,null,null]]);
   });
 });

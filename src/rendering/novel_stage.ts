@@ -5,7 +5,7 @@ export type NovelStage = [string | null, string | null, string | null, string | 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Compile once per card-set change. Each result is an independent snapshot, so Back/Next and
- * jumps reconstruct the scene without leaking characters from lines the reader hasn't reached. */
+ * jumps reconstruct the scene. All reader lines in a paragraph share its cast. */
 export function createNovelStageTracker(characters: NovelCharacter[]) {
   const cast = characters.filter(c => c.id !== "player" && c.name.trim().toLowerCase() !== "you");
   const aliases = new Map<string, Set<string>>();
@@ -24,30 +24,21 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
 
   return (frames: NovelFrame[]): NovelStage[] => {
     const slots: NovelStage = [null, null, null, null];
-    const lastMention = new Map<string, number>();
-    let sequence = 0;
+    const paragraphCast = new Map<string, string[]>();
     return frames.map(frame => {
-      const triggered = new Set<string>();
-      for (const match of pattern ? frame.text.matchAll(pattern) : []) {
-        const owners = aliases.get(match[0].toLowerCase())!;
-        if (owners.size !== 1) continue;
-        triggered.add([...owners][0]!);
-      }
-      for (const id of triggered) lastMention.set(id, ++sequence);
-      for (const id of triggered) {
-        if (slots.includes(id)) continue;
-        let slot = slots.indexOf(null);
-        if (slot < 0) {
-          // Keep everyone mentioned in this line. Replace only an older, unmentioned resident.
-          let oldest = Infinity;
-          slots.forEach((resident, i) => {
-            if (resident && !triggered.has(resident) && lastMention.get(resident)! < oldest) {
-              slot = i; oldest = lastMention.get(resident)!;
-            }
-          });
+      let visible = paragraphCast.get(frame.paragraph);
+      if (!visible) {
+        const triggered = new Set<string>();
+        for (const match of pattern ? frame.paragraph.matchAll(pattern) : []) {
+          const owners = aliases.get(match[0].toLowerCase())!;
+          if (owners.size !== 1) continue;
+          triggered.add([...owners][0]!);
         }
-        if (slot >= 0) slots[slot] = id;
+        visible = [...triggered].slice(0, 4);
+        paragraphCast.set(frame.paragraph, visible);
       }
+      for (const slot of [0, 1, 2, 3] as const) if (!visible.includes(slots[slot]!)) slots[slot] = null;
+      for (const id of visible) if (!slots.includes(id)) slots[slots.indexOf(null)] = id;
       return [...slots] as NovelStage;
     });
   };
