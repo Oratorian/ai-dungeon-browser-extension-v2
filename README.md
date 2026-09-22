@@ -106,7 +106,10 @@ Each paragraph defines a scene with up to four characters, two on each side, mat
 names and story card triggers anywhere in that paragraph. Narration and quoted dialogue still
 advance as individual reader lines, but share the same cast, including names after a quote.
 At the next paragraph, characters no longer mentioned fade out and new ones fade in. Recurring
-characters keep their positions. Paragraphs with no matching names or triggers clear the stage;
+characters keep their positions. A paragraph beginning with a third-person pronoun, including
+after an opening quote, can retain the previous paragraph's single explicitly mentioned character.
+This bridges only one paragraph within the same response. Otherwise, paragraphs with no matching
+names or triggers clear the stage;
 if more than four match, the first four appear. Back and Next restore each paragraph's scene.
 Reduced-motion preferences disable fades. There is no speaker detection or Narrator label.
 

@@ -21,6 +21,6 @@ describe("visual novel reader lines", () => {
   it("ignores blank paragraphs and never carries context between calls", () => {
     expect(parseNovel(" \n\n ")).toEqual([]);
     parseNovel('Nyx says, "Hello."');
-    expect(parseNovel('"Goodbye."')).toEqual([{ text: '"Goodbye."', kind: "dialogue", paragraph: '"Goodbye."' }]);
+    expect(parseNovel('"Goodbye."')).toEqual([{ text: '"Goodbye."', kind: "dialogue", paragraph: '"Goodbye."', startsParagraph: true, startsPassage: true }]);
   });
 });

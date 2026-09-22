@@ -1,5 +1,5 @@
 export type NovelCharacter = { id: string; name: string; triggers: string; portrait?: string };
-export type NovelFrame = { text: string; kind: "narration" | "dialogue"; paragraph: string };
+export type NovelFrame = { text: string; kind: "narration" | "dialogue"; paragraph: string; startsParagraph?: true; startsPassage?: true };
 
 const quoted = /"[^"\n]+"|“[^”\n]+”|«[^»\n]+»/gu;
 
@@ -7,6 +7,7 @@ const quoted = /"[^"\n]+"|“[^”\n]+”|«[^»\n]+»/gu;
 export function parseNovel(text: string): NovelFrame[] {
   const frames: NovelFrame[] = [];
   for (const paragraph of text.split(/\n+/).filter(p => p.trim())) {
+    const first = frames.length;
     const narration = (value: string) => {
       if (value.trim()) frames.push({ text: value.trim(), kind: "narration", paragraph });
     };
@@ -17,6 +18,8 @@ export function parseNovel(text: string): NovelFrame[] {
       end = quote.index! + quote[0].length;
     }
     narration(paragraph.slice(end));
+    if (frames[first]) frames[first].startsParagraph = true;
   }
+  if (frames[0]) frames[0].startsPassage = true;
   return frames;
 }
