@@ -3,7 +3,7 @@
   import { ACTION_MODES, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft, type ActionMode } from "@/aid/action_input";
   import { playedShortId } from "@/aid/adventure";
 
-  let { onclose, onsubmitted }: { onclose: () => void; onsubmitted: () => void } = $props();
+  let { onclose, onsubmitted, blocked = false, onbusychange = () => {} }: { onclose: () => void; onsubmitted: () => void; blocked?: boolean; onbusychange?: (busy: boolean) => void } = $props();
   let draft = $state("");
   let mode = $state<ActionMode | null>(null);
   let placeholder = $state("Write your action...");
@@ -14,6 +14,7 @@
   let signal: AbortSignal;
   let adventure: string | null;
   let localOnly = $state(false);
+  $effect(() => { onbusychange(busy); });
 
   function sync() {
     if (playedShortId() !== adventure) return;
@@ -33,7 +34,7 @@
       .finally(() => { if (!signal.aborted) busy = false; });
     const timer = setInterval(() => {
       if (playedShortId() !== adventure) { controller.abort(); onclose(); return; }
-      if (!busy) sync();
+      if (!busy && !blocked) sync();
     }, 200);
     return () => { controller.abort(); clearInterval(timer); };
   });
@@ -43,14 +44,14 @@
     catch (e) { localOnly = true; error = (e as Error).message; }
   }
   async function choose(value: ActionMode) {
-    if (busy) return;
+    if (busy || blocked) return;
     busy = true; error = "";
     try { await setActionMode(value, signal); sync(); }
     catch (e) { if (!signal.aborted) error = (e as Error).message; }
     finally { if (!signal.aborted) { busy = false; field?.focus(); } }
   }
   async function send() {
-    if (busy || !mode || !draft.trim()) return;
+    if (busy || blocked || !mode || !draft.trim()) return;
     busy = true; error = "";
     try {
       await submitAction(draft, mode, signal);
@@ -62,16 +63,16 @@
 <div class="composer">
   <div class="modes" role="group" aria-label="Action mode">
     {#each ACTION_MODES as value}
-      <button aria-pressed={mode === value} disabled={busy} onclick={() => choose(value)}>{value}</button>
+      <button aria-pressed={mode === value} disabled={busy || blocked} onclick={() => choose(value)}>{value}</button>
     {/each}
   </div>
-  <textarea aria-label="Visual novel action" bind:this={field} value={draft} {placeholder} rows="3" disabled={busy}
+  <textarea aria-label="Visual novel action" bind:this={field} value={draft} {placeholder} rows="3" disabled={busy || blocked}
     oninput={event => changed(event.currentTarget.value)}></textarea>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <div class="controls">
     <span>Enter adds a new line.</span>
-    <button onclick={onclose} disabled={busy}>Read story</button>
-    <button class="send" onclick={send} disabled={busy || !mode || !draft.trim() || (!ready && !localOnly)}>Send {mode ?? "action"}</button>
+    <button onclick={onclose} disabled={busy || blocked}>Read story</button>
+    <button class="send" onclick={send} disabled={busy || blocked || !mode || !draft.trim() || (!ready && !localOnly)}>Send {mode ?? "action"}</button>
   </div>
 </div>
 

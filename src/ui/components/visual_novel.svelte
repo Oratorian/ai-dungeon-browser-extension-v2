@@ -3,6 +3,7 @@
   import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
+  import { continueStory } from "@/aid/action_input";
   import { extensionState, type SettingsSection } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
@@ -17,6 +18,11 @@
   let index = $state(0);
   let paused = $state(false);
   let composing = $state(false);
+  let continuing = $state(false);
+  let composerBusy = $state(false);
+  let actionError = $state("");
+  let continueController: AbortController | undefined;
+  let openedParagraphs = new WeakMap<HTMLElement, Set<number>>();
   let scene: HTMLElement | undefined = $state();
   let output: HTMLElement | null = null;
   let lastSignature = "";
@@ -58,6 +64,7 @@
     const adventure = $playedAdventureId;
     const set = $selected;
     untrack(() => {
+      continueController?.abort(); continuing = false; actionError = ""; openedParagraphs = new WeakMap();
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
     });
@@ -72,8 +79,31 @@
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     untrack(refresh);
-    return () => { observer.disconnect(); cancelAnimationFrame(queued); };
+    return () => { observer.disconnect(); cancelAnimationFrame(queued); continueController?.abort(); };
   });
+
+  $effect(() => {
+    if (!active || paused || !frame) return;
+    const lastParagraph = frames.findLastIndex(f => f.startsParagraph);
+    if (lastParagraph < 0 || index < lastParagraph) return;
+    const start = frames[lastParagraph]!;
+    untrack(() => {
+      const opened = openedParagraphs.get(start.source) ?? new Set<number>();
+      if (opened.has(start.offset)) return;
+      opened.add(start.offset); openedParagraphs.set(start.source, opened);
+      composing = true;
+    });
+  });
+
+  async function continueReading() {
+    if (continuing || (composing && composerBusy) || playedShortId() !== $playedAdventureId) return;
+    continuing = true; actionError = "";
+    const controller = new AbortController();
+    continueController = controller;
+    try { await continueStory(controller.signal); }
+    catch (e) { if (!controller.signal.aborted) actionError = (e as Error).message; }
+    finally { if (!controller.signal.aborted) continuing = false; }
+  }
 
   // The scene is a modal reader. Keep the covered game out of the tab order, and restore its
   // previous state when returning to the textbox or opening extension settings.
@@ -166,17 +196,18 @@
         {/each}
       </div>
       <div class="dialogue">
+        <p class="prose" class:with-composer={composing} aria-live="polite">{frame?.text ?? "Waiting for story text. Use Write action to take a turn."}</p>
         {#if composing}
-          <NovelComposer onclose={() => composing = false} onsubmitted={() => { composing = false; refresh(); latest(); }} />
-        {:else}
-        <p class="prose" aria-live="polite">{frame?.text ?? "Waiting for story text. Use Write action to take a turn."}</p>
+          <NovelComposer blocked={continuing} onbusychange={busy => composerBusy = busy} onclose={() => composing = false} onsubmitted={() => { composing = false; refresh(); latest(); }} />
+        {/if}
+        {#if actionError}<p role="alert" class="action-error">{actionError}</p>{/if}
         <footer>
           <button onclick={() => index--} disabled={index === 0 || !frames.length}>Back</button>
           <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
           <button onclick={latest} disabled={!frames.length}>Latest passage</button>
           <button class="accent" onclick={() => index++} disabled={index >= frames.length - 1}>Next</button>
+          <button onclick={continueReading} disabled={continuing || (composing && composerBusy)}>{continuing ? "Continuing..." : "Continue"}</button>
         </footer>
-        {/if}
       </div>
     </div>
   {/if}
@@ -202,6 +233,9 @@
   .stage-caption { position: absolute; bottom: 8px; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
   .dialogue { width: min(100%, 1080px); align-self: center; max-height: 55%; display: flex; flex-direction: column; gap: 16px; background: #141e27f5; border: 1px solid #65717b; border-top: 2px solid #f8ae2c; border-radius: 14px; padding: clamp(14px, 3vw, 28px); box-shadow: 0 16px 48px #0005; }
   .prose { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 3em; font: clamp(18px, 2vw, 25px)/1.6 Georgia, serif; margin: 0; }
+  .prose.with-composer { min-height: 0; max-height: 14vh; }
+  .dialogue { overflow: auto; }
+  .action-error { color: #ffadb2; margin: 0; font-size: 13px; }
   footer { flex-wrap: wrap; flex-shrink: 0; }
   footer span { margin-right: auto; color: #b9c2c8; font-size: 13px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { ACTION_MODES, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft } from "@/aid/action_input";
+import { ACTION_MODES, continueStory, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft } from "@/aid/action_input";
 
 let sent: { value: string; mode: string | null }[];
 beforeEach(() => {
@@ -38,6 +38,66 @@ beforeEach(() => {
 });
 
 describe("visual novel native action adapter", () => {
+  it("continues through the native command without submitting or changing the draft", async () => {
+    writeActionDraft("Keep my draft");
+    const command = document.createElement("button");
+    command.setAttribute("aria-label", "Command: continue");
+    let continued = 0;
+    command.onclick = () => continued++;
+    document.body.append(command);
+    await continueStory(new AbortController().signal);
+    expect(continued).toBe(1);
+    expect(readActionInput().value).toBe("Keep my draft");
+    expect(sent).toEqual([]);
+    const controller = new AbortController(); controller.abort();
+    await expect(continueStory(controller.signal)).rejects.toThrow();
+    expect(continued).toBe(1);
+  });
+  it("reveals the native Continue command and restores a draft cleared by closing the input", async () => {
+    writeActionDraft("Keep my draft");
+    const close = document.createElement("button"); close.setAttribute("aria-label", "Close text input");
+    let continued = 0;
+    close.onclick = () => {
+      writeActionDraft("");
+      const command = document.createElement("button"); command.setAttribute("aria-label", "Command: continue");
+      command.onclick = () => continued++;
+      document.body.append(command);
+    };
+    document.body.append(close);
+    await continueStory(new AbortController().signal);
+    expect(continued).toBe(1);
+    expect(readActionInput().value).toBe("Keep my draft");
+    expect(sent).toEqual([]);
+  });
+  it("never clicks a disabled native Continue command", async () => {
+    const command = document.createElement("div");
+    command.setAttribute("aria-label", "Command: continue");
+    command.setAttribute("aria-disabled", "true");
+    let continued = 0;
+    command.onclick = () => continued++;
+    document.body.append(command);
+    const controller = new AbortController();
+    const pending = continueStory(controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toThrow();
+    expect(continued).toBe(0);
+    expect(sent).toEqual([]);
+  });
+  it("does not Continue when the adventure changed while revealing native commands", async () => {
+    const close = document.createElement("button"); close.setAttribute("aria-label", "Close text input");
+    let continued = 0;
+    const route = location.pathname;
+    close.onclick = () => {
+      const command = document.createElement("button"); command.setAttribute("aria-label", "Command: continue");
+      command.onclick = () => continued++;
+      document.body.append(command);
+      history.pushState({}, "", "/adventure/other/play");
+    };
+    document.body.append(close);
+    try { await expect(continueStory(new AbortController().signal)).rejects.toThrow("adventure changed"); }
+    finally { history.replaceState({}, "", route); }
+    expect(continued).toBe(0);
+  });
   it("changes all four modes without sending or clearing the draft", async () => {
     const signal = new AbortController().signal;
     writeActionDraft("My existing draft");

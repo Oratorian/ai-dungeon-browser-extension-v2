@@ -6,6 +6,30 @@ const input = () => document.querySelector<HTMLTextAreaElement>("#game-text-inpu
 const modeButton = () => document.querySelector<HTMLElement>('[aria-label="Change input mode"]');
 const submitButton = () => document.querySelector<HTMLElement>('[aria-label="Submit action"]');
 const disabled = (element: HTMLElement | null) => !element || element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true";
+const continueButton = () => [...document.querySelectorAll<HTMLElement>('[aria-label="Command: continue"]')]
+  .find(button => !button.closest('[aria-hidden="true"]') && !disabled(button)) ?? null;
+
+/** Continue uses the native command, never an empty draft submission. */
+export async function continueStory(signal: AbortSignal) {
+  signal.throwIfAborted();
+  const route = location.pathname;
+  const draft = input()?.value ?? "";
+  const close = document.querySelector<HTMLElement>('[aria-label="Close text input"]');
+  const restore = !continueButton() && !!close;
+  try {
+    if (restore) close!.click();
+    const button = await until(continueButton, signal);
+    signal.throwIfAborted();
+    if (location.pathname !== route) throw new Error("The adventure changed. Continue was cancelled.");
+    if (disabled(button)) throw new Error("AI Dungeon is not ready to continue yet.");
+    button.click();
+  } finally {
+    if (restore && !signal.aborted && location.pathname === route) {
+      await openActionInput(signal);
+      if (input()?.value !== draft) writeActionDraft(draft);
+    }
+  }
+}
 
 export function readActionInput() {
   const field = input();

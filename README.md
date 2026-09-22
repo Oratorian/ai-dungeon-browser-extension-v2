@@ -101,6 +101,9 @@ composer inside the scene with **Do**, **Say**, **Story**, and **Guide**. These 
 native mode and submit controls. Your draft is shared with the game's textbox; Enter adds a new
 line, and only **Send** submits. **Read story** closes the composer. **Return to game** exposes
 AI Dungeon's normal controls, and **Resume visual novel** reopens the scene.
+**Continue** asks AI Dungeon to continue the story through its native command and preserves your
+action draft. Reaching the final loaded paragraph automatically opens **Write action** alongside
+the story text. Closing it keeps it closed for that paragraph, including when navigating back.
 
 Each paragraph defines a scene with up to four characters, two on each side, matched through
 names and story card triggers anywhere in that paragraph. Narration and quoted dialogue still
