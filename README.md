@@ -102,12 +102,12 @@ native mode and submit controls. Your draft is shared with the game's textbox; E
 line, and only **Send** submits. **Read story** closes the composer. **Return to game** exposes
 AI Dungeon's normal controls, and **Resume visual novel** reopens the scene.
 
-The scene shows up to two characters, one left and one right, whose names or story card triggers
-appear in the current line. Characters stay on the same side while present in consecutive lines
-and disappear as soon as a line no longer triggers them. Back and Next restore each line's cast.
-If more than two characters are triggered, the first two appear, with priority for a triggered
-speaker. The speaker's name is accented when they are on stage; identifying a speaker alone does
-not add a portrait when that line has no matching trigger.
+The scene shows up to two characters, one left and one right, using names and story card triggers
+in the current line. A detected or manually selected speaker also stays visible during their
+dialogue, including when attribution appears before or after the quote. Characters keep their
+side across consecutive lines and disappear when neither triggered nor speaking. Back and Next
+restore each line's cast. If more than two characters qualify, the first two appear with priority
+for the speaker, whose name is accented on stage.
 
 Speaker detection reads the story text directly, independently of AI Dungeon's highlighting.
 Characters and portraits come from the selected extension card set, using its names and triggers.

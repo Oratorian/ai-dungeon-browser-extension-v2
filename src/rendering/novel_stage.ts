@@ -7,6 +7,7 @@ const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * jumps reconstruct the scene without leaking characters from lines the reader hasn't reached. */
 export function createNovelStageTracker(characters: NovelCharacter[]) {
   const cast = characters.filter(c => c.id !== "player" && c.name.trim().toLowerCase() !== "you");
+  const castIds = new Set(cast.map(c => c.id));
   const aliases = new Map<string, Set<string>>();
   for (const character of cast) {
     for (const value of [character.name, ...character.triggers.split(",")]) {
@@ -30,11 +31,13 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
         if (owners.size !== 1) continue;
         triggered.add([...owners][0]!);
       }
-      const visible = [...triggered].slice(0, 2);
-      // For a crowded line, prioritize its speaker only if that character is actually triggered.
-      // Inference or a manual speaker correction must never add an unmentioned character.
       const speaker = overrides[line] ?? frame.speakerId;
-      if (frame.kind === "dialogue" && speaker && triggered.has(speaker) && !visible.includes(speaker)) visible[1] = speaker;
+      // Attribution is outside the quote in many passages. Keep the identified speaker on
+      // stage throughout their dialogue, even when their name is absent from the quote itself.
+      const dialogueSpeaker = frame.kind === "dialogue" && speaker && castIds.has(speaker) ? speaker : null;
+      if (dialogueSpeaker) triggered.add(dialogueSpeaker);
+      const visible = [...triggered].slice(0, 2);
+      if (dialogueSpeaker && !visible.includes(dialogueSpeaker)) visible[1] = dialogueSpeaker;
       for (const slot of [0, 1] as const) if (!visible.includes(slots[slot]!)) slots[slot] = null;
       for (const id of visible) if (!slots.includes(id)) slots[slots.indexOf(null)] = id;
       return [...slots] as NovelStage;

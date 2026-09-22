@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNovelStageTracker } from "@/rendering/novel_stage";
-import type { NovelCharacter, NovelFrame } from "@/rendering/novel";
+import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
 
 const cast: NovelCharacter[] = [
   { id: "nyx", name: "Nyxadra", triggers: "Nyx, dragon, kitchen" },
@@ -30,9 +30,32 @@ describe("visual novel stage progression", () => {
     expect(createNovelStageTracker(cast)([narration("Coral waves."), narration("The room is quiet.")]))
       .toEqual([["coral", null], [null, null]]);
   });
-  it("does not introduce an untriggered inferred speaker, manual choice or player placeholder", () => {
+  it("shows the detected or corrected speaker but excludes player and missing cards", () => {
     const frames = [narration("You wait."), dialogue("Hello", "nyx"), dialogue("Goodbye", "player")];
-    expect(createNovelStageTracker(cast)(frames, { 1: "coral" })).toEqual([[null, null], [null, null], [null, null]]);
+    expect(createNovelStageTracker(cast)(frames)).toEqual([[null, null], ["nyx", null], [null, null]]);
+    expect(createNovelStageTracker(cast)(frames, { 1: "coral" })).toEqual([[null, null], ["coral", null], [null, null]]);
+    expect(createNovelStageTracker(cast)(frames, { 1: "" })).toEqual([[null, null], [null, null], [null, null]]);
+    expect(createNovelStageTracker(cast)([dialogue("Hello", "deleted")])).toEqual([[null, null]]);
+  });
+  it("retains the speaker's side during speech and removes them after unrelated narration", () => {
+    expect(createNovelStageTracker(cast)([narration("Coral greets Nyx."), dialogue('"Hello!"', "nyx"), narration("The room is quiet.")]))
+      .toEqual([["coral", "nyx"], [null, "nyx"], [null, null]]);
+    expect(createNovelStageTracker(cast)([dialogue('"Coral, Serastra, listen."', "nyx")])).toEqual([["coral", "nyx"]]);
+  });
+  it("shows speakers attributed before or after straight and curly quotes", () => {
+    for (const text of ['Nyx says, "Hello."', '"Hello," Nyx says.', 'Nyx whispers, “Hello.”', '“Hello,” whispered Nyx.']) {
+      const frames = parseNovel(text, cast);
+      const stages = createNovelStageTracker(cast)(frames);
+      const index = frames.findIndex(f => f.kind === "dialogue");
+      expect(frames[index]?.speakerId).toBe("nyx");
+      expect(stages[index]).toContain("nyx");
+    }
+  });
+  it("keeps an inferred speaker alongside a character mentioned in their dialogue", () => {
+    const frames = parseNovel('Nyx grips the sink. "Coral is not trouble," she mutters.', cast);
+    const index = frames.findIndex(f => f.kind === "dialogue");
+    expect(frames[index]).toMatchObject({ speakerId: "nyx", inferred: true });
+    expect(createNovelStageTracker(cast)(frames)[index]).toEqual(["nyx", "coral"]);
   });
   it("matches full aliases and ignores ambiguous shared triggers", () => {
     expect(createNovelStageTracker(cast)([narration("The kitchen is empty."), narration("Nyxie's chair is empty."), narration("NYX waves.")]))
