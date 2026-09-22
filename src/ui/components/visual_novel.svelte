@@ -121,8 +121,9 @@
 
   $effect(() => {
     if (!active || paused || !frame || !autoOpenAllowed) return;
+    if (index !== frames.length - 1) return;
     const lastParagraph = frames.findLastIndex(f => f.startsParagraph);
-    if (lastParagraph < 0 || index < lastParagraph) return;
+    if (lastParagraph < 0) return;
     const start = frames[lastParagraph]!;
     untrack(() => {
       const opened = openedParagraphs.get(start.source) ?? new Set<number>();

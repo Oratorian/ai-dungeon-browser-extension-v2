@@ -105,7 +105,7 @@ The floating button's **Visual Novel Mode** quick action toggles the same settin
 is highlighted while enabled.
 **Continue** asks AI Dungeon to continue the story through its native command and keeps your draft
 in memory until you next open **Write action**, without reopening the textbox during generation.
-Reaching the final loaded paragraph automatically opens **Write action** alongside
+Reaching the final reader line (for example, 52/52) automatically opens **Write action** alongside
 the story text. Closing it keeps it closed for that paragraph, including when navigating back.
 Submitting closes the composer and pauses automatic reopening until you navigate the story again,
 so incoming action and generation updates do not interrupt reading with another composer.

@@ -28,7 +28,7 @@ button's quick actions. The quick-action icon highlights while the mode is enabl
   card in your selected set without adding global pronoun triggers.
 - **Write action** includes AI Dungeon's native **Do**, **Say**, **Story**, and **Guide** modes.
   Your draft is shared with the game; Enter adds a line and **Send** submits the action.
-- Reaching the final loaded paragraph opens Write Action alongside the story. Dismissing it keeps
+- Reaching the final reader line opens Write Action alongside the story. Dismissing it keeps
   it closed for that paragraph. Submitting closes it and pauses automatic reopening until you
   navigate the story again.
 - **Continue** uses AI Dungeon's native command. An unfinished draft is kept in memory and restored
