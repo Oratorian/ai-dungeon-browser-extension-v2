@@ -32,7 +32,7 @@
   const frame = $derived(frames[index]);
   const trackStage = $derived(createNovelStageTracker(characters));
   const stages = $derived(trackStage(frames));
-  const stageCharacters = $derived((stages[index] ?? [null, null]).map(id => characters.find(c => c.id === id)));
+  const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => characters.find(c => c.id === id)));
   const active = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
 
   function refresh() {
@@ -147,9 +147,9 @@
           <button class="accent" onclick={() => composing = !composing}>Write action</button>
         </div>
       </header>
-      <div class="stage" role="group" aria-label="Characters in this line">
+      <div class="stage" role="group" aria-label="Characters in the scene">
         {#each stageCharacters as character, slot (slot)}
-          <div class="stage-slot" data-side={slot === 0 ? "left" : "right"}>
+          <div class="stage-slot" data-side={slot % 2 === 0 ? "left" : "right"} style:grid-column={[2, 3, 1, 4][slot]}>
             {#if character}
               {#key character.id}
                 <div class="stage-character" transition:portraitFade>
@@ -194,8 +194,8 @@
   button:disabled { opacity: .4; cursor: default; }
   .accent { background: #f8ae2c; color: #191c22; border-color: #f8ae2c; }
   .accent:hover:enabled { background: #ffc761; }
-  .stage { flex: 1; min-height: 0; width: min(100%, 1080px); align-self: center; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 2vw, 32px); overflow: hidden; }
-  .stage-slot { position: relative; min-width: 0; min-height: 0; }
+  .stage { flex: 1; min-height: 0; width: min(100%, 1440px); align-self: center; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: hidden; }
+  .stage-slot { position: relative; grid-row: 1; min-width: 0; min-height: 0; }
   .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
   .portrait { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }

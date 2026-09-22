@@ -73,7 +73,7 @@
     <Field label="Enable Visual Novel Mode" info="Read the loaded story as scenes with character portraits and Back/Next dialogue controls. Write action opens Do, Say, Story and Guide inside the scene. Return to game exposes AI Dungeon's normal controls.">
       <Switch bind:checked={$settings.visualNovelMode} />
     </Field>
-    <p class="text-xs text-theme-neutral-800">Uses names, triggers and portraits from your selected extension card set. Characters mentioned in the current line appear on the left and right, with a short fade when they change. No AI calls are needed.</p>
+    <p class="text-xs text-theme-neutral-800">Uses names, triggers and portraits from your selected extension card set. Up to four mentioned characters stay in the scene, two on each side. New arrivals replace the least recently mentioned character when the scene is full, with a short fade. No AI calls are needed.</p>
   </Item>
   <Item foldout icon="alternate_email" label="Story Card Autocomplete">
     <Field label="Enable Autocomplete" info="Type @ in AI Dungeon's action textbox to find story-card names from the current adventure. Click a name, or use the arrow keys and Enter or Tab to insert it. Escape closes the suggestions.">

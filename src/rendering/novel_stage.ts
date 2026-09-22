@@ -1,6 +1,7 @@
 import type { NovelCharacter, NovelFrame } from "./novel";
 
-export type NovelStage = [string | null, string | null];
+// Fill alternating sides: inner left, inner right, outer left, outer right.
+export type NovelStage = [string | null, string | null, string | null, string | null];
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Compile once per card-set change. Each result is an independent snapshot, so Back/Next and
@@ -22,7 +23,9 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
   const pattern = keys.length ? new RegExp(`(?<![\\p{L}\\p{N}_])(?:${keys.map(escape).join("|")})(?![\\p{L}\\p{N}_])`, "giu") : null;
 
   return (frames: NovelFrame[]): NovelStage[] => {
-    const slots: NovelStage = [null, null];
+    const slots: NovelStage = [null, null, null, null];
+    const lastMention = new Map<string, number>();
+    let sequence = 0;
     return frames.map(frame => {
       const triggered = new Set<string>();
       for (const match of pattern ? frame.text.matchAll(pattern) : []) {
@@ -30,9 +33,21 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
         if (owners.size !== 1) continue;
         triggered.add([...owners][0]!);
       }
-      const visible = [...triggered].slice(0, 2);
-      for (const slot of [0, 1] as const) if (!visible.includes(slots[slot]!)) slots[slot] = null;
-      for (const id of visible) if (!slots.includes(id)) slots[slots.indexOf(null)] = id;
+      for (const id of triggered) lastMention.set(id, ++sequence);
+      for (const id of triggered) {
+        if (slots.includes(id)) continue;
+        let slot = slots.indexOf(null);
+        if (slot < 0) {
+          // Keep everyone mentioned in this line. Replace only an older, unmentioned resident.
+          let oldest = Infinity;
+          slots.forEach((resident, i) => {
+            if (resident && !triggered.has(resident) && lastMention.get(resident)! < oldest) {
+              slot = i; oldest = lastMention.get(resident)!;
+            }
+          });
+        }
+        if (slot >= 0) slots[slot] = id;
+      }
       return [...slots] as NovelStage;
     });
   };
