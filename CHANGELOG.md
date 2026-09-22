@@ -7,7 +7,34 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
-## v2.3.3
+## v3.0.0
+
+### 🎭 Visual Novel Mode
+
+Read your adventure as a visual novel with character portraits and a dialogue panel. Enable it
+under **Settings > Extension > Visual Novel Mode**, or toggle it directly from the floating
+button's quick actions. The quick-action icon highlights while the mode is enabled.
+
+- **Back**, **Next**, and keyboard navigation move through narration and dialogue. **Latest
+  passage** jumps to the newest loaded passage.
+- Each paragraph sets the cast using names and triggers from your selected extension character
+  cards. Up to four portraits appear, two on each side, with stable positions and short fades.
+- Characters remain through the paragraph's narration and quotes. A single named character can
+  carry into one following paragraph that continues with third-person pronouns, within the same
+  response. Otherwise, the next paragraph updates the cast. Reduced-motion preferences disable fades.
+- **Write action** includes AI Dungeon's native **Do**, **Say**, **Story**, and **Guide** modes.
+  Your draft is shared with the game; Enter adds a line and **Send** submits the action.
+- Reaching the final loaded paragraph opens Write Action alongside the story. Dismissing it keeps
+  it closed for that paragraph. Submitting closes it and pauses automatic reopening until you
+  navigate the story again.
+- **Continue** uses AI Dungeon's native command. An unfinished draft is kept in memory and restored
+  when you next open Write Action, without reopening the textbox during generation.
+- **Return to game** reveals the normal interface; **Resume visual novel** reopens the reader.
+  **Exit mode** switches it off.
+
+This mode reads the story already loaded in the browser, without additional AI requests. It does
+not infer speakers or generate portraits for unknown NPCs. Native action controls recover when
+AI Dungeon temporarily collapses or replaces them, and draft text is preserved during recovery.
 
 ### ✨ Story Card names at your fingertips
 
