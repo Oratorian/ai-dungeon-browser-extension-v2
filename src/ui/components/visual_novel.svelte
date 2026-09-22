@@ -1,10 +1,11 @@
 <script lang="ts">
   import { tick, untrack } from "svelte";
+  import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
   import { extensionState, type SettingsSection } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
-  import { createNovelParser, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
+  import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
   import { createNovelStageTracker } from "@/rendering/novel_stage";
   import NovelComposer from "./novel_composer.svelte";
@@ -17,26 +18,20 @@
   let paused = $state(false);
   let composing = $state(false);
   let scene: HTMLElement | undefined = $state();
-  let overrides = $state<Record<number, string>>({});
   let output: HTMLElement | null = null;
   let lastSignature = "";
   let sourceIds = new WeakMap<HTMLElement, number>();
   let nextSourceId = 0;
-  let corrections = new WeakMap<HTMLElement, Map<number, { text: string; speaker: string }>>();
 
   const characters = $derived.by(() => {
     const cards = $selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [];
     const result: NovelCharacter[] = cards.filter(c => c.type.trim().toLowerCase() === "character")
       .map(c => ({ id: c.id, name: c.name, triggers: c.triggers, portrait: c.graphics[c.graphicIndex] || c.icons[c.iconIndex] }));
-    result.push({ id: "player", name: "You", triggers: "you" });
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
   const frame = $derived(frames[index]);
-  const parsePassage = $derived(createNovelParser(characters));
-  const speakerId = $derived(overrides[index] ?? frame?.speakerId ?? "");
-  const speaker = $derived(characters.find(c => c.id === speakerId));
   const trackStage = $derived(createNovelStageTracker(characters));
-  const stages = $derived(trackStage(frames, overrides));
+  const stages = $derived(trackStage(frames));
   const stageCharacters = $derived((stages[index] ?? [null, null]).map(id => characters.find(c => c.id === id)));
   const active = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
 
@@ -52,14 +47,10 @@
     if (signature === lastSignature) return;
     lastSignature = signature;
     const previous = frames[index];
-    frames = passages.flatMap(p => parsePassage(p.text).map((f, offset) => ({ ...f, source: p.element, offset })));
+    frames = passages.flatMap(p => parseNovel(p.text).map((f, offset) => ({ ...f, source: p.element, offset })));
     const retained = previous ? frames.findIndex(f => f.source === previous.source && f.offset === previous.offset) : -1;
     const latest = passages.at(-1)?.element;
     index = retained >= 0 ? retained : Math.max(0, frames.findIndex(f => f.source === latest));
-    overrides = Object.fromEntries(frames.flatMap((f, i) => {
-      const correction = corrections.get(f.source)?.get(f.offset);
-      return correction?.text === f.text ? [[i, correction.speaker]] : [];
-    }));
   }
 
   $effect(() => {
@@ -67,8 +58,8 @@
     const adventure = $playedAdventureId;
     const set = $selected;
     untrack(() => {
-      frames = []; index = 0; paused = false; composing = false; overrides = {}; lastSignature = "";
-      output = null; corrections = new WeakMap(); sourceIds = new WeakMap(); nextSourceId = 0;
+      frames = []; index = 0; paused = false; composing = false; lastSignature = "";
+      output = null; sourceIds = new WeakMap(); nextSourceId = 0;
     });
     if (!enabled || !adventure) return;
     let queued = 0;
@@ -82,11 +73,6 @@
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     untrack(refresh);
     return () => { observer.disconnect(); cancelAnimationFrame(queued); };
-  });
-
-  $effect(() => {
-    characters;
-    untrack(() => { lastSignature = ""; if ($settings.visualNovelMode) refresh(); });
   });
 
   // The scene is a modal reader. Keep the covered game out of the tab order, and restore its
@@ -107,11 +93,8 @@
     return () => { observer.disconnect(); previous.forEach((inert, element) => element.inert = inert); };
   });
 
-  function correct(value: string) {
-    if (!frame) return;
-    const map = corrections.get(frame.source) ?? new Map();
-    map.set(frame.offset, { text: frame.text, speaker: value }); corrections.set(frame.source, map);
-    overrides = { ...overrides, [index]: value };
+  function portraitFade(node: Element) {
+    return fade(node, { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180 });
   }
   async function resume() {
     refresh();
@@ -169,7 +152,7 @@
           <div class="stage-slot" data-side={slot === 0 ? "left" : "right"}>
             {#if character}
               {#key character.id}
-                <div class="stage-character" class:speaking={frame?.kind === "dialogue" && character.id === speakerId}>
+                <div class="stage-character" transition:portraitFade>
                   {#if character.portrait}
                     <img src={character.portrait} alt={character.name} class="portrait" />
                   {:else}
@@ -183,19 +166,6 @@
         {/each}
       </div>
       <div class="dialogue">
-        <div class="speaker-row">
-          <strong>{speaker ? speaker.name : frame?.kind === "dialogue" ? "Unknown speaker" : "Narrator"}
-            {#if frame?.inferred && overrides[index] === undefined}<small>Inferred speaker</small>{/if}
-          </strong>
-          {#if frame?.kind === "dialogue"}
-            <label>Speaker
-              <select aria-label="Dialogue speaker" value={speakerId} onchange={e => correct(e.currentTarget.value)}>
-                <option value="">Unknown speaker</option>
-                {#each characters as character (character.id)}<option value={character.id}>{character.name}</option>{/each}
-              </select>
-            </label>
-          {/if}
-        </div>
         {#if composing}
           <NovelComposer onclose={() => composing = false} onsubmitted={() => { composing = false; refresh(); latest(); }} />
         {:else}
@@ -214,29 +184,23 @@
 
 <style>
   .novel { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px); gap: 16px; color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
-  header, .tools, .speaker-row, footer { display: flex; align-items: center; gap: 12px; }
-  header, .speaker-row { justify-content: space-between; flex-wrap: wrap; }
+  header, .tools, footer { display: flex; align-items: center; gap: 12px; }
+  header { justify-content: space-between; flex-wrap: wrap; }
   .title { letter-spacing: .16em; font-size: 13px; color: #f8ae2c; }
   small { display: block; color: #aeb9be; letter-spacing: .04em; margin-top: 4px; }
-  button, select { border: 1px solid #64727c; border-radius: 8px; padding: 8px 14px; background: #202b34; color: #eee8de; cursor: pointer; font: inherit; }
+  button { border: 1px solid #64727c; border-radius: 8px; padding: 8px 14px; background: #202b34; color: #eee8de; cursor: pointer; font: inherit; }
   button:hover:enabled { background: #35434e; }
-  button:focus-visible, select:focus-visible { outline: 2px solid #f8ae2c; outline-offset: 3px; }
+  button:focus-visible { outline: 2px solid #f8ae2c; outline-offset: 3px; }
   button:disabled { opacity: .4; cursor: default; }
   .accent { background: #f8ae2c; color: #191c22; border-color: #f8ae2c; }
   .accent:hover:enabled { background: #ffc761; }
   .stage { flex: 1; min-height: 0; width: min(100%, 1080px); align-self: center; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 2vw, 32px); overflow: hidden; }
   .stage-slot { position: relative; min-width: 0; min-height: 0; }
-  .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; animation: enter-scene 180ms ease-out; }
+  .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
   .portrait { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
   .stage-caption { position: absolute; bottom: 8px; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
-  .speaking .stage-caption { color: #f8ae2c; border-color: #f8ae2c; }
-  @keyframes enter-scene { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  @media (prefers-reduced-motion: reduce) { .stage-character { animation: none; } }
   .dialogue { width: min(100%, 1080px); align-self: center; max-height: 55%; display: flex; flex-direction: column; gap: 16px; background: #141e27f5; border: 1px solid #65717b; border-top: 2px solid #f8ae2c; border-radius: 14px; padding: clamp(14px, 3vw, 28px); box-shadow: 0 16px 48px #0005; }
-  strong { color: #f8ae2c; font-size: 20px; }
-  label { display: flex; align-items: center; gap: 8px; color: #b9c2c8; font-size: 13px; }
-  select { max-width: min(45vw, 260px); padding: 6px; }
   .prose { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 3em; font: clamp(18px, 2vw, 25px)/1.6 Georgia, serif; margin: 0; }
   footer { flex-wrap: wrap; flex-shrink: 0; }
   footer span { margin-right: auto; color: #b9c2c8; font-size: 13px; }

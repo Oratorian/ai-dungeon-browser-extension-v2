@@ -7,7 +7,6 @@ const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * jumps reconstruct the scene without leaking characters from lines the reader hasn't reached. */
 export function createNovelStageTracker(characters: NovelCharacter[]) {
   const cast = characters.filter(c => c.id !== "player" && c.name.trim().toLowerCase() !== "you");
-  const castIds = new Set(cast.map(c => c.id));
   const aliases = new Map<string, Set<string>>();
   for (const character of cast) {
     for (const value of [character.name, ...character.triggers.split(",")]) {
@@ -22,22 +21,16 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
   // alias inside them from accidentally selecting a character.
   const pattern = keys.length ? new RegExp(`(?<![\\p{L}\\p{N}_])(?:${keys.map(escape).join("|")})(?![\\p{L}\\p{N}_])`, "giu") : null;
 
-  return (frames: NovelFrame[], overrides: Record<number, string> = {}): NovelStage[] => {
+  return (frames: NovelFrame[]): NovelStage[] => {
     const slots: NovelStage = [null, null];
-    return frames.map((frame, line) => {
+    return frames.map(frame => {
       const triggered = new Set<string>();
       for (const match of pattern ? frame.text.matchAll(pattern) : []) {
         const owners = aliases.get(match[0].toLowerCase())!;
         if (owners.size !== 1) continue;
         triggered.add([...owners][0]!);
       }
-      const speaker = overrides[line] ?? frame.speakerId;
-      // Attribution is outside the quote in many passages. Keep the identified speaker on
-      // stage throughout their dialogue, even when their name is absent from the quote itself.
-      const dialogueSpeaker = frame.kind === "dialogue" && speaker && castIds.has(speaker) ? speaker : null;
-      if (dialogueSpeaker) triggered.add(dialogueSpeaker);
       const visible = [...triggered].slice(0, 2);
-      if (dialogueSpeaker && !visible.includes(dialogueSpeaker)) visible[1] = dialogueSpeaker;
       for (const slot of [0, 1] as const) if (!visible.includes(slots[slot]!)) slots[slot] = null;
       for (const id of visible) if (!slots.includes(id)) slots[slots.indexOf(null)] = id;
       return [...slots] as NovelStage;

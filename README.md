@@ -103,25 +103,13 @@ line, and only **Send** submits. **Read story** closes the composer. **Return to
 AI Dungeon's normal controls, and **Resume visual novel** reopens the scene.
 
 The scene shows up to two characters, one left and one right, using names and story card triggers
-in the current line. A detected or manually selected speaker also stays visible during their
-dialogue, including when attribution appears before or after the quote. Characters keep their
-side across consecutive lines and disappear when neither triggered nor speaking. Back and Next
-restore each line's cast. If more than two characters qualify, the first two appear with priority
-for the speaker, whose name is accented on stage.
+in the current reader line. Characters keep their side across consecutive lines and fade out
+when no longer mentioned. New characters fade in; reduced-motion preferences disable the fades.
+If more than two characters match, the first two mentioned appear. Back and Next restore each
+line's cast. There is no speaker detection or Narrator label.
 
-Speaker detection reads the story text directly, independently of AI Dungeon's highlighting.
-Characters and portraits come from the selected extension card set, using its names and triggers.
-Explicit English speech cues identify speakers. Action beats such as a character gasping or
-nodding can infer the next speaker, and clear narration can carry into a following paragraph
-with a pronoun cue. Multiple quotes in the same paragraph can continue that speaker until the
-narration establishes a change. These matches are labelled **Inferred speaker**. Broad triggers
-such as room names are not enough on their own to establish a speaker, and context resets between
-responses. Player dialogue is labelled **You**.
-
-Ambiguous lines stay **Unknown speaker**, with a selector to correct any dialogue line. Corrections
-last for the current loaded passage and reset when that line changes. This is a local reader,
-with no additional AI requests. It reads passages currently
-loaded by AI Dungeon, rather than downloading the adventure's entire history.
+This is a local reader with no additional AI requests. It reads passages currently loaded by
+AI Dungeon, rather than downloading the adventure's entire history.
 
 ## Features
 
