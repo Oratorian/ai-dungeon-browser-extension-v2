@@ -10,6 +10,7 @@
   let busy = $state(true);
   let ready = $state(false);
   let error = $state("");
+  let connectionError = $state("");
   let field: HTMLTextAreaElement | undefined = $state();
   let signal: AbortSignal;
   let adventure: string | null;
@@ -19,8 +20,11 @@
   function sync() {
     if (playedShortId() !== adventure) return;
     const state = readActionInput();
-    if (!localOnly) draft = state.value;
-    mode = state.mode;
+    if (state.available) {
+      if (!localOnly) draft = state.value;
+      connectionError = "";
+    }
+    if (state.mode) mode = state.mode;
     placeholder = state.placeholder;
     ready = state.available && state.canSubmit;
   }
@@ -30,7 +34,7 @@
     adventure = playedShortId();
     sync();
     void openActionInput(signal).then(() => { sync(); field?.focus(); })
-      .catch(e => { if (!signal.aborted) error = e.message; })
+      .catch(e => { if (!signal.aborted) connectionError = e.message; })
       .finally(() => { if (!signal.aborted) busy = false; });
     const timer = setInterval(() => {
       if (playedShortId() !== adventure) { controller.abort(); onclose(); return; }
@@ -68,7 +72,7 @@
   </div>
   <textarea aria-label="Visual novel action" bind:this={field} value={draft} {placeholder} rows="3" disabled={busy || blocked}
     oninput={event => changed(event.currentTarget.value)}></textarea>
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if error || connectionError}<p class="error" role="alert">{error || connectionError}</p>{/if}
   <div class="controls">
     <span>Enter adds a new line.</span>
     <button onclick={onclose} disabled={busy || blocked}>Read story</button>

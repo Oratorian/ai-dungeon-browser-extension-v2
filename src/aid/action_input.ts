@@ -35,7 +35,8 @@ export function readActionInput() {
   const field = input();
   const labels = [...(modeButton()?.querySelectorAll("span") ?? [])].map(span => span.textContent?.trim().toLowerCase());
   const mode = ACTION_MODES.find(mode => labels.includes(mode.toLowerCase())) ?? null;
-  return { available: !!field, value: field?.value ?? "", placeholder: field?.placeholder ?? "Write your action...", mode,
+  const available = !!field && !!mode && !field.closest('[aria-hidden="true"], .gameplay-action-input-dock[data-visible="false"]');
+  return { available, value: field?.value ?? "", placeholder: field?.placeholder ?? "Write your action...", mode,
     canSubmit: !!field && !field.disabled && !field.readOnly && !disabled(submitButton()) };
 }
 
@@ -52,13 +53,15 @@ async function until<T>(read: () => T | null | false, signal: AbortSignal): Prom
 
 export async function openActionInput(signal: AbortSignal) {
   signal.throwIfAborted();
-  const field = input();
-  if (!field || field.closest('[aria-hidden="true"]')) {
+  const attempted = new WeakSet<HTMLElement>();
+  return until(() => {
+    const state = readActionInput();
+    if (state.available) return state;
     const open = [...document.querySelectorAll<HTMLElement>('[aria-label="Command: take a turn"]')]
       .find(button => !button.closest('[aria-hidden="true"]') && !disabled(button));
-    open?.click();
-  }
-  return until(() => input() && modeButton() ? readActionInput() : null, signal);
+    if (open && !attempted.has(open)) { attempted.add(open); open.click(); }
+    return null;
+  }, signal);
 }
 
 export async function setActionMode(mode: ActionMode, signal: AbortSignal) {

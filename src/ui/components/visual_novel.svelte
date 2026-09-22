@@ -20,6 +20,7 @@
   let composing = $state(false);
   let continuing = $state(false);
   let composerBusy = $state(false);
+  let autoOpenAllowed = $state(true);
   let actionError = $state("");
   let continueController: AbortController | undefined;
   let openedParagraphs = new WeakMap<HTMLElement, Set<number>>();
@@ -65,6 +66,7 @@
     const set = $selected;
     untrack(() => {
       continueController?.abort(); continuing = false; actionError = ""; openedParagraphs = new WeakMap();
+      autoOpenAllowed = true;
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
     });
@@ -83,7 +85,7 @@
   });
 
   $effect(() => {
-    if (!active || paused || !frame) return;
+    if (!active || paused || !frame || !autoOpenAllowed) return;
     const lastParagraph = frames.findLastIndex(f => f.startsParagraph);
     if (lastParagraph < 0 || index < lastParagraph) return;
     const start = frames[lastParagraph]!;
@@ -100,9 +102,28 @@
     continuing = true; actionError = "";
     const controller = new AbortController();
     continueController = controller;
-    try { await continueStory(controller.signal); }
+    try {
+      await continueStory(controller.signal);
+      if (!controller.signal.aborted) submitted();
+    }
     catch (e) { if (!controller.signal.aborted) actionError = (e as Error).message; }
     finally { if (!controller.signal.aborted) continuing = false; }
+  }
+
+  function submitted() {
+    // Submitting appends a new final paragraph before generation starts. It must not reopen
+    // the composer while AI Dungeon is dismantling its input controls for that generation.
+    autoOpenAllowed = false;
+    composing = false;
+    refresh();
+    latest(false);
+  }
+
+  function navigate(next: number) {
+    next = Math.max(0, Math.min(frames.length - 1, next));
+    if (next === index) return;
+    autoOpenAllowed = true;
+    index = next;
   }
 
   // The scene is a modal reader. Keep the covered game out of the tab order, and restore its
@@ -137,7 +158,8 @@
     await tick();
     document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
   }
-  function latest() {
+  function latest(rearm = true) {
+    if (rearm) autoOpenAllowed = true;
     const source = frames.at(-1)?.source;
     index = Math.max(0, frames.findIndex(f => f.source === source));
   }
@@ -154,7 +176,7 @@
     if (!["ArrowLeft", "ArrowRight", " ", "Escape"].includes(event.key)) return;
     event.preventDefault(); event.stopPropagation();
     if (event.key === "Escape") write();
-    else index = Math.max(0, Math.min(frames.length - 1, index + (event.key === "ArrowLeft" ? -1 : 1)));
+    else navigate(index + (event.key === "ArrowLeft" ? -1 : 1));
   }
   function openSettings() {
     extensionState.editorTab = Tab.Settings;
@@ -198,14 +220,14 @@
       <div class="dialogue">
         <p class="prose" class:with-composer={composing} aria-live="polite">{frame?.text ?? "Waiting for story text. Use Write action to take a turn."}</p>
         {#if composing}
-          <NovelComposer blocked={continuing} onbusychange={busy => composerBusy = busy} onclose={() => composing = false} onsubmitted={() => { composing = false; refresh(); latest(); }} />
+          <NovelComposer blocked={continuing} onbusychange={busy => composerBusy = busy} onclose={() => composing = false} onsubmitted={submitted} />
         {/if}
         {#if actionError}<p role="alert" class="action-error">{actionError}</p>{/if}
         <footer>
-          <button onclick={() => index--} disabled={index === 0 || !frames.length}>Back</button>
+          <button onclick={() => navigate(index - 1)} disabled={index === 0 || !frames.length}>Back</button>
           <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
-          <button onclick={latest} disabled={!frames.length}>Latest passage</button>
-          <button class="accent" onclick={() => index++} disabled={index >= frames.length - 1}>Next</button>
+          <button onclick={() => latest()} disabled={!frames.length}>Latest passage</button>
+          <button class="accent" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
           <button onclick={continueReading} disabled={continuing || (composing && composerBusy)}>{continuing ? "Continuing..." : "Continue"}</button>
         </footer>
       </div>

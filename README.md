@@ -106,6 +106,8 @@ is highlighted while enabled.
 **Continue** asks AI Dungeon to continue the story through its native command and preserves your
 action draft. Reaching the final loaded paragraph automatically opens **Write action** alongside
 the story text. Closing it keeps it closed for that paragraph, including when navigating back.
+Submitting closes the composer and pauses automatic reopening until you navigate the story again,
+so incoming action and generation updates do not interrupt reading with another composer.
 
 Each paragraph defines a scene with up to four characters, two on each side, matched through
 names and story card triggers anywhere in that paragraph. Narration and quoted dialogue still

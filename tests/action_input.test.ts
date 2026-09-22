@@ -38,6 +38,28 @@ beforeEach(() => {
 });
 
 describe("visual novel native action adapter", () => {
+  it("opens a collapsed input even when the textarea remains mounted without aria-hidden", async () => {
+    const mode = document.querySelector('[aria-label="Change input mode"]')!;
+    mode.remove();
+    const open = document.createElement("button"); open.setAttribute("aria-label", "Command: take a turn");
+    let opened = 0;
+    open.onclick = () => { opened++; document.body.append(mode); };
+    document.body.append(open);
+    expect(readActionInput().available).toBe(false);
+    expect((await openActionInput(new AbortController().signal)).available).toBe(true);
+    expect(opened).toBe(1);
+    expect(sent).toEqual([]);
+  });
+  it("opens controls that mount after the initial attempt", async () => {
+    const mode = document.querySelector('[aria-label="Change input mode"]')!;
+    mode.remove();
+    const open = document.createElement("button"); open.setAttribute("aria-label", "Command: take a turn");
+    open.onclick = () => document.body.append(mode);
+    const timer = setTimeout(() => document.body.append(open), 60);
+    try { expect((await openActionInput(new AbortController().signal)).mode).toBe("Do"); }
+    finally { clearTimeout(timer); }
+    expect(sent).toEqual([]);
+  });
   it("continues through the native command without submitting or changing the draft", async () => {
     writeActionDraft("Keep my draft");
     const command = document.createElement("button");
