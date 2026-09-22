@@ -6,6 +6,7 @@
   import { Tab } from "@/shared/types";
   import { createNovelParser, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
+  import { createNovelStageTracker } from "@/rendering/novel_stage";
   import NovelComposer from "./novel_composer.svelte";
 
   const adventures = Storage.adventures;
@@ -34,16 +35,9 @@
   const parsePassage = $derived(createNovelParser(characters));
   const speakerId = $derived(overrides[index] ?? frame?.speakerId ?? "");
   const speaker = $derived(characters.find(c => c.id === speakerId));
-  const stageSpeaker = $derived.by(() => {
-    if (frame?.kind === "dialogue") return speaker;
-    for (let i = index - 1; i >= 0 && frames[i]?.source === frame?.source; i--) {
-      if (frames[i]?.kind === "dialogue") {
-        const id = overrides[i] ?? frames[i]?.speakerId;
-        return characters.find(c => c.id === id);
-      }
-    }
-    return undefined;
-  });
+  const trackStage = $derived(createNovelStageTracker(characters));
+  const stages = $derived(trackStage(frames, overrides));
+  const stageCharacters = $derived((stages[index] ?? [null, null]).map(id => characters.find(c => c.id === id)));
   const active = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
 
   function refresh() {
@@ -170,13 +164,23 @@
           <button class="accent" onclick={() => composing = !composing}>Write action</button>
         </div>
       </header>
-      <div class="stage">
-        {#if stageSpeaker?.portrait}
-          <img src={stageSpeaker.portrait} alt={stageSpeaker.name} class="portrait" />
-        {:else}
-          <div class="placeholder" aria-hidden="true">{stageSpeaker ? stageSpeaker.name.slice(0, 1) : "✦"}</div>
-        {/if}
-        <span class="stage-caption">{stageSpeaker ? stageSpeaker.name : frame?.kind === "dialogue" ? "Unknown speaker" : "Narration"}</span>
+      <div class="stage" role="group" aria-label="Characters in this line">
+        {#each stageCharacters as character, slot (slot)}
+          <div class="stage-slot" data-side={slot === 0 ? "left" : "right"}>
+            {#if character}
+              {#key character.id}
+                <div class="stage-character" class:speaking={frame?.kind === "dialogue" && character.id === speakerId}>
+                  {#if character.portrait}
+                    <img src={character.portrait} alt={character.name} class="portrait" />
+                  {:else}
+                    <div class="placeholder" aria-hidden="true">{character.name.slice(0, 1)}</div>
+                  {/if}
+                  <span class="stage-caption">{character.name}</span>
+                </div>
+              {/key}
+            {/if}
+          </div>
+        {/each}
       </div>
       <div class="dialogue">
         <div class="speaker-row">
@@ -220,10 +224,15 @@
   button:disabled { opacity: .4; cursor: default; }
   .accent { background: #f8ae2c; color: #191c22; border-color: #f8ae2c; }
   .accent:hover:enabled { background: #ffc761; }
-  .stage { flex: 1; min-height: 0; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+  .stage { flex: 1; min-height: 0; width: min(100%, 1080px); align-self: center; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 2vw, 32px); overflow: hidden; }
+  .stage-slot { position: relative; min-width: 0; min-height: 0; }
+  .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; animation: enter-scene 180ms ease-out; }
   .portrait { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
-  .stage-caption { position: absolute; bottom: 8px; padding: 6px 16px; background: #10171dcc; border-radius: 20px; }
+  .stage-caption { position: absolute; bottom: 8px; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
+  .speaking .stage-caption { color: #f8ae2c; border-color: #f8ae2c; }
+  @keyframes enter-scene { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { .stage-character { animation: none; } }
   .dialogue { width: min(100%, 1080px); align-self: center; max-height: 55%; display: flex; flex-direction: column; gap: 16px; background: #141e27f5; border: 1px solid #65717b; border-top: 2px solid #f8ae2c; border-radius: 14px; padding: clamp(14px, 3vw, 28px); box-shadow: 0 16px 48px #0005; }
   strong { color: #f8ae2c; font-size: 20px; }
   label { display: flex; align-items: center; gap: 8px; color: #b9c2c8; font-size: 13px; }

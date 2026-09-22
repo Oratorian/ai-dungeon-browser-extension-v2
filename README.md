@@ -95,12 +95,19 @@ and choose any combination of **Character, Class, Race, Location, Faction, and C
 All types are included by default; Custom also covers user-defined card types.
 
 Enable **Settings > Extension > Visual Novel Mode** to read loaded story passages in a scene
-with a portrait and a dialogue box. **Back** and **Next** move through narration and speech;
+with character portraits and a dialogue box. **Back** and **Next** move through narration and speech;
 **Latest passage** jumps to the beginning of the newest loaded passage. **Write action** opens a
 composer inside the scene with **Do**, **Say**, **Story**, and **Guide**. These use AI Dungeon's
 native mode and submit controls. Your draft is shared with the game's textbox; Enter adds a new
 line, and only **Send** submits. **Read story** closes the composer. **Return to game** exposes
 AI Dungeon's normal controls, and **Resume visual novel** reopens the scene.
+
+The scene shows up to two characters, one left and one right, whose names or story card triggers
+appear in the current line. Characters stay on the same side while present in consecutive lines
+and disappear as soon as a line no longer triggers them. Back and Next restore each line's cast.
+If more than two characters are triggered, the first two appear, with priority for a triggered
+speaker. The speaker's name is accented when they are on stage; identifying a speaker alone does
+not add a portrait when that line has no matching trigger.
 
 Speaker detection reads the story text directly, independently of AI Dungeon's highlighting.
 Characters and portraits come from the selected extension card set, using its names and triggers.
