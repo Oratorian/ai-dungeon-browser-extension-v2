@@ -121,6 +121,13 @@ names or triggers clear the stage;
 if more than four match, the first four appear. Back and Next restore each paragraph's scene.
 Reduced-motion preferences disable fades. There is no speaker detection or Narrator label.
 
+Use **Assign character** to add an existing character to the current paragraph, including unnamed
+NPCs and pronoun-only dialogue. The choice applies to all reader lines in that paragraph and
+resets if its text changes, the selected set or adventure changes, or the reader is restarted.
+Choose **Automatic characters only** to clear it. Assignments do not create global triggers.
+**Create and edit character** saves a new character card in the selected set, assigns it to this
+paragraph, and opens the card editor to add artwork. Cards without artwork show an initial.
+
 This is a local reader with no additional AI requests. It reads passages currently loaded by
 AI Dungeon, rather than downloading the adventure's entire history.
 

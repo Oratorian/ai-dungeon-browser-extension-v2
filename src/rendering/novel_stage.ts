@@ -15,6 +15,7 @@ function continuesCharacter(paragraph: string): boolean {
  * jumps reconstruct the scene. All reader lines in a paragraph share its cast. */
 export function createNovelStageTracker(characters: NovelCharacter[]) {
   const cast = characters.filter(c => c.id !== "player" && c.name.trim().toLowerCase() !== "you");
+  const characterIds = new Set(cast.map(c => c.id));
   const aliases = new Map<string, Set<string>>();
   for (const character of cast) {
     for (const value of [character.name, ...character.triggers.split(",")]) {
@@ -29,12 +30,12 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
   // alias inside them from accidentally selecting a character.
   const pattern = keys.length ? new RegExp(`(?<![\\p{L}\\p{N}_])(?:${keys.map(escape).join("|")})(?![\\p{L}\\p{N}_])`, "giu") : null;
 
-  return (frames: NovelFrame[]): NovelStage[] => {
+  return (frames: NovelFrame[], assignments: Record<number, string> = {}): NovelStage[] => {
     const slots: NovelStage = [null, null, null, null];
     const paragraphCast = new Map<string, string[]>();
     let previousNamedCharacter: string | null = null;
     let currentCast: string[] = [];
-    return frames.map(frame => {
+    return frames.map((frame, index) => {
       if (frame.startsPassage) previousNamedCharacter = null;
       let mentioned = paragraphCast.get(frame.paragraph);
       if (!mentioned) {
@@ -49,6 +50,8 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
       }
       if (frame.startsParagraph) {
         currentCast = mentioned.length ? mentioned : previousNamedCharacter && continuesCharacter(frame.paragraph) ? [previousNamedCharacter] : [];
+        const assigned = assignments[index];
+        if (assigned && characterIds.has(assigned)) currentCast = [assigned, ...currentCast.filter(id => id !== assigned)].slice(0, 4);
         // Only bridge one paragraph. A new explicit mention is needed before another carry.
         previousNamedCharacter = mentioned.length === 1 ? mentioned[0]! : null;
       }

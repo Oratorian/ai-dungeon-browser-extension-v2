@@ -22,6 +22,10 @@ button's quick actions. The quick-action icon highlights while the mode is enabl
 - Characters remain through the paragraph's narration and quotes. A single named character can
   carry into one following paragraph that continues with third-person pronouns, within the same
   response. Otherwise, the next paragraph updates the cast. Reduced-motion preferences disable fades.
+- **Assign character** lets you choose a card for a paragraph with an unnamed NPC or unclear
+  pronouns. The choice stays local to that loaded paragraph and resets when its text changes or
+  the reader is reset. You can clear it, edit the chosen card's artwork, or create a character
+  card in your selected set without adding global pronoun triggers.
 - **Write action** includes AI Dungeon's native **Do**, **Say**, **Story**, and **Guide** modes.
   Your draft is shared with the game; Enter adds a line and **Send** submits the action.
 - Reaching the final loaded paragraph opens Write Action alongside the story. Dismissing it keeps
