@@ -458,7 +458,6 @@
       <div class="reader-panels" bind:clientHeight={readerHeight}>
         {#if $settings.novelTtsEnabled}
         <aside class="voice-panel" aria-label="Narration controls">
-          <button class="audio-trigger" aria-controls="novel-audio-menu">Audio</button>
           <div id="novel-audio-menu" class="narration-controls audio-menu">
             {#if bufferingNarration && !retryTracker}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
             {#if !ttsReady}
@@ -486,8 +485,6 @@
         {/if}
         {#if actionError}<p role="alert" class="action-error">{actionError}</p>{/if}
         <footer>
-          <button onclick={() => navigate(index - 1)} disabled={index === 0 || !frames.length}>Back</button>
-          <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
           <button onclick={() => latest()} disabled={!frames.length}>Latest passage</button>
           <button class="accent" aria-keyshortcuts="Space" title="Next (Space)" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
           <div class="retry-control" role="group" aria-label="Retry controls">
@@ -497,6 +494,10 @@
           </div>
           <button onclick={continueReading} disabled={continuing || !!retryTracker || (composing && composerBusy)}>{continuing && !retryTracker ? "Continuing..." : "Continue"}</button>
 
+          <div class="back-controls" role="group" aria-label="Reading position">
+          <button onclick={() => navigate(index - 1)} disabled={index === 0 || !frames.length}>Back</button>
+          <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
+          </div>
         </footer>
       </div>
         <aside class="action-panel" class:expanded={composing} aria-label="Story actions">
@@ -538,9 +539,10 @@
   .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + 24px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; width: 100%; max-height: 55%; min-height: 220px; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + clamp(12px, 3vw, 32px) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
-  .voice-panel { position: relative; grid-column: 1; align-self: end; }
-  .voice-panel .audio-menu { display: none; position: absolute; bottom: 100%; left: 0; width: 220px; max-height: 60vh; overflow: auto; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; }
-  .voice-panel:hover .audio-menu, .voice-panel:focus-within .audio-menu { display: flex; align-items: stretch; flex-direction: column; }
+  .voice-panel { position: relative; grid-column: 1; align-self: end; width: clamp(160px, 18vw, 220px); max-height: 100%; overflow: auto; }
+  .voice-panel .audio-menu { display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
+  .voice-panel:hover .audio-menu, .voice-panel:has(:focus-visible) .audio-menu { opacity: 1; pointer-events: auto; }
+  @media (prefers-reduced-motion: reduce) { .voice-panel .audio-menu { transition: none; } }
   .action-panel { grid-column: 3; min-width: 0; align-self: end; max-height: 100%; display: flex; flex-direction: column; gap: 12px; }
   .action-panel.expanded { width: min(320px, 35vw); overflow: auto; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; }
   .dialogue { grid-column: 2; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: transparent; padding: clamp(14px, 3vw, 28px); }
@@ -561,7 +563,8 @@
   .retry-edit .font-symbol { display: block; margin: 0; color: inherit; }
   .retry-instructions { display: flex; flex-direction: column; gap: 8px; }
   .retry-instructions textarea { resize: vertical; min-height: 60px; max-height: 20vh; border: 1px solid #64727c; border-radius: 8px; padding: 10px; background: #0e171f; color: #eee8de; font: inherit; }
-  footer span { margin-right: auto; color: #b9c2c8; font-size: 13px; }
+  .back-controls { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+  .back-controls span { color: #b9c2c8; font-size: 13px; white-space: nowrap; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 900px) {
     .reader-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 65%; min-height: 0; }
@@ -569,7 +572,7 @@
     .voice-panel, .action-panel { align-self: end; max-height: none; }
     .action-panel { justify-self: end; }
     .action-panel.expanded { width: min(320px, 100%); max-height: 30vh; }
-    .voice-panel { grid-column: 1; grid-row: 2; }
+    .voice-panel { grid-column: 1; grid-row: 2; width: 100%; max-width: 220px; max-height: 30vh; }
     .action-panel { grid-column: 2; grid-row: 2; }
   }
   @media (max-width: 500px) { .novel { --scene-gap: 10px; } .tools { gap: 6px; } button { padding: 7px 10px; font-size: 13px; } .dialogue { gap: 10px; } .stage-caption { font-size: 13px; } }
