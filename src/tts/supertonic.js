@@ -44,9 +44,9 @@ export class UnicodeProcessor {
 
         // Replace various dashes and symbols
         const replacements = {
-            '–': '-',
+            '\u2013': '...', // En dash: a spoken pause.
             '‑': '-',
-            '—': '-',
+            '\u2014': '...', // Em dash: a spoken pause.
             '_': ' ',
             '\u201C': '"',  // left double quote "
             '\u201D': '"',  // right double quote "
