@@ -11,7 +11,7 @@
   import { createNovelStageTracker } from "@/rendering/novel_stage";
   import { resolveNovelAssignments, type NovelAssignment } from "@/rendering/novel_assignments";
   import NovelComposer from "./novel_composer.svelte";
-  import { narrationWav } from "@/tts/client";
+  import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
   import { NarrationQueue, StableNarrationWindow } from "@/tts/queue";
   import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames } from "@/rendering/novel_narration";
@@ -71,9 +71,9 @@
     const audio = frame && narrationQueue?.get(frame.text);
     if (!audio || !active || paused || continuing || continuationSnapshot || narrationMuted) return;
     const token = playbackToken;
-    narrationUrl = URL.createObjectURL(narrationWav(audio));
+    narrationUrl = URL.createObjectURL(narrationWav(audio, $settings.novelTtsPitch));
     narrationAudio = new Audio(narrationUrl);
-    narrationAudio.volume = Math.max(0, Math.min(1, $settings.volume / 100));
+    configureNarrationPlayback(narrationAudio, audio.sampleRate, $settings.novelTtsPitch, $settings.volume);
     void narrationAudio.play().catch(() => {
       if (token === playbackToken) narrationStatus = "Audio ready. Click Read line to play.";
     });

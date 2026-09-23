@@ -87,6 +87,11 @@
         {#each [5, 6, 7, 8, 9, 10] as steps}<option value={steps}>{steps}</option>{/each}
       </select>
     </Field>
+    <Field label="Narrator pitch" info="Lower or raise the voice by up to three semitones while keeping the original reading speed. Zero uses the original voice.">
+      <select aria-label="Narrator pitch" bind:value={$settings.novelTtsPitch} class="p-2 rounded-lg bg-theme-neutral-200">
+        {#each [-3, -2, -1, 0, 1, 2, 3] as pitch}<option value={pitch}>{pitch > 0 ? `+${pitch}` : pitch}{pitch === 0 ? " (original)" : ""}</option>{/each}
+      </select>
+    </Field>
     <p class="text-xs text-theme-neutral-800">Uses names, triggers and portraits from your selected extension card set. Each paragraph sets the scene with up to four matching characters, two on each side. Portraits stay through its narration and dialogue, then fade when the next paragraph changes the cast. No AI calls are needed.</p>
   </Item>
   <Item foldout icon="alternate_email" label="Story Card Autocomplete">

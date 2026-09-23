@@ -69,6 +69,7 @@ const defaultSettings = {
   novelTtsEnabled: false,
   novelTtsVoice: "M5" as "M5" | "F5",
   novelTtsSteps: 5,
+  novelTtsPitch: 0,
   storyCardAutocompleteTypes: MENTION_CARD_TYPES.map(type => type.value),
 
   trinetraApiKey: "",
