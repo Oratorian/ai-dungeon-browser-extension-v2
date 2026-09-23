@@ -18,6 +18,9 @@ export class BgFetchError extends Error {
 }
 
 export type BgFetchOptions = {
+  signal?: AbortSignal;
+  binary?: boolean;
+  onBinaryChunk?: (bytes: Uint8Array) => void;
   /** extra request headers, e.g. an API key. */
   headers?: Record<string, string>;
   /** return a `data:` URI (base64) instead of decoded text, for binary content like images. */
@@ -51,6 +54,7 @@ function bgFetchOnce(url: string, opts: BgFetchOptions): Promise<string> {
     const finish = (fn: () => void) => {
       if (settled) return;
       settled = true;
+      opts.signal?.removeEventListener("abort", abort);
       try {
         port.disconnect();
       } catch {
@@ -58,10 +62,16 @@ function bgFetchOnce(url: string, opts: BgFetchOptions): Promise<string> {
       }
       fn();
     };
+    const abort = () => finish(() => reject(new DOMException("Cancelled", "AbortError")));
+    if (opts.signal?.aborted) { abort(); return; }
+    opts.signal?.addEventListener("abort", abort, { once: true });
     port.onMessage.addListener((raw) => {
       replied = true;
       const msg = raw as { type?: string; data?: string; status?: number; error?: string };
-      if (msg.type === "chunk") out += msg.data ?? "";
+      if (msg.type === "chunk") {
+        if (opts.binary) opts.onBinaryChunk?.(Uint8Array.from(atob(msg.data ?? ""), c => c.charCodeAt(0)));
+        else out += msg.data ?? "";
+      }
       else if (msg.type === "done") finish(() => resolve(out));
       else if (msg.type === "error")
         finish(() =>
@@ -86,12 +96,20 @@ function bgFetchOnce(url: string, opts: BgFetchOptions): Promise<string> {
       url,
       headers: opts.headers ?? null,
       dataUri: opts.dataUri ?? false,
+      binary: opts.binary ?? false,
       head: opts.head ?? false,
       maxBytes: opts.maxBytes ?? null,
       method: opts.method ?? "GET",
       upload: opts.upload ?? null,
     });
   });
+}
+
+/** Large model files use bounded binary messages, never a single giant data URI. */
+export async function bgFetchBytes(url: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  await bgFetch(url, { binary: true, signal, onBinaryChunk: bytes => chunks.push(bytes as Uint8Array<ArrayBuffer>) });
+  return new Blob(chunks).arrayBuffer();
 }
 
 /** Fetches `url` in the background and resolves with the body as text (or a `data:` URI). */

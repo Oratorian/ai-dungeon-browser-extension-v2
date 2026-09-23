@@ -71,6 +71,7 @@ export default defineBackground(() => {
         url?: unknown;
         headers?: unknown;
         dataUri?: unknown;
+        binary?: unknown;
         head?: unknown;
         maxBytes?: unknown;
         method?: unknown;
@@ -148,6 +149,19 @@ export default defineBackground(() => {
           return;
         }
         activeReader = reader;
+        if (req.binary === true) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (disconnected) return;
+            if (done) break;
+            // Base64 keeps Chrome's JSON Port messages bounded and binary-safe.
+            for (let offset = 0; offset < value.length; offset += 192 * 1024) {
+              send({ type: "chunk", data: toBase64(value.slice(offset, offset + 192 * 1024).buffer) });
+            }
+          }
+          send({ type: "done" });
+          return;
+        }
         const decoder = new TextDecoder();
         let batch = "";
         let received = 0;

@@ -1,9 +1,17 @@
 import { defineConfig } from "wxt";
 import tailwindcss from "@tailwindcss/vite";
+import { resolve } from "node:path";
 
 export default defineConfig({
   srcDir: "src",
   modules: ["@wxt-dev/module-svelte"],
+  hooks: {
+    "build:publicAssets"(_wxt, files) {
+      for (const name of ["ort-wasm-simd-threaded.wasm", "ort-wasm-simd-threaded.mjs"]) {
+        files.push({ absoluteSrc: resolve("node_modules/onnxruntime-web/dist", name), relativeDest: `runtime/${name}` });
+      }
+    },
+  },
   // Auto-import project symbols (Storage, Config, Debug, DOM, Events, extensionState, ...) from the
   // domain folders. WXT auto-imports from "utils" by default; we moved that code into these folders.
   imports: {
@@ -15,6 +23,9 @@ export default defineConfig({
     sourcesTemplate: "DExtV2-Resurrect-{{version}}-sources.zip",
   },
   manifest: {
+    content_security_policy: { extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'" },
+    cross_origin_embedder_policy: { value: "require-corp" },
+    cross_origin_opener_policy: { value: "same-origin" },
     name: "Dungeon Extension v2 Resurrected",
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
     permissions: ["storage", "unlimitedStorage"],
@@ -58,6 +69,8 @@ export default defineConfig({
     // Declared here (not requested at runtime) because the UI runs in a content script, where
     // Firefox does not allow permissions.request().
     host_permissions: [
+      "https://huggingface.co/*",
+      "https://*.hf.co/*",
       "https://trinetra.mahesvara.cloud/*",
       "https://openrouter.ai/*",
       "https://civitai.com/api/*",
@@ -76,7 +89,7 @@ export default defineConfig({
       {
         // interceptor.js is the page-world GraphQL tap, injected by aid-inject.content.ts.
         // icon/* is the extension icon, shown as the face of the floating button.
-        resources: ["fonts/*", "icon/*", "interceptor.js"],
+        resources: ["fonts/*", "icon/*", "interceptor.js", "tts.html"],
         matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
       },
     ],
