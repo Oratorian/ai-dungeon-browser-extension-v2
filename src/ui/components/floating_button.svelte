@@ -9,17 +9,18 @@
   import { FLOATING_BUTTON_ICON, floatingButtonSize, ringLayout } from "@/shared/floating_button";
   import SetSwitcher from "./set_switcher.svelte";
   import StampBinding from "./stamp_binding.svelte";
+  import TtsSettings from "./tts_settings.svelte";
 
   // A draggable quick-access puck that opens the editor. It replaces the button we used to clone
   // into AI Dungeon's Do/Say/Story/Guide/See action bar: other extensions inject there too, so we
   // stopped fighting them for that row. This one lives in our own shadow root, so nothing of AID's
   // can restyle or re-render it away, and the user can park it wherever it isn't in the way.
   //
-  // Hovering it (or tabbing onto it) brings up a ring of quick actions around it. Two of them open a
+  // Hovering it (or tabbing onto it) brings up a ring of quick actions around it. Three of them open a
   // second level in place: Sets switches, creates or imports a card set, Stamp binds the set to the
   // story being played. Both are things people do every time they start or duplicate an adventure,
   // and the editor was a detour for them. Sync and Settings open editor tabs; Visual Novel Mode
-  // toggles the scene reader directly. A plain click
+  // opens reader and TTS controls. A plain click
   // on the puck still opens the editor where it was last left.
   //
   // The second level opens on hover, like the ring, and a click pins it so it survives the pointer
@@ -39,7 +40,7 @@
     { id: "sets", icon: "swap_horiz", label: "Sets", panel: true },
     { id: "stamp", icon: "approval", label: "Stamp", panel: true },
     { id: "sync", icon: "sync", label: "AID Sync", panel: false },
-    { id: "novel", icon: "theater_comedy", label: "Visual Novel Mode", panel: false },
+    { id: "novel", icon: "theater_comedy", label: "Visual Novel Mode", panel: true },
     { id: "settings", icon: "settings", label: "Settings", panel: false },
   ];
 
@@ -165,11 +166,6 @@
   }
 
   function onActionClick(action: QuickAction) {
-    if (action.id === "novel") {
-      $settings.visualNovelMode = !$settings.visualNovelMode;
-      closeAll();
-      return;
-    }
     if (!action.panel) {
       openAt(action.id === "sync" ? Tab.Import : Tab.Settings);
       return;
@@ -285,7 +281,6 @@
           onpointerenter={() => onActionEnter(action)}
           onclick={() => onActionClick(action)}
           aria-label={action.label}
-          aria-pressed={action.id === "novel" ? $settings.visualNovelMode : undefined}
           aria-expanded={action.panel ? panel === action.id : undefined}
           title={action.id === "novel" ? `Visual Novel Mode: ${$settings.visualNovelMode ? "On" : "Off"}` : action.label}
           style="width: {ringSize}px; height: {ringSize}px; font-size: {Math.round(ringSize * 0.55)}px;
@@ -318,6 +313,16 @@
             <SetSwitcher onsync={() => openAt(Tab.Import)} />
           {:else if panel === "stamp"}
             <StampBinding standalone />
+          {:else if panel === "novel"}
+            <div class="flex flex-col gap-2">
+              <button aria-pressed={$settings.visualNovelMode}
+                onclick={() => { $settings.visualNovelMode = !$settings.visualNovelMode; closeAll(); }}
+                class="flex items-center gap-2 rounded-lg p-3 bg-theme-neutral-100 hover:bg-theme-neutral-300">
+                <span aria-hidden="true" class="font-symbol">theater_comedy</span>
+                {$settings.visualNovelMode ? "Exit Visual Novel Mode" : "Enable Visual Novel Mode"}
+              </button>
+              <TtsSettings />
+            </div>
           {/if}
         </div>
       {/if}

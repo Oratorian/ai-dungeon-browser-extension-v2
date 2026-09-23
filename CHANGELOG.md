@@ -15,6 +15,9 @@ Read your adventure as a visual novel with character portraits and a dialogue pa
 under **Settings > Extension > Visual Novel Mode**, or toggle it directly from the floating
 button's quick actions. The quick-action icon highlights while the mode is enabled.
 
+- The floating **Visual Novel Mode** action opens a panel, like Sets and Stamp. Hover to open
+  or click to pin it, then enable/exit the reader or **Initialize TTS** without opening Settings.
+
 - Optional **Browser narration** runs Supertonic locally with **M5** or **F5** and **5-10 steps**.
   **Enable TTS** shows Off, On with models needed, or On and fully available. **Initialize TTS**
   downloads and loads both voices through the background helper. Cached models load automatically
