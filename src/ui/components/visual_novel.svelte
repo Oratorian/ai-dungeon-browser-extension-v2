@@ -35,6 +35,7 @@
   let actionError = $state("");
   let continueController: AbortController | undefined;
   let scene: HTMLElement | undefined = $state();
+  let readerHeight = $state(220);
   let output: HTMLElement | null = null;
   let lastSignature = "";
   let sourceIds = new WeakMap<HTMLElement, number>();
@@ -410,7 +411,7 @@
   {:else if paused}
     <button class="resume" onclick={resume}>Resume visual novel</button>
   {:else}
-    <div class="novel" role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
+    <div class="novel" style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
       {#if background}
         {#key background}<img class="location-backdrop" src={background} alt="" aria-hidden="true" onerror={() => failedBackground = background ?? ""} transition:portraitFade />{/key}
         <div class="location-shade" aria-hidden="true"></div>
@@ -437,7 +438,7 @@
       </header>
       <div class="stage" role="group" aria-label="Characters in the scene">
         {#each stageCharacters as character, slot (slot)}
-          <div class="stage-slot" data-side={slot % 2 === 0 ? "left" : "right"} style:grid-column={[2, 3, 1, 4][slot]}>
+          <div class="stage-slot" data-side={slot % 2 === 0 ? "left" : "right"} style:grid-column={stageCharacters.filter(Boolean).length <= 2 ? ["1 / 3", "3 / 5", "1", "4"][slot] : String([2, 3, 1, 4][slot])}>
             {#if character}
               {#key character.id}
                 <div class="stage-character" transition:portraitFade>
@@ -453,7 +454,8 @@
           </div>
         {/each}
       </div>
-      <div class="reader-panels">
+      <div class="reading-shade" aria-hidden="true"></div>
+      <div class="reader-panels" bind:clientHeight={readerHeight}>
         <aside class="voice-panel" aria-label="Narration controls">
         {#if $settings.novelTtsEnabled}
           <div class="narration-controls">
@@ -518,7 +520,7 @@
   .tools { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
   .location-control small { font-size: 11px; }
   header, .tools, footer { display: flex; align-items: center; gap: 12px; }
-  header { justify-content: space-between; flex-wrap: wrap; }
+  header { position: relative; z-index: 3; justify-content: space-between; flex-wrap: wrap; }
   .title { letter-spacing: .16em; font-size: 13px; color: #f8ae2c; }
   small { display: block; color: #aeb9be; letter-spacing: .04em; margin-top: 4px; }
   button { border: 1px solid #64727c; border-radius: 8px; padding: 8px 14px; background: #202b34; color: #eee8de; cursor: pointer; font: inherit; }
@@ -527,19 +529,20 @@
   button:disabled { opacity: .4; cursor: default; }
   .accent { background: #f8ae2c; color: #191c22; border-color: #f8ae2c; }
   .accent:hover:enabled { background: #ffc761; }
-  .stage { margin-bottom: calc(-1 * var(--scene-gap)); flex: 1; min-height: 0; width: min(100%, 1440px); align-self: center; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: hidden; }
+  .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, 1440px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: hidden; pointer-events: none; }
   .stage-slot { position: relative; grid-row: 1; min-width: 0; min-height: 0; }
   .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
-  .portrait { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+  .portrait { width: 100%; height: 100%; object-fit: cover; object-position: center top; mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
-  .stage-caption { position: absolute; bottom: 8px; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
-  .reader-panels { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 3.6fr) minmax(220px, 1.25fr); gap: 16px; width: 100%; max-height: 55%; min-height: 220px; flex-shrink: 0; }
+  .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + 24px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
+  .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 3.6fr) minmax(220px, 1.25fr); gap: 16px; width: 100%; max-height: 55%; min-height: 220px; flex-shrink: 0; }
+  .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + clamp(12px, 3vw, 32px) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
   .voice-panel, .action-panel { min-width: 0; overflow: auto; align-self: end; max-height: 100%; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; }
   .voice-panel:empty { visibility: hidden; }
   .voice-panel .narration-controls { align-items: stretch; flex-direction: column; }
   .voice-panel .queue-badge { white-space: normal; }
   .action-panel { display: flex; flex-direction: column; gap: 12px; }
-  .dialogue { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: #141e27f5; border: 1px solid #65717b; border-top: 2px solid #f8ae2c; border-radius: 14px; padding: clamp(14px, 3vw, 28px); box-shadow: 0 16px 48px #0005; }
+  .dialogue { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: transparent; padding: clamp(14px, 3vw, 28px); }
   .prose { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 3em; font: clamp(18px, 2vw, 25px)/1.6 Georgia, serif; margin: 0; }
   .prose { flex: 1; }
   .dialogue { overflow: auto; }
