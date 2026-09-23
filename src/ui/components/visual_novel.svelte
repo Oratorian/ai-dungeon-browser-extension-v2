@@ -48,9 +48,13 @@
   let continuationSnapshot = $state<string[] | null>(null);
   let readWithoutAudio = $state(false);
   const ttsReady = $derived($ttsState.phase === "ready");
+  const narrationEnabled = $derived($settings.novelTtsEnabled);
+  const novelEnabled = $derived($settings.visualNovelMode);
+  const narratorVoice = $derived($settings.novelTtsVoice);
+  const narratorSteps = $derived($settings.novelTtsSteps);
 
   $effect(() => {
-    configureTts($settings.novelTtsEnabled);
+    configureTts(narrationEnabled);
   });
   onDestroy(() => configureTts(false));
   $effect(() => {
@@ -80,10 +84,10 @@
   }
 
   $effect(() => {
-    const enabled = $settings.visualNovelMode && $settings.novelTtsEnabled && ttsReady && !!$playedAdventureId;
+    const enabled = novelEnabled && narrationEnabled && ttsReady && !!$playedAdventureId;
     const adventure = $playedAdventureId;
-    const voice = $settings.novelTtsVoice;
-    const steps = $settings.novelTtsSteps;
+    const voice = narratorVoice;
+    const steps = narratorSteps;
     if (!enabled) return;
     let alive = true;
     const queue = new NarrationQueue(text => generateNarration(text, { voice, steps }), (text, error) => {
@@ -183,10 +187,10 @@
   }
 
   $effect(() => {
-    const enabled = $settings.visualNovelMode;
+    const enabled = novelEnabled;
     const adventure = $playedAdventureId;
     const set = $selected;
-    const narrated = $settings.novelTtsEnabled;
+    const narrated = narrationEnabled;
     untrack(() => {
       continueController?.abort(); continuing = false; actionError = ""; openedParagraphs = new WeakMap();
       autoOpenAllowed = true;

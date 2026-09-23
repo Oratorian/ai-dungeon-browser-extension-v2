@@ -14,6 +14,7 @@
   import ImageGenerationSettings from "@/ui/components/image_generation_settings.svelte";
   import TrinetraSettings from "@/ui/components/trinetra_settings.svelte";
   import TtsSettings from "@/ui/components/tts_settings.svelte";
+  import TtsPreview from "@/ui/components/tts_preview.svelte";
   import { MENTION_CARD_TYPES, type MentionCardType } from "@/aid/mentions";
 
   /* Storage */
@@ -92,6 +93,7 @@
         {#each [-3, -2, -1, 0, 1, 2, 3] as pitch}<option value={pitch}>{pitch > 0 ? `+${pitch}` : pitch}{pitch === 0 ? " (original)" : ""}</option>{/each}
       </select>
     </Field>
+    <TtsPreview />
     <p class="text-xs text-theme-neutral-800">Uses names, triggers and portraits from your selected extension card set. Each paragraph sets the scene with up to four matching characters, two on each side. Portraits stay through its narration and dialogue, then fade when the next paragraph changes the cast. No AI calls are needed.</p>
   </Item>
   <Item foldout icon="alternate_email" label="Story Card Autocomplete">

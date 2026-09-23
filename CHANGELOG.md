@@ -19,6 +19,9 @@ button's quick actions. The quick-action icon highlights while the mode is enabl
   **Enable TTS** shows Off, On with models needed, or On and fully available. **Initialize TTS**
   downloads and loads both voices through the background helper. Cached models load automatically
   when enabled again. Narration uses one CPU thread; story text stays in the browser.
+- **That's how it sounds like** generates a short narration preview using your selected voice,
+  steps, and pitch. Pitch ranges from **-3 to +3 semitones**, with **0** as the original voice,
+  and preserves the reading speed. Preview controls let you replay or stop the sample.
 - Narration prepares the current line and the next three lines in a serial queue. **Next line ready**
   indicates cached audio. Navigation stops the previous line; **Read line** retries or replays it,
   and **Mute** silences playback while upcoming lines continue preparing.
