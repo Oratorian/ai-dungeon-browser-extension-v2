@@ -103,6 +103,7 @@ export default defineConfig({
     },
   },
   vite: () => ({
+    resolve: { conditions: ["onnxruntime-web-use-extern-wasm"] },
     plugins: [tailwindcss()],
   }),
 });

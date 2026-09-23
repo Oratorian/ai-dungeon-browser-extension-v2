@@ -43,6 +43,7 @@ export default defineBackground(() => {
     let disconnected = false;
     let keepalive: ReturnType<typeof setInterval> | undefined;
     let activeReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    const controller = new AbortController();
 
     // Posting to a disconnected Port throws; guard every send so a mid-transfer cancel is a no-op.
     const send = (msg: unknown) => {
@@ -63,6 +64,7 @@ export default defineBackground(() => {
     port.onDisconnect.addListener(() => {
       disconnected = true;
       stopKeepalive();
+      controller.abort();
       activeReader?.cancel().catch(() => {});
     });
 
@@ -113,6 +115,7 @@ export default defineBackground(() => {
         let res: Response;
         try {
           res = await fetch(req.url, {
+            signal: controller.signal,
             method,
             // Content-Type is deliberately left unset for a FormData body: fetch adds it along with
             // the multipart boundary, and overriding it produces a body the server cannot parse.
@@ -143,6 +146,14 @@ export default defineBackground(() => {
         // Text -> streamed chunks.
         const reader = res.body?.getReader();
         if (!reader) {
+          if (req.binary === true) {
+            const bytes = new Uint8Array(await res.arrayBuffer());
+            for (let offset = 0; offset < bytes.length; offset += 192 * 1024) {
+              send({ type: "chunk", data: toBase64(bytes.slice(offset, offset + 192 * 1024).buffer) });
+            }
+            send({ type: "done" });
+            return;
+          }
           const text = await res.text();
           send({ type: "chunk", data: head ? text.slice(0, maxBytes) : text });
           send({ type: "done" });

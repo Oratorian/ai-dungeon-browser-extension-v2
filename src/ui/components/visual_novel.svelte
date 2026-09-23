@@ -11,6 +11,8 @@
   import { createNovelStageTracker } from "@/rendering/novel_stage";
   import { resolveNovelAssignments, type NovelAssignment } from "@/rendering/novel_assignments";
   import NovelComposer from "./novel_composer.svelte";
+  import { LocalNarrator, narrationWav } from "@/tts/client";
+  import { NarrationQueue } from "@/tts/queue";
 
   const adventures = Storage.adventures;
   const selected = Storage.selectedAdventureId;
@@ -33,6 +35,79 @@
   let lastSignature = "";
   let sourceIds = new WeakMap<HTMLElement, number>();
   let nextSourceId = 0;
+  let narrationQueue = $state<NarrationQueue>();
+  let narrationStatus = $state("");
+  let narrationVersion = $state(0);
+  let narrationMuted = $state(false);
+  let narrationAudio: HTMLAudioElement | undefined;
+  let narrationUrl: string | undefined;
+  let playbackToken = 0;
+
+  function stopNarration() {
+    playbackToken++;
+    narrationAudio?.pause();
+    narrationAudio = undefined;
+    if (narrationUrl) URL.revokeObjectURL(narrationUrl);
+    narrationUrl = undefined;
+  }
+
+  function playNarration() {
+    stopNarration();
+    const audio = frame && narrationQueue?.get(frame.text);
+    if (!audio || !active || paused || narrationMuted) return;
+    const token = playbackToken;
+    narrationUrl = URL.createObjectURL(narrationWav(audio));
+    narrationAudio = new Audio(narrationUrl);
+    narrationAudio.volume = Math.max(0, Math.min(1, $settings.volume / 100));
+    void narrationAudio.play().catch(() => {
+      if (token === playbackToken) narrationStatus = "Audio ready. Click Read line to play.";
+    });
+  }
+
+  $effect(() => {
+    const enabled = $settings.visualNovelMode && $settings.novelTtsEnabled && !!$playedAdventureId;
+    const adventure = $playedAdventureId;
+    const voice = $settings.novelTtsVoice;
+    const steps = $settings.novelTtsSteps;
+    const threads = $settings.novelTtsThreads;
+    if (!enabled) return;
+    let alive = true;
+    const narrator = new LocalNarrator({ voice, steps, threads }, message => { if (alive) narrationStatus = message; });
+    const queue = new NarrationQueue(text => narrator.generate(text), (text, error) => {
+      if (!alive) return;
+      if (text === frame?.text) narrationStatus = error ? `Narration failed: ${error}` : "Audio ready";
+      narrationVersion++;
+    });
+    narrationQueue = queue;
+    return () => {
+      alive = false; stopNarration(); queue.dispose(); narrator.dispose(); narrationQueue = undefined;
+    };
+  });
+
+  $effect(() => {
+    const queue = narrationQueue;
+    const texts = active && !paused && !continuing ? frames.slice(index, index + 4).map(f => f.text) : [];
+    // Avoid generating every partial token while AI Dungeon streams a response.
+    const timer = setTimeout(() => queue?.setWindow(texts), 500);
+    return () => clearTimeout(timer);
+  });
+
+  $effect(() => {
+    const text = frame?.text;
+    const position = index;
+    const visible = active && !paused && !continuing && !narrationMuted;
+    const queue = narrationQueue;
+    untrack(stopNarration);
+    if (!visible || !text || !queue) return;
+    untrack(() => { narrationStatus = queue.get(text) ? "Audio ready" : "Preparing narration..."; });
+    untrack(playNarration);
+  });
+
+  $effect(() => {
+    const version = narrationVersion;
+    // A prefetched line finishing must not restart the currently playing line.
+    untrack(() => { if (!narrationAudio) playNarration(); });
+  });
 
   const characters = $derived.by(() => {
     const cards = $selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [];
@@ -281,6 +356,13 @@
           </div>
         {/if}
         <p class="prose" class:with-composer={composing} aria-live="polite">{frame?.text ?? "Waiting for story text. Use Write action to take a turn."}</p>
+        {#if $settings.novelTtsEnabled}
+          <div class="narration-controls">
+            <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame}>Read line</button>
+            <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
+            <span role="status">{narrationStatus}</span>
+          </div>
+        {/if}
         {#if composing}
           <NovelComposer blocked={continuing} onbusychange={busy => composerBusy = busy} onclose={() => composing = false} onsubmitted={submitted} />
         {/if}
@@ -320,6 +402,7 @@
   .prose.with-composer { min-height: 0; max-height: 14vh; }
   .dialogue { overflow: auto; }
   .action-error { color: #ffadb2; margin: 0; font-size: 13px; }
+  .narration-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: #b9c2c8; }
   .assignment-tools { display: flex; justify-content: flex-end; }
   .assignment-panel { display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #65717b; padding-bottom: 12px; }
   .assignment-panel p { margin: 0; color: #b9c2c8; font-size: 12px; }
