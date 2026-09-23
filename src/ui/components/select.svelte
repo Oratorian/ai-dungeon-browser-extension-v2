@@ -12,9 +12,10 @@
     contentProps?: WithoutChildren<Select.ContentProps>;
     icon?: string;
     ariaLabel?: string;
+    portal?: boolean;
   };
 
-  let { value = $bindable(), items, contentProps, placeholder, icon, ariaLabel, allowDeselect, ...restProps }: Props = $props();
+  let { value = $bindable(), items, contentProps, placeholder, icon, ariaLabel, allowDeselect, portal = true, ...restProps }: Props = $props();
 
   const selectedLabel = $derived(items.find((item) => item.value === value)?.label);
 </script>
@@ -30,7 +31,7 @@
     {selectedLabel}
     <span class="text-theme-neutral-800 ml-auto font-symbol">expand_all</span>
   </Select.Trigger>
-  <Select.Portal>
+  <Select.Portal disabled={!portal}>
     <Select.Content
       class="bg-theme-neutral-400 shadow-popover data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 outline-hidden z-50 h-fit max-h-(--bits-select-content-available-height) w-(--bits-select-anchor-width) min-w-(--bits-select-anchor-width) select-none rounded-xl px-1 py-3 data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1"
     >

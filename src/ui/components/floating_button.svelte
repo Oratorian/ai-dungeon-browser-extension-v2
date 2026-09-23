@@ -10,6 +10,7 @@
   import SetSwitcher from "./set_switcher.svelte";
   import StampBinding from "./stamp_binding.svelte";
   import TtsSettings from "./tts_settings.svelte";
+  import Select from "./select.svelte";
 
   // A draggable quick-access puck that opens the editor. It replaces the button we used to clone
   // into AI Dungeon's Do/Say/Story/Guide/See action bar: other extensions inject there too, so we
@@ -322,6 +323,12 @@
                 {$settings.visualNovelMode ? "Exit Visual Novel Mode" : "Enable Visual Novel Mode"}
               </button>
               <TtsSettings />
+              <div class="flex flex-col gap-2 px-2 pb-2">
+                <span class="text-xs text-theme-neutral-800">Voice</span>
+                <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
+                  bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
+                  items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
+              </div>
             </div>
           {/if}
         </div>

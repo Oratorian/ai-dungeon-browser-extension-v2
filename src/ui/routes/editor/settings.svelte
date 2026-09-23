@@ -82,7 +82,7 @@
     <Field label="Narrator voice">
       <Select ariaLabel="Narrator voice" allowDeselect={false}
         bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
-        items={[{ value: "M5", label: "M5" }, { value: "F5", label: "F5" }]} />
+        items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
     </Field>
     <Field label="Generation steps" info="Fewer steps generate faster; more steps refine the audio.">
       <Select ariaLabel="Generation steps" allowDeselect={false}
