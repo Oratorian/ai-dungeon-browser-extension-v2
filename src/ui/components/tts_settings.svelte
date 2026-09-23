@@ -1,6 +1,7 @@
 <script lang="ts">
   import { settings } from "@/storage";
   import { configureTts, initializeTts, ttsState } from "@/tts/service";
+  let { grid = false }: { grid?: boolean } = $props();
   $effect(() => configureTts($settings.novelTtsEnabled));
   const ready = $derived($ttsState.phase === "ready");
   const busy = $derived($ttsState.phase === "loading" || $ttsState.phase === "checking");
@@ -9,10 +10,10 @@
   function initialize() { $settings.novelTtsEnabled = true; void initializeTts(); }
 </script>
 
-<div class="flex flex-col gap-2 px-2">
+<div class="tts-actions gap-2 px-2" class:grid>
   <button role="checkbox" aria-label="Enable TTS" aria-checked={!$settings.novelTtsEnabled ? false : ready ? true : "mixed"}
     onclick={() => $settings.novelTtsEnabled = !$settings.novelTtsEnabled}
-    class="flex items-center justify-between gap-3 rounded-lg p-3 bg-theme-neutral-100">
+    class="enable flex items-center justify-between gap-3 rounded-lg p-3 bg-theme-neutral-100">
     <span>Enable TTS</span>
     <span class:ready class:pending={$settings.novelTtsEnabled && !ready} class="state">{label}</span>
   </button>
@@ -24,6 +25,11 @@
 </div>
 
 <style>
+  .tts-actions { display: flex; flex-direction: column; }
+  .tts-actions.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid .enable { flex-direction: column; justify-content: center; gap: 4px; }
+  .grid .state { font-size: 12px; }
+  .grid p { grid-column: 1 / -1; }
   .state { color: #b9c2c8; }
   .state.pending { color: #f8ae2c; }
   .state.ready { color: #77d69b; }

@@ -1,21 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
-import { NarrationQueue, type NarrationAudio } from "@/tts/queue";
+import { NarrationQueue, narrationQueueSize, type NarrationAudio } from "@/tts/queue";
 
 const audio: NarrationAudio = { samples: new Float32Array([0, 0.1]), sampleRate: 24000 };
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 
 describe("narration prefetch", () => {
-  it("generates serially, caches the next line, and limits lookahead", async () => {
+  it("fills an expanded window and retains cached audio when resized", async () => {
     const generate = vi.fn(async () => audio);
     const queue = new NarrationQueue(generate, vi.fn());
     queue.setWindow(["one", "two", "three", "four", "five"]);
     await flush();
-    expect(generate.mock.calls).toHaveLength(4);
+    expect(generate.mock.calls).toHaveLength(5);
     expect(queue.get("two")).toBe(audio);
     queue.setWindow(["two", "three", "four", "five"]);
     await flush();
     expect(generate.mock.calls).toHaveLength(5);
     expect(queue.get("one")).toBeUndefined();
+    queue.setWindow(["two", "three"]);
+    await flush();
+    expect(generate.mock.calls).toHaveLength(5);
+    expect(queue.get("four")).toBeUndefined();
+    expect(queue.get("two")).toBe(audio);
+  });
+
+  it("bounds configured lookahead and defaults missing settings", () => {
+    expect(narrationQueueSize(undefined as unknown as number)).toBe(3);
+    expect(narrationQueueSize(NaN)).toBe(3);
+    expect(narrationQueueSize(0)).toBe(1);
+    expect(narrationQueueSize(100)).toBe(20);
+    expect(narrationQueueSize(5.5)).toBe(6);
   });
 
   it("prioritizes navigation and drops stale in-flight results", async () => {

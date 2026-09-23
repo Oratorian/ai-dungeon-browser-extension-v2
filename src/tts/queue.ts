@@ -1,6 +1,10 @@
 export type NarrationOptions = { voice: "M5" | "F5"; steps: number };
 export type NarrationAudio = { samples: Float32Array; sampleRate: number };
 
+export function narrationQueueSize(value: number): number {
+  return Number.isFinite(value) ? Math.max(1, Math.min(20, Math.round(value))) : 3;
+}
+
 /** Debounce each text independently so a streaming tail cannot starve earlier sentences. */
 export class StableNarrationWindow {
   private texts: string[] = [];
@@ -40,7 +44,8 @@ export class NarrationQueue {
   ) {}
 
   setWindow(texts: string[]) {
-    this.wanted = [...new Set(texts.filter(text => text.trim()))].slice(0, 4);
+    // The reader supplies the configured window, including the current line.
+    this.wanted = [...new Set(texts.filter(text => text.trim()))];
     for (const key of this.cache.keys()) if (!this.wanted.includes(key)) this.cache.delete(key);
     for (const key of this.failed) if (!this.wanted.includes(key)) this.failed.delete(key);
     void this.pump();

@@ -77,22 +77,27 @@
       <Switch bind:checked={$settings.visualNovelMode} />
     </Field>
     <Field label="Browser narration" info="Generate English narration locally. Initialize TTS downloads about 380 MiB of models through the background helper and loads both voices. Downloaded files are cached and load automatically next time TTS is enabled. Story text stays in your browser.">
-      <TtsSettings />
+      <div class="grid grid-cols-2 gap-3" aria-label="Browser narration settings">
+        <div class="col-span-2"><TtsSettings grid /></div>
+        <Field label="Narrator voice" info="Choose the Male or Female narrator for playback and the preview.">
+          <Select ariaLabel="Narrator voice" allowDeselect={false}
+            bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
+            items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
+        </Field>
+        <Field label="Generation steps" info="Fewer steps generate faster; more steps refine the audio.">
+          <Select ariaLabel="Generation steps" allowDeselect={false}
+            bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
+            items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
+        </Field>
+        <Field label="Narrator pitch" info="Lower or raise the voice by up to three semitones while keeping the original reading speed. Zero uses the original voice.">
+          <Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} />
+        </Field>
+        <Field label="Queue" info="How many upcoming lines to generate ahead of the current line, from 1 to 20. A larger buffer uses more memory and prepares more available story text. Generation still runs one line at a time.">
+          <Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} />
+        </Field>
+        <div class="col-span-2"><TtsPreview /></div>
+      </div>
     </Field>
-    <Field label="Narrator voice">
-      <Select ariaLabel="Narrator voice" allowDeselect={false}
-        bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
-        items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
-    </Field>
-    <Field label="Generation steps" info="Fewer steps generate faster; more steps refine the audio.">
-      <Select ariaLabel="Generation steps" allowDeselect={false}
-        bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
-        items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
-    </Field>
-    <Field label="Narrator pitch" info="Lower or raise the voice by up to three semitones while keeping the original reading speed. Zero uses the original voice.">
-      <Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} />
-    </Field>
-    <TtsPreview />
     <p class="text-xs text-theme-neutral-800">Uses names, triggers and portraits from your selected extension card set. Each paragraph sets the scene with up to four matching characters, two on each side. Portraits stay through its narration and dialogue, then fade when the next paragraph changes the cast. No AI calls are needed.</p>
   </Item>
   <Item foldout icon="alternate_email" label="Story Card Autocomplete">

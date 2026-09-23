@@ -33,7 +33,9 @@ button's quick actions. The quick-action icon highlights while the mode is enabl
 - **That's how it sounds like** generates a short narration preview using your selected voice,
   steps, and pitch. Pitch ranges from **-3 to +3 semitones**, with **0** as the original voice,
   and preserves the reading speed. Preview controls let you replay or stop the sample.
-- Narration prepares the current line and the next three lines in a serial queue. **X/Y upcoming lines ready**
+- Narration prepares the current line and **1-20 upcoming lines**, with three ahead by default.
+  The TTS settings use a two-column grid with voice, steps, pitch, queue size, and a full-width preview.
+  **X/Y upcoming lines ready**
   shows how many available upcoming lines have cached audio. Navigation stops the previous line; **Read line** retries or replays it,
   and **Mute** silences playback while upcoming lines continue preparing.
 - **Continue** keeps your current position until the first new line arrives instead of rewinding

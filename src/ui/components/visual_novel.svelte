@@ -13,7 +13,7 @@
   import NovelComposer from "./novel_composer.svelte";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
-  import { NarrationQueue, StableNarrationWindow } from "@/tts/queue";
+  import { NarrationQueue, StableNarrationWindow, narrationQueueSize } from "@/tts/queue";
   import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames } from "@/rendering/novel_narration";
 
   const adventures = Storage.adventures;
@@ -106,7 +106,8 @@
 
   // Compare text, not frame objects/paragraph metadata: streaming later text must
   // not keep postponing synthesis of an already-complete sentence.
-  const narrationWindow = $derived(JSON.stringify(frames.slice(index, index + 4).map(f => f.text)));
+  const queueSize = $derived(narrationQueueSize($settings.novelTtsQueue));
+  const narrationWindow = $derived(JSON.stringify(frames.slice(index, index + queueSize + 1).map(f => f.text)));
   $effect(() => {
     const scheduler = narrationScheduler;
     const texts: string[] = JSON.parse(narrationWindow);
@@ -145,7 +146,7 @@
   });
   const upcomingNarration = $derived.by(() => {
     narrationVersion;
-    const upcoming = frames.slice(index + 1, index + 4);
+    const upcoming = frames.slice(index + 1, index + queueSize + 1);
     return { ready: upcoming.filter(frame => narrationQueue?.get(frame.text)).length, total: upcoming.length };
   });
   const paragraphIndex = $derived.by(() => {
