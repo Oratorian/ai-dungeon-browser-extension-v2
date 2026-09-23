@@ -3,7 +3,7 @@
   import { ACTION_MODES, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft, type ActionMode } from "@/aid/action_input";
   import { playedShortId } from "@/aid/adventure";
 
-  let { onclose, onsubmitting, onsubmitted, onsubmitfailed, blocked = false, onbusychange = () => {} }: { onclose: () => void; onsubmitting: () => void; onsubmitted: () => void; onsubmitfailed: () => void; blocked?: boolean; onbusychange?: (busy: boolean) => void } = $props();
+  let { onclose, onsubmitting, onsubmitted, onsubmitfailed, blocked = false, focusOnOpen = true, onbusychange = () => {} }: { onclose: () => void; onsubmitting: () => void; onsubmitted: () => void; onsubmitfailed: () => void; blocked?: boolean; focusOnOpen?: boolean; onbusychange?: (busy: boolean) => void } = $props();
   let draft = $state("");
   let mode = $state<ActionMode | null>(null);
   let placeholder = $state("Write your action...");
@@ -33,7 +33,7 @@
     signal = controller.signal;
     adventure = playedShortId();
     sync();
-    void openActionInput(signal).then(() => { sync(); field?.focus(); })
+    void openActionInput(signal).then(() => { sync(); if (focusOnOpen) field?.focus(); })
       .catch(e => { if (!signal.aborted) connectionError = e.message; })
       .finally(() => { if (!signal.aborted) busy = false; });
     const timer = setInterval(() => {

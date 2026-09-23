@@ -374,7 +374,7 @@
     }
     event.stopPropagation();
     if (event.key === "Tab" && scene) {
-      const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled)")];
+      const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex='0']")];
       const focused = (scene.getRootNode() as ShadowRoot).activeElement;
       if (event.shiftKey && (focused === controls[0] || focused === scene)) { event.preventDefault(); controls.at(-1)?.focus(); }
       else if (!event.shiftKey && focused === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
@@ -500,12 +500,17 @@
           </div>
         </footer>
       </div>
-        <aside class="action-panel" class:expanded={composing} aria-label="Story actions">
-          <button class="accent" aria-expanded={composing} disabled={continuing || !!retryTracker || (composing && composerBusy)} onclick={() => { composing = !composing; retryEditing = false; }}>Actions</button>
+        <!-- The hover region also needs a keyboard entry point before its composer mounts. -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <aside class="action-panel" aria-label="Story actions" tabindex="0"
+          onmouseenter={() => { if (!continuing && !retryTracker) { composing = true; retryEditing = false; } }}
+          onfocusin={() => { if (!continuing && !retryTracker) { composing = true; retryEditing = false; } }}>
+          <div class="action-menu">
         {#if composing}
-          <NovelComposer blocked={continuing || !!retryTracker} onbusychange={busy => composerBusy = busy} onclose={() => composing = false}
+          <NovelComposer focusOnOpen={false} blocked={continuing || !!retryTracker} onbusychange={busy => composerBusy = busy} onclose={() => composing = false}
             onsubmitting={submitting} onsubmitted={submitted} onsubmitfailed={() => { continuationSnapshot = null; }} />
         {/if}
+          </div>
         </aside>
       </div>
     </div>
@@ -543,8 +548,10 @@
   .voice-panel .audio-menu { display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
   .voice-panel:hover .audio-menu, .voice-panel:has(:focus-visible) .audio-menu { opacity: 1; pointer-events: auto; }
   @media (prefers-reduced-motion: reduce) { .voice-panel .audio-menu { transition: none; } }
-  .action-panel { grid-column: 3; min-width: 0; align-self: end; max-height: 100%; display: flex; flex-direction: column; gap: 12px; }
-  .action-panel.expanded { width: min(320px, 35vw); overflow: auto; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; }
+  .action-panel { grid-column: 3; min-width: 0; align-self: end; width: min(320px, 30vw); height: min(360px, 40vh); overflow: auto; }
+  .action-menu { min-height: 100%; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
+  .action-panel:hover .action-menu, .action-panel:has(:focus-visible) .action-menu { opacity: 1; pointer-events: auto; }
+  @media (prefers-reduced-motion: reduce) { .action-menu { transition: none; } }
   .dialogue { grid-column: 2; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: transparent; padding: clamp(14px, 3vw, 28px); }
   .prose { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 3em; font: clamp(18px, 2vw, 25px)/1.6 Georgia, serif; margin: 0; }
   .prose { flex: 1; }
@@ -570,8 +577,7 @@
     .reader-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 65%; min-height: 0; }
     .dialogue { grid-column: 1 / -1; grid-row: 1; min-height: 180px; }
     .voice-panel, .action-panel { align-self: end; max-height: none; }
-    .action-panel { justify-self: end; }
-    .action-panel.expanded { width: min(320px, 100%); max-height: 30vh; }
+    .action-panel { justify-self: end; width: min(320px, 100%); height: 30vh; }
     .voice-panel { grid-column: 1; grid-row: 2; width: 100%; max-width: 220px; max-height: 30vh; }
     .action-panel { grid-column: 2; grid-row: 2; }
   }
