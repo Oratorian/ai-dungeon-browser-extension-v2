@@ -3,6 +3,22 @@ import { describe, expect, it } from "vitest";
 import { readNovelPassages, rememberNovelSource } from "@/rendering/novel_dom";
 
 describe("visual novel story source", () => {
+  it.each([
+    ["w_run", "You look at her."],
+    ["w_comment", 'You say, "What if ... I am not?"'],
+  ])("reads the live alpha action row once, excluding %s", (icon, text) => {
+    const output = document.createElement("div");
+    output.innerHTML = `<div id="transition-opacity"><div></div><span id="action-icon" aria-hidden="true">${icon}</span><div><span role="heading" aria-level="3"><span id="action-text"></span></span></div></div>`;
+    const container = output.firstElementChild as HTMLElement;
+    const source = container.lastElementChild as HTMLElement;
+    source.querySelector("span")!.setAttribute("aria-label", `Action ${text} `);
+    source.querySelector("#action-text")!.textContent = text + " ";
+    expect(readNovelPassages(output).map(p => p.text)).toEqual([text]);
+    rememberNovelSource(container, source);
+    source.style.display = "none";
+    source.before(source.cloneNode(true));
+    expect(readNovelPassages(output).map(p => p.text)).toEqual([text]);
+  });
   it("reads the supplied standalone Say block without an ID or accessibility label", () => {
     const output = document.createElement("div");
     output.innerHTML = `<div class="is_View _pos-relative _fd-column _fs-1 _w-10037" style="font-size: 18px; font-family: IBMPlexSansGameplay; line-height: 31.9667px; letter-spacing: normal;"><!----><!----><span style="color: inherit;"><!----><span><span><span>You say, "What if ... I am not?" </span></span></span></span></div>`;
