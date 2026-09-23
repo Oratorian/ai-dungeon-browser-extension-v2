@@ -50,6 +50,15 @@ describe("narrated continuation", () => {
     const frames = [{ source, offset: 0, text: "First sentence." }, { source, offset: 1, text: "Last sentence." }];
     expect(retainedNovelIndex(previous, 1, frames)).toBe(1);
   });
+  it("finds new actions when older history is virtualized or reformatted during Send", () => {
+    const before = ["Older text.", "Previous paragraph.", "Last sentence."];
+    expect(firstContinuationFrame(before, ["Previous paragraph.", "Last sentence."])).toBe(-1);
+    expect(firstContinuationFrame(before, ["Previous paragraph.", "Last sentence.", "You wave.", "She waves back."])).toBe(2);
+    expect(firstContinuationFrame(before, ["Last sentence.", "You wave."])).toBe(1);
+    expect(firstContinuationFrame(before, ["Changed older formatting.", "Last sentence.", "You wave."])).toBe(2);
+    expect(firstContinuationFrame(["Old\ntext."], ["Old text.", "You wave."])).toBe(1);
+    expect(firstContinuationFrame(["Older text.", "An unfinished"], ["An unfinished sentence."])).toBe(0);
+  });
   it("starts stable early text while later tokens are still streaming", () => {
     vi.useFakeTimers();
     try {

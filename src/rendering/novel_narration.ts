@@ -16,10 +16,23 @@ export function splitNarratedFrames(frames: NovelFrame[]): NovelFrame[] {
 
 /** Continue may append a passage or extend the final sentence in the existing passage. */
 export function firstContinuationFrame(before: string[], after: string[]): number {
+  // The gameplay list is virtualized. Earlier passages can disappear or be
+  // remounted while Send is in flight; anchor to the retained tail, not only
+  // an unchanged prefix of the entire loaded history.
+  const normalize = (text: string) => text.replace(/\s+/gu, " ").trim();
+  before = before.map(normalize);
+  after = after.map(normalize);
   let common = 0;
   while (common < before.length && common < after.length && before[common] === after[common]) common++;
   if (common === before.length) return common < after.length ? common : -1;
   if (common === before.length - 1 && after[common]?.startsWith(before[common]!)) return common;
+  const tail = before.at(-1);
+  if (tail) {
+    const anchor = after.findLastIndex(text => text === tail);
+    if (anchor >= 0) return anchor + 1 < after.length ? anchor + 1 : -1;
+    const extended = after.findLastIndex(text => text.startsWith(tail));
+    if (extended >= 0) return extended;
+  }
   return -1;
 }
 
