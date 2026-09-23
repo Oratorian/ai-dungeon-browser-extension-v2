@@ -37,6 +37,7 @@
   let nextSourceId = 0;
   let narrationQueue = $state<NarrationQueue>();
   let narrationStatus = $state("");
+  let narrationRuntime = $state("");
   let narrationVersion = $state(0);
   let narrationMuted = $state(false);
   let narrationAudio: HTMLAudioElement | undefined;
@@ -72,7 +73,12 @@
     const threads = $settings.novelTtsThreads;
     if (!enabled) return;
     let alive = true;
-    const narrator = new LocalNarrator({ voice, steps, threads }, message => { if (alive) narrationStatus = message; });
+    narrationRuntime = "";
+    const narrator = new LocalNarrator({ voice, steps, threads }, message => {
+      if (!alive) return;
+      if (message.startsWith("Narration ready:")) narrationRuntime = message;
+      if (!narrationQueue?.get(frame?.text ?? "")) narrationStatus = message;
+    });
     const queue = new NarrationQueue(text => narrator.generate(text), (text, error) => {
       if (!alive) return;
       if (text === frame?.text) narrationStatus = error ? `Narration failed: ${error}` : "Audio ready";
@@ -116,6 +122,10 @@
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
   const frame = $derived(frames[index]);
+  const nextNarrationReady = $derived.by(() => {
+    narrationVersion;
+    return !!(frames[index + 1] && narrationQueue?.get(frames[index + 1]!.text));
+  });
   const paragraphIndex = $derived.by(() => {
     for (let i = index; i >= 0; i--) if (frames[i]?.startsParagraph) return i;
     return -1;
@@ -361,6 +371,8 @@
             <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>
+            {#if nextNarrationReady}<span>Next line ready</span>{/if}
+            {#if narrationRuntime}<small>{narrationRuntime}</small>{/if}
           </div>
         {/if}
         {#if composing}
