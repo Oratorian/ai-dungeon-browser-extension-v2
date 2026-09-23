@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick, untrack } from "svelte";
+  import { onDestroy, tick, untrack } from "svelte";
   import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
@@ -11,7 +11,8 @@
   import { createNovelStageTracker } from "@/rendering/novel_stage";
   import { resolveNovelAssignments, type NovelAssignment } from "@/rendering/novel_assignments";
   import NovelComposer from "./novel_composer.svelte";
-  import { LocalNarrator, narrationWav } from "@/tts/client";
+  import { narrationWav } from "@/tts/client";
+  import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
   import { NarrationQueue, StableNarrationWindow } from "@/tts/queue";
   import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames } from "@/rendering/novel_narration";
 
@@ -39,7 +40,6 @@
   let narrationQueue = $state<NarrationQueue>();
   let narrationScheduler = $state<StableNarrationWindow>();
   let narrationStatus = $state("");
-  let narrationRuntime = $state("");
   let narrationVersion = $state(0);
   let narrationMuted = $state(false);
   let narrationAudio: HTMLAudioElement | undefined;
@@ -47,6 +47,16 @@
   let playbackToken = 0;
   let continuationSnapshot = $state<string[] | null>(null);
   let readWithoutAudio = $state(false);
+  const ttsReady = $derived($ttsState.phase === "ready");
+
+  $effect(() => {
+    configureTts($settings.novelTtsEnabled);
+  });
+  onDestroy(() => configureTts(false));
+  $effect(() => {
+    const message = $ttsState.message;
+    untrack(() => { if (!narrationQueue?.get(frame?.text ?? "")) narrationStatus = message; });
+  });
 
   function stopNarration() {
     playbackToken++;
@@ -70,20 +80,13 @@
   }
 
   $effect(() => {
-    const enabled = $settings.visualNovelMode && $settings.novelTtsEnabled && !!$playedAdventureId;
+    const enabled = $settings.visualNovelMode && $settings.novelTtsEnabled && ttsReady && !!$playedAdventureId;
     const adventure = $playedAdventureId;
     const voice = $settings.novelTtsVoice;
     const steps = $settings.novelTtsSteps;
-    const threads = $settings.novelTtsThreads;
     if (!enabled) return;
     let alive = true;
-    narrationRuntime = "";
-    const narrator = new LocalNarrator({ voice, steps, threads }, message => {
-      if (!alive) return;
-      if (message.startsWith("Narration ready:")) narrationRuntime = message;
-      if (!narrationQueue?.get(frame?.text ?? "")) narrationStatus = message;
-    });
-    const queue = new NarrationQueue(text => narrator.generate(text), (text, error) => {
+    const queue = new NarrationQueue(text => generateNarration(text, { voice, steps }), (text, error) => {
       if (!alive) return;
       if (text === frame?.text) narrationStatus = error ? `Narration failed: ${error}` : "Audio ready";
       narrationVersion++;
@@ -92,7 +95,7 @@
     const scheduler = new StableNarrationWindow(texts => queue.setWindow(texts));
     narrationScheduler = scheduler;
     return () => {
-      alive = false; stopNarration(); scheduler.dispose(); queue.dispose(); narrator.dispose();
+      alive = false; stopNarration(); scheduler.dispose(); queue.dispose();
       narrationQueue = undefined; narrationScheduler = undefined;
     };
   });
@@ -133,7 +136,7 @@
   const frame = $derived(frames[index]);
   const bufferingNarration = $derived.by(() => {
     narrationVersion;
-    return !!($settings.novelTtsEnabled && !narrationMuted && frame && !readWithoutAudio
+    return !!(ttsReady && $settings.novelTtsEnabled && !narrationMuted && frame && !readWithoutAudio
       && !narrationQueue?.get(frame.text) && !narrationQueue?.hasFailed(frame.text));
   });
   const nextNarrationReady = $derived.by(() => {
@@ -398,11 +401,13 @@
         {#if $settings.novelTtsEnabled}
           <div class="narration-controls">
             {#if bufferingNarration}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
-            <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame}>Read line</button>
+            {#if !ttsReady}
+              <button onclick={() => void initializeTts()} disabled={$ttsState.phase === "checking" || $ttsState.phase === "loading"}>Initialize TTS</button>
+            {/if}
+            <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame || !ttsReady}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>
             {#if nextNarrationReady}<span>Next line ready</span>{/if}
-            {#if narrationRuntime}<small>{narrationRuntime}</small>{/if}
           </div>
         {/if}
         {#if composing}

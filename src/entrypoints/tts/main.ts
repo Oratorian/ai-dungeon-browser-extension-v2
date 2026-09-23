@@ -8,6 +8,12 @@ let worker: Worker | undefined;
 let port: MessagePort | undefined;
 let requestId = 0;
 const cache = caches.open("supertonic3-aafc6e32-v1").catch(() => undefined);
+let allowDownload = false;
+const requiredAssets = [
+  "onnx/tts.json", "onnx/unicode_indexer.json",
+  ...["duration_predictor", "text_encoder", "vector_estimator", "vocoder"].map(name => `onnx/${name}.onnx`),
+  "voice_styles/M5.json", "voice_styles/F5.json",
+];
 
 window.addEventListener("message", event => {
   if (port || event.source !== parent || !/^https:\/\/(play|beta|alpha)\.aidungeon\.com$/.test(event.origin) || event.data?.type !== "de-tts-connect" || !event.ports[0]) return;
@@ -24,6 +30,7 @@ window.addEventListener("message", event => {
       const url = base + data.path;
       const storage = await cache;
       const hit = await storage?.match(url);
+      if (!hit && !allowDownload) throw new Error("Model files are missing. Click Initialize TTS to download them.");
       port?.postMessage({ type: "progress", message: `${hit ? "Loading cached" : "Downloading"} ${data.path}` });
       const bytes = hit ? await hit.arrayBuffer() : await bgFetchBytes(url, controller.signal);
       if (!hit && storage) {
@@ -35,8 +42,17 @@ window.addEventListener("message", event => {
       worker?.postMessage({ type: "asset", id: data.id, error: String(error) });
     }
   };
-  port.onmessage = ({ data }) => {
+  port.onmessage = async ({ data }) => {
+    if (data.type === "status") {
+      try {
+        const storage = await cache;
+        const complete = !!storage && (await Promise.all(requiredAssets.map(path => storage.match(base + path)))).every(Boolean);
+        port?.postMessage({ type: "cache", id: data.id, complete });
+      } catch (error) { port?.postMessage({ type: "error", id: data.id, message: String(error) }); }
+      return;
+    }
     if (data.type !== "load" && data.type !== "speak") return;
+    if (data.type === "load") allowDownload = data.download === true;
     requestId = data.id;
     worker?.postMessage(data);
   };

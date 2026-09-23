@@ -15,9 +15,10 @@ Read your adventure as a visual novel with character portraits and a dialogue pa
 under **Settings > Extension > Visual Novel Mode**, or toggle it directly from the floating
 button's quick actions. The quick-action icon highlights while the mode is enabled.
 
-- Optional **Browser narration** runs Supertonic locally with **M5** or **F5**, **5-10 steps**,
-  and **2, 4, 6, 8, or Auto CPU threads**. Browsers without cross-origin isolation use one thread.
-  Model downloads go through the background helper and are cached; story text stays in the browser.
+- Optional **Browser narration** runs Supertonic locally with **M5** or **F5** and **5-10 steps**.
+  **Enable TTS** shows Off, On with models needed, or On and fully available. **Initialize TTS**
+  downloads and loads both voices through the background helper. Cached models load automatically
+  when enabled again. Narration uses one CPU thread; story text stays in the browser.
 - Narration prepares the current line and the next three lines in a serial queue. **Next line ready**
   indicates cached audio. Navigation stops the previous line; **Read line** retries or replays it,
   and **Mute** silences playback while upcoming lines continue preparing.

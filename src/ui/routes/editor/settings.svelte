@@ -13,6 +13,7 @@
   import ImageCompression from "@/ui/components/image_compression.svelte";
   import ImageGenerationSettings from "@/ui/components/image_generation_settings.svelte";
   import TrinetraSettings from "@/ui/components/trinetra_settings.svelte";
+  import TtsSettings from "@/ui/components/tts_settings.svelte";
   import { MENTION_CARD_TYPES, type MentionCardType } from "@/aid/mentions";
 
   /* Storage */
@@ -73,8 +74,8 @@
     <Field label="Enable Visual Novel Mode" info="Read the loaded story as scenes with character portraits and Back/Next dialogue controls. Write action opens Do, Say, Story and Guide inside the scene. Return to game exposes AI Dungeon's normal controls.">
       <Switch bind:checked={$settings.visualNovelMode} />
     </Field>
-    <Field label="Browser narration" info="Generate English narration locally. First use downloads about 380 MiB of model files through the extension background helper and caches them for later use. Story text stays in your browser. The current line and next three lines are queued automatically.">
-      <Switch bind:checked={$settings.novelTtsEnabled} />
+    <Field label="Browser narration" info="Generate English narration locally. Initialize TTS downloads about 380 MiB of models through the background helper and loads both voices. Downloaded files are cached and load automatically next time TTS is enabled. Story text stays in your browser.">
+      <TtsSettings />
     </Field>
     <Field label="Narrator voice">
       <select aria-label="Narrator voice" bind:value={$settings.novelTtsVoice} class="p-2 rounded-lg bg-theme-neutral-200">
@@ -84,11 +85,6 @@
     <Field label="Generation steps" info="Fewer steps generate faster; more steps refine the audio.">
       <select aria-label="Generation steps" bind:value={$settings.novelTtsSteps} class="p-2 rounded-lg bg-theme-neutral-200">
         {#each [5, 6, 7, 8, 9, 10] as steps}<option value={steps}>{steps}</option>{/each}
-      </select>
-    </Field>
-    <Field label="CPU threads" info="Uses up to the selected number of available logical processors. Browsers without cross-origin isolation use one thread. Changing this restarts the narration engine.">
-      <select aria-label="CPU threads" bind:value={$settings.novelTtsThreads} class="p-2 rounded-lg bg-theme-neutral-200">
-        {#each ["2", "4", "6", "8", "auto"] as threads}<option value={threads}>{threads === "auto" ? "Auto" : threads}</option>{/each}
       </select>
     </Field>
     <p class="text-xs text-theme-neutral-800">Uses names, triggers and portraits from your selected extension card set. Each paragraph sets the scene with up to four matching characters, two on each side. Portraits stay through its narration and dialogue, then fade when the next paragraph changes the cast. No AI calls are needed.</p>

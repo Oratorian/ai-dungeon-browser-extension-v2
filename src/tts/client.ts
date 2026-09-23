@@ -7,8 +7,9 @@ export class LocalNarrator {
   private nextId = 0;
   private pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private ready: Promise<void>;
+  private serial: Promise<unknown> = Promise.resolve();
   private disposed = false;
-  constructor(private options: NarrationOptions, progress: (message: string) => void) {
+  constructor(progress: (message: string) => void) {
     this.iframe.hidden = true;
     this.iframe.title = "Local narration engine";
     this.iframe.src = browser.runtime.getURL("/tts.html");
@@ -27,9 +28,6 @@ export class LocalNarrator {
       };
       this.iframe.onload = () => this.iframe.contentWindow?.postMessage({ type: "de-tts-connect" }, "*", [this.channel.port2]);
       document.body.append(this.iframe);
-    }).then(async () => {
-      const result = await this.request({ type: "load", threads: options.threads });
-      progress(`Narration ready: ${result.threads} CPU thread${result.threads === 1 ? " (browser isolation limit)" : "s"}.`);
     });
     // Loading may fail before the queue's first request attaches its handler.
     void this.ready.catch(() => {});
@@ -47,9 +45,23 @@ export class LocalNarrator {
       this.channel.port1.postMessage({ ...message, id });
     });
   }
-  async generate(text: string): Promise<NarrationAudio> {
+  async cached(): Promise<boolean> {
     await this.ready;
-    return this.request({ type: "speak", text, voice: this.options.voice, steps: this.options.steps });
+    return (await this.request({ type: "status" })).complete === true;
+  }
+  async initialize(download: boolean): Promise<void> {
+    await this.ready;
+    await this.request({ type: "load", download });
+  }
+  generate(text: string, options: NarrationOptions): Promise<NarrationAudio> {
+    // A voice/quality change can replace the queue while an old request is still
+    // running. Serialize across queues so the worker never silently drops work.
+    const task = this.serial.then(async () => {
+      await this.ready;
+      return this.request({ type: "speak", text, voice: options.voice, steps: options.steps });
+    });
+    this.serial = task.catch(() => {});
+    return task;
   }
   dispose() {
     this.disposed = true;

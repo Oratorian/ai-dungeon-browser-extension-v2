@@ -17,10 +17,8 @@ async function asset(path) {
   return new Response(bytes);
 }
 
-async function initialize(threads = '4') {
-  if (!['2', '4', '6', '8', 'auto'].includes(threads)) throw new Error('Invalid CPU thread selection.');
-  const available = Math.max(1, navigator.hardwareConcurrency || 1);
-  ort.env.wasm.numThreads = self.crossOriginIsolated ? (threads === 'auto' ? available : Math.min(Number(threads), available)) : 1;
+async function initialize() {
+  ort.env.wasm.numThreads = 1;
   const cfg = await (await asset('onnx/tts.json')).json();
   const indexer = await (await asset('onnx/unicode_indexer.json')).json();
   const sessions = [];
@@ -61,7 +59,9 @@ self.onmessage = async ({ data }) => {
   busy = true;
   try {
     if (data.type === 'load') {
-      if (!engine) await initialize(data.threads);
+      if (!engine) await initialize();
+      await voiceStyle('M5');
+      await voiceStyle('F5');
       self.postMessage({ type: 'ready', threads: ort.env.wasm.numThreads });
     } else if (data.type === 'speak') {
       if (!engine) throw new Error('Load the model first.');

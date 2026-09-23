@@ -1,4 +1,4 @@
-export type NarrationOptions = { voice: "M5" | "F5"; steps: number; threads: string };
+export type NarrationOptions = { voice: "M5" | "F5"; steps: number };
 export type NarrationAudio = { samples: Float32Array; sampleRate: number };
 
 /** Debounce each text independently so a streaming tail cannot starve earlier sentences. */
