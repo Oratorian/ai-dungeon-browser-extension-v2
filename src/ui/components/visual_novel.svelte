@@ -46,7 +46,7 @@
   let narrationUrl: string | undefined;
   let playbackToken = 0;
   let continuationSnapshot = $state<string[] | null>(null);
-  let readWithoutAudio = $state("");
+  let readWithoutAudio = $state(false);
 
   function stopNarration() {
     playbackToken++;
@@ -133,7 +133,7 @@
   const frame = $derived(frames[index]);
   const bufferingNarration = $derived.by(() => {
     narrationVersion;
-    return !!($settings.novelTtsEnabled && !narrationMuted && frame && readWithoutAudio !== frame.text
+    return !!($settings.novelTtsEnabled && !narrationMuted && frame && !readWithoutAudio
       && !narrationQueue?.get(frame.text) && !narrationQueue?.hasFailed(frame.text));
   });
   const nextNarrationReady = $derived.by(() => {
@@ -175,7 +175,7 @@
     index = retained >= 0 ? retained : Math.max(0, frames.findIndex(f => f.source === latest));
     if (continuationSnapshot) {
       const next = firstContinuationFrame(continuationSnapshot, frames.map(f => f.text));
-      if (next >= 0) { index = next; continuationSnapshot = null; }
+      if (next >= 0) { index = next; continuationSnapshot = null; readWithoutAudio = false; }
     }
   }
 
@@ -187,7 +187,7 @@
     untrack(() => {
       continueController?.abort(); continuing = false; actionError = ""; openedParagraphs = new WeakMap();
       autoOpenAllowed = true;
-      continuationSnapshot = null; readWithoutAudio = "";
+      continuationSnapshot = null; readWithoutAudio = false;
       assignments = []; assigning = false; newCharacterName = "";
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
@@ -269,7 +269,7 @@
   function navigate(next: number) {
     next = Math.max(0, Math.min(frames.length - 1, next));
     if (next === index) return;
-    continuationSnapshot = null; readWithoutAudio = "";
+    continuationSnapshot = null; readWithoutAudio = false;
     autoOpenAllowed = true;
     index = next;
   }
@@ -307,7 +307,7 @@
     document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
   }
   function latest(rearm = true) {
-    continuationSnapshot = null; readWithoutAudio = "";
+    continuationSnapshot = null; readWithoutAudio = false;
     if (rearm) autoOpenAllowed = true;
     const source = frames.at(-1)?.source;
     index = Math.max(0, frames.findIndex(f => f.source === source));
@@ -397,7 +397,7 @@
         {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
         {#if $settings.novelTtsEnabled}
           <div class="narration-controls">
-            {#if bufferingNarration}<button onclick={() => readWithoutAudio = frame?.text ?? ""}>Read now</button>{/if}
+            {#if bufferingNarration}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
             <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>

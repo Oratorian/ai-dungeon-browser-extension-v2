@@ -21,6 +21,9 @@ button's quick actions. The quick-action icon highlights while the mode is enabl
 - Narration prepares the current line and the next three lines in a serial queue. **Next line ready**
   indicates cached audio. Navigation stops the previous line; **Read line** retries or replays it,
   and **Mute** silences playback while upcoming lines continue preparing.
+- **Continue** keeps your current position until the first new line arrives instead of rewinding
+  the old response. Narrated passages use short sentence chunks, preparing complete sentences
+  while later text streams. Text waits for its audio, with **Read now** available to skip buffering.
 
 - **Back**, **Next**, and keyboard navigation move through narration and dialogue. **Latest
   passage** jumps to the newest loaded passage.
