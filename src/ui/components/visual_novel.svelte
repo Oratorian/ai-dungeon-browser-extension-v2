@@ -545,13 +545,13 @@
   .portrait { width: 100%; height: 100%; object-fit: cover; object-position: center top; mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
   .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + 24px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
-  .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; width: 100%; max-height: 55%; min-height: 220px; flex-shrink: 0; }
+  .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + clamp(12px, 3vw, 32px) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
-  .voice-panel { position: relative; grid-column: 1; align-self: end; width: clamp(160px, 18vw, 220px); max-height: 100%; overflow: auto; }
+  .voice-panel { position: absolute; bottom: 0; left: 0; z-index: 1; width: clamp(160px, 18vw, 220px); max-height: 60vh; overflow: auto; }
   .voice-panel .audio-menu { display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
   .voice-panel:hover .audio-menu, .voice-panel:has(:focus-visible) .audio-menu { opacity: 1; pointer-events: auto; }
   @media (prefers-reduced-motion: reduce) { .voice-panel .audio-menu { transition: none; } }
-  .action-panel { grid-column: 3; min-width: 0; align-self: end; width: min(320px, 30vw); height: min(360px, 40vh); overflow: auto; }
+  .action-panel { position: absolute; bottom: 0; right: 0; z-index: 1; min-width: 0; width: min(320px, 30vw); height: min(360px, 40vh); overflow: auto; }
   .action-menu { min-height: 100%; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
   .action-panel:hover .action-menu, .action-panel:has(:focus-visible) .action-menu { opacity: 1; pointer-events: auto; }
   @media (prefers-reduced-motion: reduce) { .action-menu { transition: none; } }
@@ -578,12 +578,10 @@
   .reading-controls span { color: #b9c2c8; font-size: 13px; white-space: nowrap; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 900px) {
-    .reader-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 65%; min-height: 0; }
-    .dialogue { grid-column: 1 / -1; grid-row: 1; min-height: 180px; }
-    .voice-panel, .action-panel { align-self: end; max-height: none; }
-    .action-panel { justify-self: end; width: min(320px, 100%); height: 30vh; }
-    .voice-panel { grid-column: 1; grid-row: 2; width: 100%; max-width: 220px; max-height: 30vh; }
-    .action-panel { grid-column: 2; grid-row: 2; }
+    .reader-panels { grid-template-columns: minmax(0, 1fr); max-height: 65%; }
+    .dialogue { grid-column: 1; }
+    .voice-panel, .action-panel { bottom: calc(100% + 12px); width: calc(50% - 8px); max-height: 30vh; }
+    .action-panel { height: 30vh; }
   }
   @media (max-width: 500px) { .novel { --scene-gap: 10px; } .tools { gap: 6px; } button { padding: 7px 10px; font-size: 13px; } .dialogue { gap: 10px; } .stage-caption { font-size: 13px; } }
 </style>
