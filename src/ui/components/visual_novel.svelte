@@ -27,6 +27,7 @@
   let retryEditing = $state(false);
   let retryInstruction = $state("");
   let locationOverride = $state("__auto");
+  let locationMenuOpen = $state(false);
   let locationSeed = $state<string | null>(null);
   let failedBackground = $state("");
   let continuing = $state(false);
@@ -219,7 +220,7 @@
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
       retryEditing = false; retryInstruction = "";
-      locationOverride = "__auto"; locationSeed = null; failedBackground = "";
+      locationMenuOpen = false; locationOverride = "__auto"; locationSeed = null; failedBackground = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
     });
     if (!enabled || !adventure) return;
@@ -366,6 +367,9 @@
     index = Math.max(0, frames.findIndex(f => f.source === source));
   }
   function key(event: KeyboardEvent) {
+    if (event.key === "Escape" && locationMenuOpen) {
+      event.preventDefault(); event.stopPropagation(); scene?.focus(); locationMenuOpen = false; return;
+    }
     event.stopPropagation();
     if (event.key === "Tab" && scene) {
       const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled)")];
@@ -400,15 +404,22 @@
       {/if}
       <header>
         <span class="title">VISUAL NOVEL <small>Story reader</small></span>
-        <div class="location-control">
-          <Select ariaLabel="Scene location" portal={false} allowDeselect={false} bind:value={locationOverride}
-            items={[{ value: "__auto", label: `Automatic: ${automaticLocation?.name ?? "Unknown location"}` }, { value: "__none", label: "No background" }, ...locations.map(location => ({ value: location.id, label: location.name }))]} />
-          <small>{locationOverride !== "__auto" ? "Manual background; select Automatic to resume tracking." : "Location tracked from story text."}{currentLocation && !background ? " No location artwork available." : ""}</small>
-        </div>
         <div class="tools">
           <button onclick={openSettings}>Settings</button>
           <button onclick={() => $settings.visualNovelMode = false}>Exit mode</button>
           <button onclick={write}>Return to game</button>
+          <div class="location-control" role="group" aria-label="Location controls"
+            onmouseenter={() => locationMenuOpen = true}
+            onmouseleave={(event) => { if (!event.currentTarget.querySelector(".location-panel")?.matches(":focus-within")) locationMenuOpen = false; }}
+            onfocusin={() => locationMenuOpen = true}
+            onfocusout={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) locationMenuOpen = false; }}>
+            <button aria-expanded={locationMenuOpen} aria-controls="novel-location-panel" onclick={() => locationMenuOpen = true}>Location</button>
+            <div id="novel-location-panel" class="location-panel" hidden={!locationMenuOpen}>
+              <Select ariaLabel="Scene location" portal={false} allowDeselect={false} bind:value={locationOverride}
+                items={[{ value: "__auto", label: `Automatic: ${automaticLocation?.name ?? "Unknown location"}` }, { value: "__none", label: "No background" }, ...locations.map(location => ({ value: location.id, label: location.name }))]} />
+              <small>{locationOverride !== "__auto" ? "Manual background; select Automatic to resume tracking." : "Location tracked from story text."}{currentLocation && !background ? " No location artwork available." : ""}</small>
+            </div>
+          </div>
         </div>
       </header>
       <div class="stage" role="group" aria-label="Characters in the scene">
@@ -481,7 +492,10 @@
   .novel { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px); gap: 16px; color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
   .location-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; pointer-events: none; }
   .location-shade { position: absolute; inset: 0; background: linear-gradient(#10171d9c, #10171d30 45%, #10171dc9); z-index: -1; pointer-events: none; }
-  .location-control { width: min(320px, 100%); display: flex; flex-direction: column; gap: 4px; }
+  .location-control { position: relative; }
+  .location-panel { position: absolute; top: 100%; right: 0; z-index: 10; width: min(320px, calc(100vw - 24px)); padding: 12px; display: flex; flex-direction: column; gap: 4px; background: #202b34; border: 1px solid #64727c; border-radius: 8px; box-shadow: 0 8px 24px #0006; }
+  .location-panel[hidden] { display: none; }
+  .tools { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
   .location-control small { font-size: 11px; }
   header, .tools, footer { display: flex; align-items: center; gap: 12px; }
   header { justify-content: space-between; flex-wrap: wrap; }
