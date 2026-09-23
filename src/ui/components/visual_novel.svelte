@@ -3,7 +3,7 @@
   import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
-  import { continueStory, retryStory, browseRetryHistory, closeRetryHistory, retryHistoryCount } from "@/aid/action_input";
+  import { continueStory, retryStory, retryStoryWithChanges, browseRetryHistory, closeRetryHistory, retryHistoryCount } from "@/aid/action_input";
   import { extensionState, type SettingsSection } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
@@ -23,6 +23,8 @@
   let index = $state(0);
   let paused = $state(false);
   let composing = $state(false);
+  let retryEditing = $state(false);
+  let retryInstruction = $state("");
   let assigning = $state(false);
   let newCharacterName = $state("");
   let assignments = $state<NovelAssignment[]>([]);
@@ -212,6 +214,7 @@
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
       assignments = []; assigning = false; newCharacterName = "";
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
+      retryEditing = false; retryInstruction = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
     });
     if (!enabled || !adventure) return;
@@ -272,7 +275,7 @@
     stopNarration();
   }
 
-  async function retryReading() {
+  async function retryReading(instruction?: string) {
     if (continuing || retryTracker || continuationSnapshot || (composing && composerBusy) || playedShortId() !== $playedAdventureId) return;
     refresh();
     const passages = output ? readNovelPassages(output) : [];
@@ -285,8 +288,9 @@
     const controller = new AbortController();
     continueController = controller;
     try {
-      await retryStory(controller.signal);
-      if (!controller.signal.aborted) { composing = false; refresh(); }
+      if (instruction !== undefined) await retryStoryWithChanges(instruction, controller.signal);
+      else await retryStory(controller.signal);
+      if (!controller.signal.aborted) { composing = false; retryEditing = false; retryInstruction = ""; refresh(); }
     } catch (e) {
       if (!controller.signal.aborted) { retryTracker = null; actionError = (e as Error).message; }
     } finally { if (!controller.signal.aborted) continuing = false; }
@@ -479,6 +483,16 @@
           <NovelComposer blocked={continuing || !!retryTracker} onbusychange={busy => composerBusy = busy} onclose={() => composing = false}
             onsubmitting={submitting} onsubmitted={submitted} onsubmitfailed={() => { continuationSnapshot = null; }} />
         {/if}
+        {#if retryEditing}
+          <form class="retry-instructions" onsubmit={event => { event.preventDefault(); void retryReading(retryInstruction); }}>
+            <label for="vn-retry-instructions">What should the AI change?</label>
+            <textarea id="vn-retry-instructions" bind:value={retryInstruction} maxlength="1000" rows="2" placeholder="Tell the AI what to change..." disabled={continuing || !!retryTracker}></textarea>
+            <div class="tools">
+              <button type="button" onclick={() => retryEditing = false} disabled={continuing || !!retryTracker}>Cancel</button>
+              <button class="accent" type="submit" disabled={!retryInstruction.trim() || continuing || !!retryTracker}>Retry with these changes</button>
+            </div>
+          </form>
+        {/if}
         {#if actionError}<p role="alert" class="action-error">{actionError}</p>{/if}
         <footer>
           <button onclick={() => navigate(index - 1)} disabled={index === 0 || !frames.length}>Back</button>
@@ -486,11 +500,12 @@
           <button onclick={() => latest()} disabled={!frames.length}>Latest passage</button>
           <button class="accent" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
           <div class="retry-control" role="group" aria-label="Retry controls">
-            <button onclick={retryReading} title="Regenerate AI Dungeon's latest response" disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{retryTracker ? "Retrying..." : "Retry"}</button>
+            <button onclick={() => retryReading()} title="Regenerate AI Dungeon's latest response" disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{retryTracker ? "Retrying..." : "Retry"}</button>
+            <button class="retry-edit" aria-label="Retry with changes" aria-expanded={retryEditing} title="Retry with an instruction" onclick={() => { retryEditing = !retryEditing; composing = false; }} disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}><span class="font-symbol" aria-hidden="true">edit</span></button>
             {#if historyCount > 1}<button class="retry-count" onclick={showRetryHistory} aria-label={`Retry history: ${historyCount} responses`} title="Choose an existing retry response" disabled={continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{historyCount}</button>{/if}
           </div>
           <button onclick={continueReading} disabled={continuing || !!retryTracker || (composing && composerBusy)}>{continuing && !retryTracker ? "Continuing..." : "Continue"}</button>
-          <button class="accent" aria-expanded={composing} disabled={continuing || !!retryTracker || (composing && composerBusy)} onclick={() => composing = !composing}>Actions</button>
+          <button class="accent" aria-expanded={composing} disabled={continuing || !!retryTracker || (composing && composerBusy)} onclick={() => { composing = !composing; retryEditing = false; }}>Actions</button>
         </footer>
       </div>
     </div>
@@ -535,7 +550,11 @@
   .retry-control button:first-child { border-radius: 8px 0 0 8px; }
   .retry-control button:last-child { border-radius: 0 8px 8px 0; }
   .retry-control button:only-child { border-radius: 8px; }
-  .retry-control .retry-count { border-left: 0; min-width: 38px; padding-inline: 10px; font-variant-numeric: tabular-nums; }
+  .retry-control button + button { border-left: 0; }
+  .retry-control .retry-count, .retry-control .retry-edit { min-width: 38px; padding-inline: 10px; font-variant-numeric: tabular-nums; }
+  .retry-edit .font-symbol { display: block; margin: 0; color: inherit; }
+  .retry-instructions { display: flex; flex-direction: column; gap: 8px; }
+  .retry-instructions textarea { resize: vertical; min-height: 60px; max-height: 20vh; border: 1px solid #64727c; border-radius: 8px; padding: 10px; background: #0e171f; color: #eee8de; font: inherit; }
   footer span { margin-right: auto; color: #b9c2c8; font-size: 13px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 500px) { .novel { gap: 10px; } .tools { gap: 6px; } button { padding: 7px 10px; font-size: 13px; } .dialogue { max-height: 65%; gap: 10px; } .stage-caption { font-size: 13px; } }

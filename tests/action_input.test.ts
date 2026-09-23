@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { ACTION_MODES, continueStory, retryStory, browseRetryHistory, closeRetryHistory, retryHistoryCount, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft } from "@/aid/action_input";
+import { ACTION_MODES, continueStory, retryStory, retryStoryWithChanges, browseRetryHistory, closeRetryHistory, retryHistoryCount, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft } from "@/aid/action_input";
 
 let sent: { value: string; mode: string | null }[];
 beforeEach(() => {
@@ -39,6 +39,26 @@ beforeEach(() => {
 });
 
 describe("visual novel native action adapter", () => {
+  it("sends retry instructions through the native input while preserving the action draft", async () => {
+    writeActionDraft("My next action");
+    const opener = document.createElement("button"); opener.setAttribute("aria-label", "Retry with changes");
+    const instructions: string[] = [];
+    opener.onclick = () => {
+      const field = document.createElement("input"); field.id = "generation-instructions-input";
+      const send = document.createElement("button"); send.setAttribute("aria-label", "Retry with these changes"); send.disabled = true;
+      field.oninput = () => send.disabled = !field.value.trim();
+      send.onclick = () => instructions.push(field.value);
+      document.body.append(field, send);
+    };
+    document.body.append(opener);
+    await retryStoryWithChanges("Keep the dialogue.\nChange the setting.", new AbortController().signal);
+    expect(instructions).toEqual(["Keep the dialogue. Change the setting."]);
+    expect(readActionInput().value).toBe("My next action"); expect(sent).toEqual([]);
+    await expect(retryStoryWithChanges(" ", new AbortController().signal)).rejects.toThrow("Describe");
+    const aborted = new AbortController(); aborted.abort();
+    await expect(retryStoryWithChanges("No send", aborted.signal)).rejects.toThrow();
+    expect(instructions).toHaveLength(1);
+  });
   it("opens and dismisses the native retry picker without generating or submitting", async () => {
     const history = document.createElement("button");
     history.setAttribute("aria-label", "Retry history"); history.setAttribute("aria-expanded", "false");

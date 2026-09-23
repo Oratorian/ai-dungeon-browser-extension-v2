@@ -22,6 +22,40 @@ export async function retryStory(signal: AbortSignal) {
   return runStoryCommand("retry", signal);
 }
 
+/** Only the VN instruction form's explicit submit calls this; opening it never retries. */
+export async function retryStoryWithChanges(instruction: string, signal: AbortSignal) {
+  signal.throwIfAborted();
+  if (!instruction.trim()) throw new Error("Describe what the AI should change first.");
+  if (instruction.length > 1000) throw new Error("Retry instructions must be at most 1000 characters.");
+  // AI Dungeon uses a single-line input; preserve word boundaries from our textarea.
+  instruction = instruction.replace(/\r\n?|\n/g, " ");
+  const route = location.pathname;
+  const draft = input()?.value;
+  if (draft) deferredDrafts.set(route, draft);
+  const field = () => document.querySelector<HTMLInputElement>("#generation-instructions-input");
+  const opener = () => [...document.querySelectorAll<HTMLElement>('[aria-label="Retry with changes"]')]
+    .find(button => !button.closest('[aria-hidden="true"]') && !disabled(button)) ?? null;
+  if (!field()) {
+    if (!opener()) document.querySelector<HTMLElement>('[aria-label="Close text input"]')?.click();
+    const button = await until(opener, signal, "Retry with changes is not available yet.");
+    signal.throwIfAborted();
+    if (location.pathname !== route) throw new Error("The adventure changed. Retry was cancelled.");
+    button.click();
+  }
+  const editor = await until(field, signal, "AI Dungeon's retry instruction field did not open.");
+  signal.throwIfAborted();
+  if (location.pathname !== route || editor.disabled || editor.readOnly) throw new Error("Retry instructions are not available for this adventure.");
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(editor, instruction);
+  editor.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText" }));
+  const send = await until(() => {
+    const button = document.querySelector<HTMLElement>('[aria-label="Retry with these changes"]');
+    return !disabled(button) && button;
+  }, signal, "AI Dungeon is not ready to retry with these changes.");
+  signal.throwIfAborted();
+  if (location.pathname !== route || !editor.isConnected || editor.value !== instruction) throw new Error("The retry instructions changed. Check them before sending again.");
+  send.click();
+}
+
 const historyButton = () => [...document.querySelectorAll<HTMLElement>('[aria-label="Retry history"]')]
   .find(button => !button.closest('[aria-hidden="true"]') && !disabled(button)) ?? null;
 
