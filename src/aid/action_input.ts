@@ -22,6 +22,40 @@ export async function retryStory(signal: AbortSignal) {
   return runStoryCommand("retry", signal);
 }
 
+const historyButton = () => [...document.querySelectorAll<HTMLElement>('[aria-label="Retry history"]')]
+  .find(button => !button.closest('[aria-hidden="true"]') && !disabled(button)) ?? null;
+
+export function retryHistoryCount(): number {
+  return Number(historyButton()?.textContent?.trim()) || 0;
+}
+
+export function closeRetryHistory() {
+  const button = historyButton();
+  if (button?.getAttribute("aria-expanded") === "true") button.click();
+}
+
+/** Let the native picker own previewing and selecting existing alternatives. */
+export async function browseRetryHistory(signal: AbortSignal) {
+  signal.throwIfAborted();
+  const route = location.pathname;
+  if (!historyButton()) {
+    const close = document.querySelector<HTMLElement>('[aria-label="Close text input"]');
+    const draft = input()?.value;
+    if (close && draft) deferredDrafts.set(route, draft);
+    close?.click();
+  }
+  const button = await until(historyButton, signal, "Retry history is not available for this response.");
+  signal.throwIfAborted();
+  if (location.pathname !== route) throw new Error("The adventure changed. Retry history was cancelled.");
+  if (button.getAttribute("aria-expanded") !== "true") button.click();
+  await until(() => historyButton()?.getAttribute("aria-expanded") === "true", signal, "Retry history did not open.");
+  while (historyButton()?.getAttribute("aria-expanded") === "true") {
+    signal.throwIfAborted();
+    if (location.pathname !== route) throw new Error("The adventure changed. Retry history was cancelled.");
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+}
+
 async function runStoryCommand(command: "continue" | "retry", signal: AbortSignal) {
   signal.throwIfAborted();
   const route = location.pathname;

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { ACTION_MODES, continueStory, retryStory, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft } from "@/aid/action_input";
+import { ACTION_MODES, continueStory, retryStory, browseRetryHistory, closeRetryHistory, retryHistoryCount, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft } from "@/aid/action_input";
 
 let sent: { value: string; mode: string | null }[];
 beforeEach(() => {
@@ -39,6 +39,19 @@ beforeEach(() => {
 });
 
 describe("visual novel native action adapter", () => {
+  it("opens and dismisses the native retry picker without generating or submitting", async () => {
+    const history = document.createElement("button");
+    history.setAttribute("aria-label", "Retry history"); history.setAttribute("aria-expanded", "false");
+    history.textContent = "3";
+    history.onclick = () => history.setAttribute("aria-expanded", String(history.getAttribute("aria-expanded") !== "true"));
+    document.body.append(history);
+    expect(retryHistoryCount()).toBe(3);
+    const pending = browseRetryHistory(new AbortController().signal);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(history.getAttribute("aria-expanded")).toBe("true");
+    closeRetryHistory(); await pending;
+    expect(history.getAttribute("aria-expanded")).toBe("false"); expect(sent).toEqual([]);
+  });
   it("retries only the visible native command without submitting a draft", async () => {
     writeActionDraft("Unsaved action");
     let retries = 0, hiddenClicks = 0;

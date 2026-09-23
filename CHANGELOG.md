@@ -70,6 +70,9 @@ button's quick actions. The quick-action icon highlights while the mode is enabl
 - **Retry** regenerates AI Dungeon's latest response. It stops narration, clears the upcoming
   audio queue, waits for replacement text, and starts reading at the replacement's first line.
   Your unfinished action draft is preserved.
+- The number beside **Retry** opens AI Dungeon's native retry-history picker. Browse and select
+  an existing response, then return automatically to VN at that version's first line with fresh
+  narration. Dismissing the picker keeps your current response.
 - **Return to game** reveals the normal interface; **Resume visual novel** reopens the reader.
   **Exit mode** switches it off.
 

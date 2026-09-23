@@ -3,7 +3,7 @@
   import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
-  import { continueStory, retryStory } from "@/aid/action_input";
+  import { continueStory, retryStory, browseRetryHistory, closeRetryHistory, retryHistoryCount } from "@/aid/action_input";
   import { extensionState, type SettingsSection } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
@@ -45,6 +45,9 @@
   let playbackToken = 0;
   let continuationSnapshot = $state<string[] | null>(null);
   let retryTracker = $state<ReturnType<typeof trackRetriedPassage> | null>(null);
+  let historyOpen = $state(false);
+  let historyCount = $state(0);
+  let historyController: AbortController | undefined;
   let readWithoutAudio = $state(false);
   const ttsReady = $derived($ttsState.phase === "ready");
   const narrationEnabled = $derived($settings.novelTtsEnabled);
@@ -72,7 +75,7 @@
   function playNarration() {
     stopNarration();
     const audio = frame && narrationQueue?.get(frame.text);
-    if (!audio || !active || paused || continuing || continuationSnapshot || retryTracker || narrationMuted) return;
+    if (!audio || !active || paused || historyOpen || continuing || continuationSnapshot || retryTracker || narrationMuted) return;
     const token = playbackToken;
     narrationUrl = URL.createObjectURL(narrationWav(audio, $settings.novelTtsPitch));
     narrationAudio = new Audio(narrationUrl);
@@ -165,6 +168,7 @@
 
   function refresh() {
     if (playedShortId() !== $playedAdventureId) return;
+    historyCount = retryHistoryCount();
     const currentOutput = document.querySelector<HTMLElement>("#gameplay-output");
     if (currentOutput !== output) { output = currentOutput; lastSignature = ""; }
     const passages = output ? readNovelPassages(output) : [];
@@ -204,6 +208,7 @@
     const narrated = narrationEnabled;
     untrack(() => {
       continueController?.abort(); continuing = false; actionError = "";
+      historyController?.abort(); closeRetryHistory(); historyOpen = false; historyCount = 0;
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
       assignments = []; assigning = false; newCharacterName = "";
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
@@ -220,7 +225,7 @@
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     untrack(refresh);
-    return () => { observer.disconnect(); cancelAnimationFrame(queued); continueController?.abort(); };
+    return () => { observer.disconnect(); cancelAnimationFrame(queued); continueController?.abort(); historyController?.abort(); closeRetryHistory(); };
   });
 
   function assignCharacter(characterId: string) {
@@ -292,6 +297,44 @@
     refresh();
   }
 
+  async function showRetryHistory() {
+    if (historyOpen || continuing || retryTracker || continuationSnapshot || (composing && composerBusy)) return;
+    const adventure = playedShortId();
+    const before = output ? readNovelPassages(output) : [];
+    const audio = narrationAudio;
+    const resumeAudio = !!audio && !audio.paused && !audio.ended;
+    audio?.pause();
+    historyOpen = true; actionError = "";
+    const controller = new AbortController();
+    historyController = controller;
+    try {
+      await tick(); // Release the VN modal's inert state before opening the native picker.
+      await browseRetryHistory(controller.signal);
+    } catch (e) {
+      if (!controller.signal.aborted) actionError = (e as Error).message;
+    } finally {
+      if (historyController === controller) {
+        historyController = undefined;
+        closeRetryHistory(); historyOpen = false;
+        if (playedShortId() === adventure && active) {
+          refresh();
+          const after = output ? readNovelPassages(output) : [];
+          const replacement = trackRetriedPassage(before)(after);
+          if (replacement >= 0) {
+            stopNarration(); narrationScheduler?.setWindow([]); narrationQueue?.setWindow([]);
+            index = Math.max(0, frames.findIndex(f => f.source === after[replacement]!.element));
+            readWithoutAudio = false;
+            // Re-arm even if the selected response starts with the same sentence.
+            narrationScheduler?.setWindow(frames.slice(index, index + queueSize + 1).map(f => f.text));
+          } else if (resumeAudio && narrationAudio === audio) {
+            void audio!.play().catch(() => { narrationStatus = "Audio ready. Click Read line to play."; });
+          }
+          await tick(); scene?.focus();
+        }
+      }
+    }
+  }
+
   function navigate(next: number) {
     next = Math.max(0, Math.min(frames.length - 1, next));
     if (next === index) return;
@@ -302,7 +345,7 @@
   // The scene is a modal reader. Keep the covered game out of the tab order, and restore its
   // previous state when returning to the textbox or opening extension settings.
   $effect(() => {
-    if (!active || paused) return;
+    if (!active || paused || historyOpen) return;
     const previous = new Map<HTMLElement, boolean>();
     const isolate = () => {
       for (const child of document.body.children) {
@@ -359,7 +402,9 @@
 </script>
 
 {#if active}
-  {#if paused}
+  {#if historyOpen}
+    <button class="resume" onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
+  {:else if paused}
     <button class="resume" onclick={resume}>Resume visual novel</button>
   {:else}
     <div class="novel" role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
@@ -441,6 +486,7 @@
           <button onclick={() => latest()} disabled={!frames.length}>Latest passage</button>
           <button class="accent" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
           <button onclick={retryReading} title="Regenerate AI Dungeon's latest response" disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{retryTracker ? "Retrying..." : "Retry"}</button>
+          {#if historyCount > 1}<button onclick={showRetryHistory} aria-label={`Retry history: ${historyCount} responses`} title="Choose an existing retry response" disabled={continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{historyCount}</button>{/if}
           <button onclick={continueReading} disabled={continuing || !!retryTracker || (composing && composerBusy)}>{continuing && !retryTracker ? "Continuing..." : "Continue"}</button>
           <button class="accent" aria-expanded={composing} disabled={continuing || !!retryTracker || (composing && composerBusy)} onclick={() => composing = !composing}>Actions</button>
         </footer>
