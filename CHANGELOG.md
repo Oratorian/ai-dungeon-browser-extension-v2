@@ -9,6 +9,12 @@ it, and keep the newest version at the top.
 
 ## v3.0.0
 
+### Story text fixes
+
+- Character highlighting now matches visible text nodes instead of serialized HTML. Characters
+  named Aria, Span, or Mark cannot split accessibility attributes or formatting tags into the story.
+  Inline formatting and escaped text remain intact.
+
 ### 🎭 Visual Novel Mode
 
 Read your adventure as a visual novel with character portraits and a dialogue panel. Enable it
