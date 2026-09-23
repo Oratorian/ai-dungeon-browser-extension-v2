@@ -457,7 +457,7 @@
       <div class="reading-shade" aria-hidden="true"></div>
       <div class="reader-panels" bind:clientHeight={readerHeight}>
         {#if $settings.novelTtsEnabled}
-        <aside class="voice-panel" aria-label="Narration controls">
+        <aside class="voice-panel" aria-label="Narration controls" aria-describedby="novel-audio-hint">
           <div id="novel-audio-menu" class="narration-controls audio-menu">
             {#if bufferingNarration && !retryTracker}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
             {#if !ttsReady}
@@ -468,6 +468,7 @@
             <span role="status">{narrationStatus}</span>
             <span class="queue-badge" role="status" title="Generated audio for the next available lines, excluding the current line">{upcomingNarration.ready}/{upcomingNarration.total} upcoming lines ready</span>
           </div>
+          <small id="novel-audio-hint" class="hover-hint">Hover here for audio controls</small>
         </aside>
         {/if}
       <div class="dialogue">
@@ -505,7 +506,7 @@
       </div>
         <!-- The hover region also needs a keyboard entry point before its composer mounts. -->
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <aside class="action-panel" aria-label="Story actions" tabindex="0"
+        <aside class="action-panel" aria-label="Story actions" aria-describedby="novel-actions-hint" tabindex="0"
           onmouseenter={() => { if (!continuing && !retryTracker) { composing = true; retryEditing = false; } }}
           onfocusin={() => { if (!continuing && !retryTracker) { composing = true; retryEditing = false; } }}>
           <div class="action-menu">
@@ -514,6 +515,7 @@
             onsubmitting={submitting} onsubmitted={submitted} onsubmitfailed={() => { continuationSnapshot = null; }} />
         {/if}
           </div>
+          <small id="novel-actions-hint" class="hover-hint">Hover here for actions</small>
         </aside>
       </div>
     </div>
@@ -547,12 +549,14 @@
   .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + 24px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + clamp(12px, 3vw, 32px) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
+  .voice-panel, .action-panel { display: flex; flex-direction: column; }
+  .hover-hint { flex-shrink: 0; text-align: center; font-size: 11px; line-height: 1.4; color: #b9c2c8; margin: 6px 0 0; }
   .voice-panel { position: absolute; bottom: 0; left: 0; z-index: 1; width: clamp(160px, 18vw, 220px); max-height: 60vh; overflow: auto; }
-  .voice-panel .audio-menu { display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
+  .voice-panel .audio-menu { min-height: 0; overflow: auto; display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
   .voice-panel:hover .audio-menu, .voice-panel:has(:focus-visible) .audio-menu { opacity: 1; pointer-events: auto; }
   @media (prefers-reduced-motion: reduce) { .voice-panel .audio-menu { transition: none; } }
   .action-panel { position: absolute; bottom: 0; right: 0; z-index: 1; min-width: 0; width: min(320px, 30vw); height: min(360px, 40vh); overflow: auto; }
-  .action-menu { min-height: 100%; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
+  .action-menu { flex: 1; min-height: 0; overflow: auto; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
   .action-panel:hover .action-menu, .action-panel:has(:focus-visible) .action-menu { opacity: 1; pointer-events: auto; }
   @media (prefers-reduced-motion: reduce) { .action-menu { transition: none; } }
   .dialogue { grid-column: 2; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: transparent; padding: clamp(14px, 3vw, 28px); }
