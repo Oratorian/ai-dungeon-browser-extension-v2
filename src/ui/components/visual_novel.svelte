@@ -9,6 +9,8 @@
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
   import { createNovelStageTracker } from "@/rendering/novel_stage";
+  import { createNovelLocationTracker, retainedLocationSeed, type NovelLocation } from "@/rendering/novel_location";
+  import Select from "./select.svelte";
   import NovelComposer from "./novel_composer.svelte";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
@@ -24,6 +26,9 @@
   let composing = $state(false);
   let retryEditing = $state(false);
   let retryInstruction = $state("");
+  let locationOverride = $state("__auto");
+  let locationSeed = $state<string | null>(null);
+  let failedBackground = $state("");
   let continuing = $state(false);
   let composerBusy = $state(false);
   let actionError = $state("");
@@ -155,6 +160,15 @@
   const trackStage = $derived(createNovelStageTracker(characters));
   const stages = $derived(trackStage(frames));
   const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => characters.find(c => c.id === id)));
+  const locations: NovelLocation[] = $derived(($selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [])
+    .filter(card => card.type.trim().toLowerCase() === "location")
+    .map(card => ({ id: card.id, name: card.name, triggers: card.triggers, background: card.graphics[card.graphicIndex] || card.graphics[0] }))
+    .sort((a, b) => a.name.localeCompare(b.name)));
+  const trackLocation = $derived(createNovelLocationTracker(locations));
+  const locationTimeline = $derived(trackLocation(frames, locationSeed));
+  const automaticLocation = $derived(locations.find(location => location.id === locationTimeline[index]));
+  const currentLocation = $derived(locationOverride === "__auto" ? automaticLocation : locations.find(location => location.id === locationOverride));
+  const background = $derived(currentLocation?.background && currentLocation.background !== failedBackground ? currentLocation.background : undefined);
   const active = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
 
   function refresh() {
@@ -170,11 +184,14 @@
     if (signature === lastSignature) return;
     lastSignature = signature;
     const previous = frames[index];
+    const previousFrames = frames;
+    const previousLocations = locationTimeline;
     frames = passages.flatMap(p => {
       const parsed = parseNovel(p.text);
       return ($settings.novelTtsEnabled ? splitNarratedFrames(parsed) : parsed)
         .map((f, offset) => ({ ...f, source: p.element, offset }));
     });
+    locationSeed = retainedLocationSeed(previousFrames, previousLocations, frames, locationSeed);
     const retained = previous ? retainedNovelIndex(previous, index, frames) : -1;
     const latest = passages.at(-1)?.element;
     index = retained >= 0 ? retained : Math.max(0, frames.findIndex(f => f.source === latest));
@@ -202,6 +219,7 @@
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
       retryEditing = false; retryInstruction = "";
+      locationOverride = "__auto"; locationSeed = null; failedBackground = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
     });
     if (!enabled || !adventure) return;
@@ -376,8 +394,17 @@
     <button class="resume" onclick={resume}>Resume visual novel</button>
   {:else}
     <div class="novel" role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
+      {#if background}
+        {#key background}<img class="location-backdrop" src={background} alt="" aria-hidden="true" onerror={() => failedBackground = background ?? ""} transition:portraitFade />{/key}
+        <div class="location-shade" aria-hidden="true"></div>
+      {/if}
       <header>
         <span class="title">VISUAL NOVEL <small>Story reader</small></span>
+        <div class="location-control">
+          <Select ariaLabel="Scene location" portal={false} allowDeselect={false} bind:value={locationOverride}
+            items={[{ value: "__auto", label: `Automatic: ${automaticLocation?.name ?? "Unknown location"}` }, { value: "__none", label: "No background" }, ...locations.map(location => ({ value: location.id, label: location.name }))]} />
+          <small>{locationOverride !== "__auto" ? "Manual background; select Automatic to resume tracking." : "Location tracked from story text."}{currentLocation && !background ? " No location artwork available." : ""}</small>
+        </div>
         <div class="tools">
           <button onclick={openSettings}>Settings</button>
           <button onclick={() => $settings.visualNovelMode = false}>Exit mode</button>
@@ -452,6 +479,10 @@
 
 <style>
   .novel { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px); gap: 16px; color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
+  .location-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; pointer-events: none; }
+  .location-shade { position: absolute; inset: 0; background: linear-gradient(#10171d9c, #10171d30 45%, #10171dc9); z-index: -1; pointer-events: none; }
+  .location-control { width: min(320px, 100%); display: flex; flex-direction: column; gap: 4px; }
+  .location-control small { font-size: 11px; }
   header, .tools, footer { display: flex; align-items: center; gap: 12px; }
   header { justify-content: space-between; flex-wrap: wrap; }
   .title { letter-spacing: .16em; font-size: 13px; color: #f8ae2c; }

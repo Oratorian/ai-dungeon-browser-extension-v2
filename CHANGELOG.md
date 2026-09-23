@@ -59,6 +59,10 @@ button's quick actions. The quick-action icon highlights while the mode is enabl
   response. Otherwise, the next paragraph updates the cast. Reduced-motion preferences disable fades.
 - VN uses automatic character portraits. Manual character assignment and its card creation/editing
   controls have been removed from the reader.
+- Location cards supply VN backgrounds using their selected artwork. Local text tracking carries
+  the setting forward and changes it on explicit player movement or scene-setting narration.
+  The **Scene location** selector can pin a location, hide backgrounds, or resume automatic tracking.
+  Back/Next and replacement responses reconstruct the setting; no story cards are modified.
 - **Actions** includes AI Dungeon's native **Do**, **Say**, **Story**, and **Guide** modes.
   Your draft is shared with the game; Enter adds a line and **Send** submits the action.
 - **Actions** sits beside **Continue** in the bottom controls. The action box opens only
