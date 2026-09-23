@@ -11,6 +11,8 @@ it, and keep the newest version at the top.
 
 ### Story text fixes
 
+- Opening **Actions** no longer replays the current narration when AI Dungeon remounts unchanged
+  story text. **Read line** still explicitly replays its cached audio.
 - VN resumes after Send even when AI Dungeon removes older loaded passages or reformats them.
   Story-card @mentions also work in the VN action box, using the same card types and keyboard
   controls as the native textbox.

@@ -114,7 +114,7 @@
   });
 
   $effect(() => {
-    const text = frame?.text;
+    const text = narrationText;
     const position = index;
     const visible = active && !paused && !continuing && !continuationSnapshot && !narrationMuted;
     const queue = narrationQueue;
@@ -137,6 +137,9 @@
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
   const frame = $derived(frames[index]);
+  // Opening native action controls can remount identical story DOM. Depend on
+  // the text value so a replacement frame does not restart its cached audio.
+  const narrationText = $derived(frame?.text);
   const bufferingNarration = $derived.by(() => {
     narrationVersion;
     return !!(ttsReady && $settings.novelTtsEnabled && !narrationMuted && frame && !readWithoutAudio
