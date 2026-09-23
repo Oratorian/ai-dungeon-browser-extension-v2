@@ -22,10 +22,14 @@ export default defineConfig({
     artifactTemplate: "DExtV2-Resurrect-{{browser}}-{{version}}.zip",
     sourcesTemplate: "DExtV2-Resurrect-{{version}}-sources.zip",
   },
-  manifest: {
+  manifest: ({ browser }) => ({
     content_security_policy: { extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'" },
-    cross_origin_embedder_policy: { value: "require-corp" },
-    cross_origin_opener_policy: { value: "same-origin" },
+    // Firefox does not recognize these manifest keys. Its narration worker uses
+    // the existing single-thread fallback when cross-origin isolation is unavailable.
+    ...(browser !== "firefox" ? {
+      cross_origin_embedder_policy: { value: "require-corp" as const },
+      cross_origin_opener_policy: { value: "same-origin" as const },
+    } : {}),
     name: "Dungeon Extension v2 Resurrected",
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
     permissions: ["storage", "unlimitedStorage"],
@@ -101,7 +105,7 @@ export default defineConfig({
         },
       },
     },
-  },
+  }),
   vite: () => ({
     resolve: { conditions: ["onnxruntime-web-use-extern-wasm"] },
     plugins: [tailwindcss()],
