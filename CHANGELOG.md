@@ -11,6 +11,9 @@ it, and keep the newest version at the top.
 
 ### Story text fixes
 
+- VN resumes after Send even when AI Dungeon removes older loaded passages or reformats them.
+  Story-card @mentions also work in the VN action box, using the same card types and keyboard
+  controls as the native textbox.
 - Sending Do, Say, or Story in Visual Novel Mode preserves the reading position until new text
   arrives. Player action rows are included in reading and narration, including standalone styled
   text, labelled rows without animation wrappers, and text split across inline elements.

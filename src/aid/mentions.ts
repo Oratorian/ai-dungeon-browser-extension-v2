@@ -71,5 +71,5 @@ export function insertMention(input: HTMLTextAreaElement, query: MentionQuery, n
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, completed.text);
   }
   input.setSelectionRange(completed.caret, completed.caret);
-  input.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: completed.insert }));
+  input.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText", data: completed.insert }));
 }

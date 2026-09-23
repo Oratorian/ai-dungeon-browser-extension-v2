@@ -71,7 +71,7 @@
       <button aria-pressed={mode === value} disabled={busy || blocked} onclick={() => choose(value)}>{value}</button>
     {/each}
   </div>
-  <textarea aria-label="Visual novel action" bind:this={field} value={draft} {placeholder} rows="3" disabled={busy || blocked}
+  <textarea data-novel-action aria-label="Visual novel action" bind:this={field} value={draft} {placeholder} rows="3" disabled={busy || blocked}
     oninput={event => changed(event.currentTarget.value)}></textarea>
   {#if error || connectionError}<p class="error" role="alert">{error || connectionError}</p>{/if}
   <div class="controls">

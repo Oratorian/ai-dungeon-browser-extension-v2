@@ -22,8 +22,9 @@
 
   const signature = (field: HTMLTextAreaElement) => JSON.stringify([playedShortId(), field.value, field.selectionStart, field.selectionEnd]);
   const gameInput = () => {
-    const field = document.activeElement;
-    return field instanceof HTMLTextAreaElement && field.id === "game-text-input" && !field.disabled && !field.readOnly ? field : null;
+    let field = document.activeElement;
+    while (field?.shadowRoot?.activeElement) field = field.shadowRoot.activeElement;
+    return field instanceof HTMLTextAreaElement && (field.id === "game-text-input" || field.hasAttribute("data-novel-action")) && !field.disabled && !field.readOnly ? field : null;
   };
 
   function close(dismiss = false) {
@@ -108,7 +109,7 @@
     const routeSubscription = playedAdventureId.subscribe(() => refresh());
     const onPointer = (event: PointerEvent) => {
       if (popup && event.composedPath().includes(popup)) return;
-      if (event.target !== input) close(true);
+      if (!input || !event.composedPath().includes(input)) close(true);
     };
     let disposed = false;
     // Chromium dispatches focusout synchronously when Svelte removes a focused scene control.
