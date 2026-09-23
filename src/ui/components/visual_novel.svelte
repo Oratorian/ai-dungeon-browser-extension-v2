@@ -266,13 +266,20 @@
     finally { if (!controller.signal.aborted) continuing = false; }
   }
 
+  function submitting() {
+    // Snapshot before the native Send click: an action may be inserted synchronously.
+    refresh();
+    continuationSnapshot = frames.map(f => f.text);
+    autoOpenAllowed = false;
+    stopNarration();
+  }
+
   function submitted() {
     // Submitting appends a new final paragraph before generation starts. It must not reopen
     // the composer while AI Dungeon is dismantling its input controls for that generation.
     autoOpenAllowed = false;
     composing = false;
     refresh();
-    latest(false);
   }
 
   function navigate(next: number) {
@@ -417,7 +424,8 @@
           </div>
         {/if}
         {#if composing}
-          <NovelComposer blocked={continuing} onbusychange={busy => composerBusy = busy} onclose={() => composing = false} onsubmitted={submitted} />
+          <NovelComposer blocked={continuing} onbusychange={busy => composerBusy = busy} onclose={() => composing = false}
+            onsubmitting={submitting} onsubmitted={submitted} onsubmitfailed={() => { continuationSnapshot = null; }} />
         {/if}
         {#if actionError}<p role="alert" class="action-error">{actionError}</p>{/if}
         <footer>

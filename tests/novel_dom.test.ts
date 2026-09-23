@@ -3,6 +3,19 @@ import { describe, expect, it } from "vitest";
 import { readNovelPassages, rememberNovelSource } from "@/rendering/novel_dom";
 
 describe("visual novel story source", () => {
+  it("reads the supplied standalone Say block without an ID or accessibility label", () => {
+    const output = document.createElement("div");
+    output.innerHTML = `<div class="is_View _pos-relative _fd-column _fs-1 _w-10037" style="font-size: 18px; font-family: IBMPlexSansGameplay; line-height: 31.9667px; letter-spacing: normal;"><!----><!----><span style="color: inherit;"><!----><span><span><span>You say, "What if ... I am not?" </span></span></span></span></div>`;
+    expect(readNovelPassages(output).map(p => p.text)).toEqual(['You say, "What if ... I am not?"']);
+  });
+  it("keeps styled player actions between known story passages without duplicating nested hosts", () => {
+    const output = document.createElement("div");
+    output.innerHTML = `<div style="font-size:18px;font-family:serif;line-height:32px">
+      <span id="transition-opacity"><div style="font-size:18px;font-family:serif;line-height:32px">Before.</div></span>
+      <div style="font-size:18px;font-family:serif;line-height:32px"><span>You open the gate.</span></div>
+      <span id="transition-opacity"><span>After.</span></span></div>`;
+    expect(readNovelPassages(output).map(p => p.text)).toEqual(["Before.", "You open the gate.", "After."]);
+  });
   it("reads the hidden original without duplicated highlights and preserves paragraphs", () => {
     const output = document.createElement("div");
     output.innerHTML = '<span id="transition-opacity"><span><p>Sage says,</p><p>“Welcome.”<br>Come in.</p></span></span>';
@@ -23,5 +36,26 @@ describe("visual novel story source", () => {
     const output = document.createElement("div");
     output.innerHTML = '<span id="transition-opacity"><span></span><span>w_run</span><span>You say, "Hi."</span></span>';
     expect(readNovelPassages(output)[0]?.text).toBe('You say, "Hi."');
+  });
+  it("reads Do, Say and Story rows in order without requiring an animation wrapper", () => {
+    const output = document.createElement("div");
+    output.innerHTML = `<div id="transition-opacity"><span>The gate is closed.</span></div>
+      <div aria-label="Action: You open the gate."><span>w_run</span><span>You </span><span>open the gate.</span><button>Edit</button></div>
+      <div aria-label='Action You say, hello.'><span aria-hidden="true">speech icon</span>You say, <em>hello.</em></div>
+      <div aria-label="Action: Dawn arrives."><span id="transition-opacity"><span>Dawn arrives.</span></span></div>`;
+    expect(readNovelPassages(output).map(p => p.text)).toEqual([
+      "The gate is closed.", "You open the gate.", "You say, hello.", "Dawn arrives.",
+    ]);
+  });
+  it("ignores stale or empty remembered sources while action text arrives", () => {
+    const output = document.createElement("div");
+    output.innerHTML = '<span id="transition-opacity"><span></span><span>w_run</span><span>You run.</span></span>';
+    const container = output.firstElementChild as HTMLElement;
+    const empty = container.firstElementChild as HTMLElement;
+    rememberNovelSource(container, empty);
+    expect(readNovelPassages(output)[0]?.text).toBe("You run.");
+    empty.textContent = "Old text";
+    empty.remove();
+    expect(readNovelPassages(output)[0]?.text).toBe("You run.");
   });
 });

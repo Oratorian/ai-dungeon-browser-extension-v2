@@ -3,7 +3,7 @@
   import { ACTION_MODES, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft, type ActionMode } from "@/aid/action_input";
   import { playedShortId } from "@/aid/adventure";
 
-  let { onclose, onsubmitted, blocked = false, onbusychange = () => {} }: { onclose: () => void; onsubmitted: () => void; blocked?: boolean; onbusychange?: (busy: boolean) => void } = $props();
+  let { onclose, onsubmitting, onsubmitted, onsubmitfailed, blocked = false, onbusychange = () => {} }: { onclose: () => void; onsubmitting: () => void; onsubmitted: () => void; onsubmitfailed: () => void; blocked?: boolean; onbusychange?: (busy: boolean) => void } = $props();
   let draft = $state("");
   let mode = $state<ActionMode | null>(null);
   let placeholder = $state("Write your action...");
@@ -58,9 +58,10 @@
     if (busy || blocked || !mode || !draft.trim()) return;
     busy = true; error = "";
     try {
+      onsubmitting();
       await submitAction(draft, mode, signal);
       if (!signal.aborted) onsubmitted();
-    } catch (e) { if (!signal.aborted) { error = (e as Error).message; busy = false; } }
+    } catch (e) { if (!signal.aborted) { onsubmitfailed(); error = (e as Error).message; busy = false; } }
   }
 </script>
 

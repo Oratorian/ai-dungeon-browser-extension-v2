@@ -8,16 +8,32 @@ export function storyText(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
   if (!(node instanceof HTMLElement)) return "";
   if (["SCRIPT", "STYLE", "BUTTON"].includes(node.tagName)) return "";
+  if (node.getAttribute("aria-hidden") === "true" || /^w_[\w-]+$/.test(node.textContent?.trim() ?? "")) return "";
   if (node.tagName === "BR") return "\n";
+  const original = originals.get(node);
+  if (original && node.contains(original) && original.textContent?.trim()) return storyText(original);
   const text = [...node.childNodes].map(storyText).join("");
   return ["P", "DIV", "LI"].includes(node.tagName) ? text + "\n" : text;
 }
 
 export function readNovelPassages(output: HTMLElement) {
-  return [...output.querySelectorAll<HTMLElement>("#transition-opacity")].map(element => {
-    const source = originals.get(element) ?? [...element.children]
-      .filter((child): child is HTMLElement => child instanceof HTMLElement && !/^w_[\w-]+$/.test(child.textContent?.trim() ?? ""))
-      .sort((a, b) => (b.textContent?.length ?? 0) - (a.textContent?.length ?? 0))[0];
-    return { element, text: source ? storyText(source).trim() : "" };
-  }).filter(p => p.text);
+  // Player actions may use a labelled row or a standalone typography block
+  // instead of the animation container.
+  // Read visible text, never the aria-label (which repeats it). Keep DOM order
+  // and read nested animation containers only once through their enclosing row.
+  const selector = '#transition-opacity, [aria-label^="Action:"], [aria-label^="Action "], [aria-label^="Last action:"]';
+  const typography = 'div[style*="font-size"][style*="font-family"][style*="line-height"]';
+  const candidates = [...output.querySelectorAll<HTMLElement>(`${selector}, ${typography}`)]
+    // A broad styled layout wrapper must not collapse several known passages.
+    .filter(element => element.matches(selector) || !element.querySelector(selector));
+  const roots = new Set(candidates);
+  return candidates
+    .filter(element => {
+      for (let parent = element.parentElement; parent && parent !== output; parent = parent.parentElement) {
+        if (roots.has(parent)) return false;
+      }
+      return true;
+    })
+    .map(element => ({ element, text: storyText(element).trim() }))
+    .filter(p => p.text);
 }
