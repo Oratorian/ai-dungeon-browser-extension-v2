@@ -485,8 +485,13 @@
         {/if}
         {#if actionError}<p role="alert" class="action-error">{actionError}</p>{/if}
         <footer>
-          <button onclick={() => latest()} disabled={!frames.length}>Latest passage</button>
+          <div class="reading-controls" role="group" aria-label="Reading position">
+            <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
+            <button onclick={() => navigate(index - 1)} disabled={index === 0 || !frames.length}>Back</button>
+          <button onclick={() => latest()} disabled={!frames.length}>Last passage</button>
           <button class="accent" aria-keyshortcuts="Space" title="Next (Space)" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
+          </div>
+          <div class="generation-controls" role="group" aria-label="Story generation">
           <div class="retry-control" role="group" aria-label="Retry controls">
             <button onclick={() => retryReading()} title="Regenerate AI Dungeon's latest response" disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{retryTracker ? "Retrying..." : "Retry"}</button>
             <button class="retry-edit" aria-label="Retry with changes" aria-expanded={retryEditing} title="Retry with an instruction" onclick={() => { retryEditing = !retryEditing; composing = false; }} disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}><span class="font-symbol" aria-hidden="true">edit</span></button>
@@ -494,9 +499,7 @@
           </div>
           <button onclick={continueReading} disabled={continuing || !!retryTracker || (composing && composerBusy)}>{continuing && !retryTracker ? "Continuing..." : "Continue"}</button>
 
-          <div class="back-controls" role="group" aria-label="Reading position">
-          <button onclick={() => navigate(index - 1)} disabled={index === 0 || !frames.length}>Back</button>
-          <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
+
           </div>
         </footer>
       </div>
@@ -570,8 +573,9 @@
   .retry-edit .font-symbol { display: block; margin: 0; color: inherit; }
   .retry-instructions { display: flex; flex-direction: column; gap: 8px; }
   .retry-instructions textarea { resize: vertical; min-height: 60px; max-height: 20vh; border: 1px solid #64727c; border-radius: 8px; padding: 10px; background: #0e171f; color: #eee8de; font: inherit; }
-  .back-controls { display: flex; align-items: center; gap: 12px; margin-left: auto; }
-  .back-controls span { color: #b9c2c8; font-size: 13px; white-space: nowrap; }
+  .reading-controls, .generation-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .generation-controls { margin-left: auto; }
+  .reading-controls span { color: #b9c2c8; font-size: 13px; white-space: nowrap; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 900px) {
     .reader-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 65%; min-height: 0; }
