@@ -4,6 +4,7 @@
   import Field from "@/ui/components/field.svelte";
   import Item from "@/ui/components/item.svelte";
   import Slider from "@/ui/components/slider.svelte";
+  import Select from "@/ui/components/select.svelte";
   import Switch from "@/ui/components/switch.svelte";
   import HotkeyRecorder from "@/ui/components/hotkey_recorder.svelte";
   import { FLOATING_BUTTON_MIN_SIZE, FLOATING_BUTTON_MAX_SIZE } from "@/shared/floating_button";
@@ -79,19 +80,17 @@
       <TtsSettings />
     </Field>
     <Field label="Narrator voice">
-      <select aria-label="Narrator voice" bind:value={$settings.novelTtsVoice} class="p-2 rounded-lg bg-theme-neutral-200">
-        <option value="M5">M5</option><option value="F5">F5</option>
-      </select>
+      <Select ariaLabel="Narrator voice" allowDeselect={false}
+        bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
+        items={[{ value: "M5", label: "M5" }, { value: "F5", label: "F5" }]} />
     </Field>
     <Field label="Generation steps" info="Fewer steps generate faster; more steps refine the audio.">
-      <select aria-label="Generation steps" bind:value={$settings.novelTtsSteps} class="p-2 rounded-lg bg-theme-neutral-200">
-        {#each [5, 6, 7, 8, 9, 10] as steps}<option value={steps}>{steps}</option>{/each}
-      </select>
+      <Select ariaLabel="Generation steps" allowDeselect={false}
+        bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
+        items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
     </Field>
     <Field label="Narrator pitch" info="Lower or raise the voice by up to three semitones while keeping the original reading speed. Zero uses the original voice.">
-      <select aria-label="Narrator pitch" bind:value={$settings.novelTtsPitch} class="p-2 rounded-lg bg-theme-neutral-200">
-        {#each [-3, -2, -1, 0, 1, 2, 3] as pitch}<option value={pitch}>{pitch > 0 ? `+${pitch}` : pitch}{pitch === 0 ? " (original)" : ""}</option>{/each}
-      </select>
+      <Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} />
     </Field>
     <TtsPreview />
     <p class="text-xs text-theme-neutral-800">Uses names, triggers and portraits from your selected extension card set. Each paragraph sets the scene with up to four matching characters, two on each side. Portraits stay through its narration and dialogue, then fade when the next paragraph changes the cast. No AI calls are needed.</p>

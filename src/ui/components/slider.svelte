@@ -6,9 +6,10 @@
     min?: number;
     max?: number;
     step?: number;
+    ariaLabel?: string;
   };
 
-  let { value = $bindable(), min = 0, max = 100, step }: Props = $props();
+  let { value = $bindable(), min = 0, max = 100, step, ariaLabel }: Props = $props();
 
   // The number box and the slider bind the same value. Clearing the box makes Svelte write null,
   // and typing can land outside [min,max]; either way an out-of-range/empty value would persist
@@ -23,6 +24,7 @@
 <div class="flex flex-row gap-2 justify-center place-items-center w-full">
   <input
     type="number"
+    aria-label={ariaLabel ? `${ariaLabel} value` : undefined}
     {min}
     {max}
     {step}
@@ -36,6 +38,7 @@
     </span>
     <Slider.Thumb
       index={0}
+      aria-label={ariaLabel}
       class="bg-theme-neutral-900 hover:bg-pretty-theme focus-visible:ring-foreground  data-active:border-dark-40 focus-visible:outline-hidden data-active:scale-[0.98] block size-6.25 cursor-pointer rounded-full border-4 shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
     />
   </Slider.Root>

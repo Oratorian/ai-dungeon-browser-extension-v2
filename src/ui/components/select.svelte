@@ -19,7 +19,7 @@
   const selectedLabel = $derived(items.find((item) => item.value === value)?.label);
 </script>
 
-<Select.Root type="single" onValueChange={(v) => (value = v)} {items} {allowDeselect}>
+<Select.Root type="single" bind:value {items} {allowDeselect}>
   <Select.Trigger
     class="h-input p-3 rounded-9px bg-theme-neutral-400 hover:bg-theme-neutral-500 text-white data-placeholder:text-foreground-alt/50 inline-flex touch-none select-none items-center px-2.75 text-sm transition-colors rounded-xl"
     aria-label={ariaLabel}
@@ -48,7 +48,7 @@
               {item.label}
               {#if selected}
                 <div class="ml-auto">
-                  <span class="font-symbol">check</span>
+                  <span aria-hidden="true" class="font-symbol">check</span>
                 </div>
               {/if}
             {/snippet}
