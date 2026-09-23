@@ -35,6 +35,22 @@
   let actionError = $state("");
   let continueController: AbortController | undefined;
   let scene: HTMLElement | undefined = $state();
+  let dialogue: HTMLElement | undefined = $state();
+  let backdropHeight = $state(0);
+
+  $effect(() => {
+    const container = scene;
+    const box = dialogue;
+    if (!container || !box) return;
+    const measure = () => {
+      backdropHeight = Math.max(0, box.getBoundingClientRect().top - container.getBoundingClientRect().top);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    observer.observe(box);
+    measure();
+    return () => observer.disconnect();
+  });
   let output: HTMLElement | null = null;
   let lastSignature = "";
   let sourceIds = new WeakMap<HTMLElement, number>();
@@ -412,8 +428,8 @@
   {:else}
     <div class="novel" role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
       {#if background}
-        {#key background}<img class="location-backdrop" src={background} alt="" aria-hidden="true" onerror={() => failedBackground = background ?? ""} transition:portraitFade />{/key}
-        <div class="location-shade" aria-hidden="true"></div>
+        {#key background}<img class="location-backdrop" style:height={`${backdropHeight}px`} src={background} alt="" aria-hidden="true" onerror={() => failedBackground = background ?? ""} transition:portraitFade />{/key}
+        <div class="location-shade" style:height={`${backdropHeight}px`} aria-hidden="true"></div>
       {/if}
       <header>
         <span class="title">VISUAL NOVEL <small>Story reader</small></span>
@@ -453,7 +469,7 @@
           </div>
         {/each}
       </div>
-      <div class="dialogue">
+      <div class="dialogue" bind:this={dialogue}>
         <p class="prose" class:with-composer={composing} aria-live="polite">{retryTracker ? "Waiting for the replacement response..." : bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
         {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
         {#if $settings.novelTtsEnabled}
@@ -503,8 +519,8 @@
 
 <style>
   .novel { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px); gap: 16px; color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
-  .location-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; pointer-events: none; }
-  .location-shade { position: absolute; inset: 0; background: linear-gradient(#10171d9c, #10171d30 45%, #10171dc9); z-index: -1; pointer-events: none; }
+  .location-backdrop { position: absolute; top: 0; left: 0; width: 100%; object-fit: cover; z-index: -2; pointer-events: none; }
+  .location-shade { position: absolute; top: 0; left: 0; width: 100%; background: linear-gradient(#10171d9c, #10171d30 45%, #10171dc9); z-index: -1; pointer-events: none; }
   .location-control { position: relative; }
   .location-panel { position: absolute; top: 100%; right: 0; z-index: 10; width: min(320px, calc(100vw - 24px)); padding: 12px; display: flex; flex-direction: column; gap: 4px; background: #202b34; border: 1px solid #64727c; border-radius: 8px; box-shadow: 0 8px 24px #0006; }
   .location-panel[hidden] { display: none; }
