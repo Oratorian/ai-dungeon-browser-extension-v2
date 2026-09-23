@@ -143,9 +143,10 @@
     return !!(ttsReady && $settings.novelTtsEnabled && !narrationMuted && frame && !readWithoutAudio
       && !narrationQueue?.get(frame.text) && !narrationQueue?.hasFailed(frame.text));
   });
-  const nextNarrationReady = $derived.by(() => {
+  const upcomingNarration = $derived.by(() => {
     narrationVersion;
-    return !!(frames[index + 1] && narrationQueue?.get(frames[index + 1]!.text));
+    const upcoming = frames.slice(index + 1, index + 4);
+    return { ready: upcoming.filter(frame => narrationQueue?.get(frame.text)).length, total: upcoming.length };
   });
   const paragraphIndex = $derived.by(() => {
     for (let i = index; i >= 0; i--) if (frames[i]?.startsParagraph) return i;
@@ -411,7 +412,7 @@
             <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame || !ttsReady}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>
-            {#if nextNarrationReady}<span>Next line ready</span>{/if}
+            <span class="queue-badge" role="status" title="Generated audio for the next available lines, excluding the current line">{upcomingNarration.ready}/{upcomingNarration.total} upcoming lines ready</span>
           </div>
         {/if}
         {#if composing}
@@ -454,6 +455,7 @@
   .dialogue { overflow: auto; }
   .action-error { color: #ffadb2; margin: 0; font-size: 13px; }
   .narration-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: #b9c2c8; }
+  .queue-badge { padding: 3px 8px; border: 1px solid #59636b; border-radius: 999px; background: #20272c; color: #e2e8ec; font-variant-numeric: tabular-nums; }
   .assignment-tools { display: flex; justify-content: flex-end; }
   .assignment-panel { display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #65717b; padding-bottom: 12px; }
   .assignment-panel p { margin: 0; color: #b9c2c8; font-size: 12px; }
