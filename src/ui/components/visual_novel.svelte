@@ -485,8 +485,10 @@
           <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
           <button onclick={() => latest()} disabled={!frames.length}>Latest passage</button>
           <button class="accent" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
-          <button onclick={retryReading} title="Regenerate AI Dungeon's latest response" disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{retryTracker ? "Retrying..." : "Retry"}</button>
-          {#if historyCount > 1}<button onclick={showRetryHistory} aria-label={`Retry history: ${historyCount} responses`} title="Choose an existing retry response" disabled={continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{historyCount}</button>{/if}
+          <div class="retry-control" role="group" aria-label="Retry controls">
+            <button onclick={retryReading} title="Regenerate AI Dungeon's latest response" disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{retryTracker ? "Retrying..." : "Retry"}</button>
+            {#if historyCount > 1}<button class="retry-count" onclick={showRetryHistory} aria-label={`Retry history: ${historyCount} responses`} title="Choose an existing retry response" disabled={continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{historyCount}</button>{/if}
+          </div>
           <button onclick={continueReading} disabled={continuing || !!retryTracker || (composing && composerBusy)}>{continuing && !retryTracker ? "Continuing..." : "Continue"}</button>
           <button class="accent" aria-expanded={composing} disabled={continuing || !!retryTracker || (composing && composerBusy)} onclick={() => composing = !composing}>Actions</button>
         </footer>
@@ -528,6 +530,12 @@
   .assignment-panel select:focus-visible, .assignment-panel input:focus-visible { outline: 2px solid #f8ae2c; }
   .create-character { display: flex; flex-wrap: wrap; gap: 8px; }
   footer { flex-wrap: wrap; flex-shrink: 0; }
+  .retry-control { display: inline-flex; flex-shrink: 0; }
+  .retry-control button { border-radius: 0; }
+  .retry-control button:first-child { border-radius: 8px 0 0 8px; }
+  .retry-control button:last-child { border-radius: 0 8px 8px 0; }
+  .retry-control button:only-child { border-radius: 8px; }
+  .retry-control .retry-count { border-left: 0; min-width: 38px; padding-inline: 10px; font-variant-numeric: tabular-nums; }
   footer span { margin-right: auto; color: #b9c2c8; font-size: 13px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 500px) { .novel { gap: 10px; } .tools { gap: 6px; } button { padding: 7px 10px; font-size: 13px; } .dialogue { max-height: 65%; gap: 10px; } .stage-caption { font-size: 13px; } }
