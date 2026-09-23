@@ -1,20 +1,11 @@
-import type { NovelFrame } from "./novel";
+import { splitNovelSentences, type NovelFrame } from "./novel";
 
 /** Short stable sentences can be synthesized while the rest of a response streams. */
 export function splitNarratedFrames(frames: NovelFrame[]): NovelFrame[] {
-  const segmenter = new Intl.Segmenter("en", { granularity: "sentence" });
   return frames.flatMap(frame => {
-    const chunks: string[] = [];
-    for (const { segment } of segmenter.segment(frame.text)) {
-      let rest = segment.trim();
-      while (rest.length > 240) {
-        const space = rest.lastIndexOf(" ", 240);
-        const end = space > 0 ? space : 240;
-        chunks.push(rest.slice(0, end));
-        rest = rest.slice(end).trimStart();
-      }
-      if (rest) chunks.push(rest);
-    }
+    // The engine already handles long inputs. A word-count cutoff here breaks
+    // dialogue attribution and prosody, so reader boundaries stay grammatical.
+    const chunks = splitNovelSentences(frame.text);
     return chunks.map((text, index) => ({
       ...frame, text,
       startsParagraph: index === 0 ? frame.startsParagraph : undefined,

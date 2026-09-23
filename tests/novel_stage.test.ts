@@ -17,7 +17,7 @@ describe("paragraph-based visual novel scenes", () => {
 
 "Curated entertainment," she echoes, her voice edged with something that isn't quite skepticism, but isn't quite acceptance either. Her gaze flicks back to you, sharp and measuring. "So. A diplomat who recognizes intellectual performance instead of just pouring brandy. That's... unusual." She hesitates, her head tilting slightly.`;
     const stages = track(text);
-    expect(stages).toHaveLength(5);
+    expect(stages).toHaveLength(9);
     expect(stages.every(stage => stage[0] === "sage" && stage.slice(1).every(id => id === null))).toBe(true);
   });
   it("bridges only one paragraph with a clear pronoun cue and preserves the character's side", () => {
@@ -39,7 +39,7 @@ describe("paragraph-based visual novel scenes", () => {
   it("keeps the paragraph's cast through narration and quotes, including names after speech", () => {
     const text = 'Nyx rinses the pods. She whispers, "A crescendo of cream." Coral nods.';
     expect(track(text)).toEqual(Array.from({length: 3}, () => ["nyx", "coral", null, null]));
-    expect(track('"Hello," Nyx says.')).toEqual([["nyx", null, null, null], ["nyx", null, null, null]]);
+    expect(track('"Hello," Nyx says.')).toEqual([["nyx", null, null, null]]);
   });
   it("updates the cast at paragraph boundaries, preserving recurring characters' slots", () => {
     expect(track('Nyx meets Coral.\n\nCoral welcomes Serastra.\n\nThe room is quiet.'))
@@ -64,7 +64,7 @@ describe("paragraph-based visual novel scenes", () => {
   });
   it("updates the entire paragraph cast as streamed text adds a mention", () => {
     expect(track('Nyx says, "Hello')).toEqual([["nyx", null, null, null]]);
-    expect(track('Nyx says, "Hello Coral."')).toEqual([["nyx", "coral", null, null], ["nyx", "coral", null, null]]);
+    expect(track('Nyx says, "Hello Coral."')).toEqual([["nyx", "coral", null, null]]);
   });
   it("matches full aliases and ignores ambiguous shared triggers", () => {
     expect(track("The kitchen is empty.\nNyxie's chair is empty.\nNYX waves."))

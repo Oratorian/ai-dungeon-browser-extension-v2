@@ -11,6 +11,8 @@ it, and keep the newest version at the top.
 
 ### Story text fixes
 
+- Visual Novel Mode keeps quoted speech and its attribution together, including questions and
+  exclamations. Narration follows sentence boundaries without cutting long sentences at a word limit.
 - Character highlighting now matches visible text nodes instead of serialized HTML. Characters
   named Aria, Span, or Mark cannot split accessibility attributes or formatting tags into the story.
   Inline formatting and escaped text remain intact.

@@ -4,14 +4,37 @@ import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames } from 
 import { StableNarrationWindow } from "@/tts/queue";
 
 describe("narrated continuation", () => {
-  it("keeps paragraph metadata while splitting long narration into bounded sentences", () => {
+  it("keeps paragraph metadata and never cuts a sentence at an arbitrary word limit", () => {
     const paragraph = "The door opens. A traveler arrives. " + "Footsteps echo through the hall, ".repeat(30);
     const frames = splitNarratedFrames(parseNovel(paragraph));
     expect(frames.slice(0, 2).map(f => f.text)).toEqual(["The door opens.", "A traveler arrives."]);
-    expect(frames.every(f => f.text.length <= 240 && f.paragraph === paragraph)).toBe(true);
+    expect(frames.every(f => f.paragraph === paragraph)).toBe(true);
+    expect(frames).toHaveLength(3);
     expect(frames.filter(f => f.startsParagraph)).toHaveLength(1);
     expect(frames.filter(f => f.startsPassage)).toHaveLength(1);
     expect(frames.map(f => f.text).join(" ")).toBe(paragraph.trim());
+  });
+  it("keeps the reported quotation and its narration in one generated line", () => {
+    const sentence = '"You have a very strange way of speaking for someone who was wearing rags three days ago," she says, her voice dropping into a low, warning register.';
+    const paragraph = sentence + " However, the edge is not as sharp as it usually is.";
+    const frames = splitNarratedFrames(parseNovel(paragraph));
+    expect(frames.map(f => f.text)).toEqual([sentence, "However, the edge is not as sharp as it usually is."]);
+    expect(frames[0]?.startsParagraph).toBe(true);
+    expect(frames[1]?.startsParagraph).toBeUndefined();
+  });
+  it.each([
+    '"Why?" she asks.',
+    '“Stay!” Nyx whispers, her voice trembling.',
+    '«Wait!» said the guard.',
+    '"Go," she says, "before it is too late."',
+    'Sage says, "Follow me."',
+    '"' + "There is a long road ahead, ".repeat(12) + 'so stay close," she says.',
+  ])("keeps speech tags intact through both reader and TTS splitting: %s", sentence => {
+    expect(splitNarratedFrames(parseNovel(sentence)).map(f => f.text)).toEqual([sentence]);
+  });
+  it("keeps an independent action after dialogue as its own sentence", () => {
+    expect(splitNarratedFrames(parseNovel('"Hello!" The door opens.')).map(f => f.text))
+      .toEqual(['"Hello!"', "The door opens."]);
   });
   it("waits without rewinding and selects only the first new continuation frame", () => {
     const before = ["Old first sentence.", "Old last sentence."];
