@@ -456,9 +456,10 @@
       </div>
       <div class="reading-shade" aria-hidden="true"></div>
       <div class="reader-panels" bind:clientHeight={readerHeight}>
-        <aside class="voice-panel" aria-label="Narration controls">
         {#if $settings.novelTtsEnabled}
-          <div class="narration-controls">
+        <aside class="voice-panel" aria-label="Narration controls">
+          <button class="audio-trigger" aria-controls="novel-audio-menu">Audio</button>
+          <div id="novel-audio-menu" class="narration-controls audio-menu">
             {#if bufferingNarration && !retryTracker}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
             {#if !ttsReady}
               <button onclick={() => void initializeTts()} disabled={$ttsState.phase === "checking" || $ttsState.phase === "loading"}>Initialize TTS</button>
@@ -468,8 +469,8 @@
             <span role="status">{narrationStatus}</span>
             <span class="queue-badge" role="status" title="Generated audio for the next available lines, excluding the current line">{upcomingNarration.ready}/{upcomingNarration.total} upcoming lines ready</span>
           </div>
-        {/if}
         </aside>
+        {/if}
       <div class="dialogue">
         <p class="prose" aria-live="polite">{retryTracker ? "Waiting for the replacement response..." : bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
         {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
@@ -535,14 +536,14 @@
   .portrait { width: 100%; height: 100%; object-fit: cover; object-position: center top; mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
   .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + 24px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
-  .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 3.6fr) minmax(220px, 1.25fr); gap: 16px; width: 100%; max-height: 55%; min-height: 220px; flex-shrink: 0; }
+  .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; width: 100%; max-height: 55%; min-height: 220px; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + clamp(12px, 3vw, 32px) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
-  .voice-panel, .action-panel { min-width: 0; overflow: auto; align-self: end; max-height: 100%; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; }
-  .voice-panel:empty { visibility: hidden; }
-  .voice-panel .narration-controls { align-items: stretch; flex-direction: column; }
-  .voice-panel .queue-badge { white-space: normal; }
-  .action-panel { display: flex; flex-direction: column; gap: 12px; }
-  .dialogue { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: transparent; padding: clamp(14px, 3vw, 28px); }
+  .voice-panel { position: relative; grid-column: 1; align-self: end; }
+  .voice-panel .audio-menu { display: none; position: absolute; bottom: 100%; left: 0; width: 220px; max-height: 60vh; overflow: auto; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; }
+  .voice-panel:hover .audio-menu, .voice-panel:focus-within .audio-menu { display: flex; align-items: stretch; flex-direction: column; }
+  .action-panel { grid-column: 3; min-width: 0; align-self: end; max-height: 100%; display: flex; flex-direction: column; gap: 12px; }
+  .action-panel.expanded { width: min(320px, 35vw); overflow: auto; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; }
+  .dialogue { grid-column: 2; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: transparent; padding: clamp(14px, 3vw, 28px); }
   .prose { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 3em; font: clamp(18px, 2vw, 25px)/1.6 Georgia, serif; margin: 0; }
   .prose { flex: 1; }
   .dialogue { overflow: auto; }
@@ -563,9 +564,11 @@
   footer span { margin-right: auto; color: #b9c2c8; font-size: 13px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 900px) {
-    .reader-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 65%; min-height: 0; overflow: auto; }
+    .reader-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 65%; min-height: 0; }
     .dialogue { grid-column: 1 / -1; grid-row: 1; min-height: 180px; }
-    .voice-panel, .action-panel { align-self: start; max-height: none; }
+    .voice-panel, .action-panel { align-self: end; max-height: none; }
+    .action-panel { justify-self: end; }
+    .action-panel.expanded { width: min(320px, 100%); max-height: 30vh; }
     .voice-panel { grid-column: 1; grid-row: 2; }
     .action-panel { grid-column: 2; grid-row: 2; }
   }
