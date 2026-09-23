@@ -12,7 +12,8 @@
   import { resolveNovelAssignments, type NovelAssignment } from "@/rendering/novel_assignments";
   import NovelComposer from "./novel_composer.svelte";
   import { LocalNarrator, narrationWav } from "@/tts/client";
-  import { NarrationQueue } from "@/tts/queue";
+  import { NarrationQueue, StableNarrationWindow } from "@/tts/queue";
+  import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames } from "@/rendering/novel_narration";
 
   const adventures = Storage.adventures;
   const selected = Storage.selectedAdventureId;
@@ -36,6 +37,7 @@
   let sourceIds = new WeakMap<HTMLElement, number>();
   let nextSourceId = 0;
   let narrationQueue = $state<NarrationQueue>();
+  let narrationScheduler = $state<StableNarrationWindow>();
   let narrationStatus = $state("");
   let narrationRuntime = $state("");
   let narrationVersion = $state(0);
@@ -43,6 +45,8 @@
   let narrationAudio: HTMLAudioElement | undefined;
   let narrationUrl: string | undefined;
   let playbackToken = 0;
+  let continuationSnapshot = $state<string[] | null>(null);
+  let readWithoutAudio = $state("");
 
   function stopNarration() {
     playbackToken++;
@@ -55,7 +59,7 @@
   function playNarration() {
     stopNarration();
     const audio = frame && narrationQueue?.get(frame.text);
-    if (!audio || !active || paused || narrationMuted) return;
+    if (!audio || !active || paused || continuing || continuationSnapshot || narrationMuted) return;
     const token = playbackToken;
     narrationUrl = URL.createObjectURL(narrationWav(audio));
     narrationAudio = new Audio(narrationUrl);
@@ -85,23 +89,28 @@
       narrationVersion++;
     });
     narrationQueue = queue;
+    const scheduler = new StableNarrationWindow(texts => queue.setWindow(texts));
+    narrationScheduler = scheduler;
     return () => {
-      alive = false; stopNarration(); queue.dispose(); narrator.dispose(); narrationQueue = undefined;
+      alive = false; stopNarration(); scheduler.dispose(); queue.dispose(); narrator.dispose();
+      narrationQueue = undefined; narrationScheduler = undefined;
     };
   });
 
+  // Compare text, not frame objects/paragraph metadata: streaming later text must
+  // not keep postponing synthesis of an already-complete sentence.
+  const narrationWindow = $derived(JSON.stringify(frames.slice(index, index + 4).map(f => f.text)));
   $effect(() => {
-    const queue = narrationQueue;
-    const texts = active && !paused && !continuing ? frames.slice(index, index + 4).map(f => f.text) : [];
-    // Avoid generating every partial token while AI Dungeon streams a response.
-    const timer = setTimeout(() => queue?.setWindow(texts), 500);
-    return () => clearTimeout(timer);
+    const scheduler = narrationScheduler;
+    const texts: string[] = JSON.parse(narrationWindow);
+    // Keep useful cached audio across Continue and settings/composer transitions.
+    untrack(() => scheduler?.setWindow(texts));
   });
 
   $effect(() => {
     const text = frame?.text;
     const position = index;
-    const visible = active && !paused && !continuing && !narrationMuted;
+    const visible = active && !paused && !continuing && !continuationSnapshot && !narrationMuted;
     const queue = narrationQueue;
     untrack(stopNarration);
     if (!visible || !text || !queue) return;
@@ -122,6 +131,11 @@
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
   const frame = $derived(frames[index]);
+  const bufferingNarration = $derived.by(() => {
+    narrationVersion;
+    return !!($settings.novelTtsEnabled && !narrationMuted && frame && readWithoutAudio !== frame.text
+      && !narrationQueue?.get(frame.text) && !narrationQueue?.hasFailed(frame.text));
+  });
   const nextNarrationReady = $derived.by(() => {
     narrationVersion;
     return !!(frames[index + 1] && narrationQueue?.get(frames[index + 1]!.text));
@@ -150,20 +164,30 @@
     if (signature === lastSignature) return;
     lastSignature = signature;
     const previous = frames[index];
-    frames = passages.flatMap(p => parseNovel(p.text).map((f, offset) => ({ ...f, source: p.element, offset })));
+    frames = passages.flatMap(p => {
+      const parsed = parseNovel(p.text);
+      return ($settings.novelTtsEnabled ? splitNarratedFrames(parsed) : parsed)
+        .map((f, offset) => ({ ...f, source: p.element, offset }));
+    });
     assignments = assignments.filter(a => frames.some(f => f.startsParagraph && f.source === a.source && f.offset === a.offset && f.paragraph === a.paragraph));
-    const retained = previous ? frames.findIndex(f => f.source === previous.source && f.offset === previous.offset) : -1;
+    const retained = previous ? retainedNovelIndex(previous, index, frames) : -1;
     const latest = passages.at(-1)?.element;
     index = retained >= 0 ? retained : Math.max(0, frames.findIndex(f => f.source === latest));
+    if (continuationSnapshot) {
+      const next = firstContinuationFrame(continuationSnapshot, frames.map(f => f.text));
+      if (next >= 0) { index = next; continuationSnapshot = null; }
+    }
   }
 
   $effect(() => {
     const enabled = $settings.visualNovelMode;
     const adventure = $playedAdventureId;
     const set = $selected;
+    const narrated = $settings.novelTtsEnabled;
     untrack(() => {
       continueController?.abort(); continuing = false; actionError = ""; openedParagraphs = new WeakMap();
       autoOpenAllowed = true;
+      continuationSnapshot = null; readWithoutAudio = "";
       assignments = []; assigning = false; newCharacterName = "";
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
@@ -205,7 +229,7 @@
   }
 
   $effect(() => {
-    if (!active || paused || !frame || !autoOpenAllowed) return;
+    if (!active || paused || !frame || !autoOpenAllowed || bufferingNarration || continuationSnapshot) return;
     if (index !== frames.length - 1) return;
     const lastParagraph = frames.findLastIndex(f => f.startsParagraph);
     if (lastParagraph < 0) return;
@@ -221,13 +245,15 @@
   async function continueReading() {
     if (continuing || (composing && composerBusy) || playedShortId() !== $playedAdventureId) return;
     continuing = true; actionError = "";
+    continuationSnapshot = frames.map(f => f.text);
+    autoOpenAllowed = false;
     const controller = new AbortController();
     continueController = controller;
     try {
       await continueStory(controller.signal);
-      if (!controller.signal.aborted) submitted();
+      if (!controller.signal.aborted) { composing = false; refresh(); }
     }
-    catch (e) { if (!controller.signal.aborted) actionError = (e as Error).message; }
+    catch (e) { if (!controller.signal.aborted) { actionError = (e as Error).message; continuationSnapshot = null; } }
     finally { if (!controller.signal.aborted) continuing = false; }
   }
 
@@ -243,6 +269,7 @@
   function navigate(next: number) {
     next = Math.max(0, Math.min(frames.length - 1, next));
     if (next === index) return;
+    continuationSnapshot = null; readWithoutAudio = "";
     autoOpenAllowed = true;
     index = next;
   }
@@ -280,6 +307,7 @@
     document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
   }
   function latest(rearm = true) {
+    continuationSnapshot = null; readWithoutAudio = "";
     if (rearm) autoOpenAllowed = true;
     const source = frames.at(-1)?.source;
     index = Math.max(0, frames.findIndex(f => f.source === source));
@@ -365,9 +393,11 @@
             {/if}
           </div>
         {/if}
-        <p class="prose" class:with-composer={composing} aria-live="polite">{frame?.text ?? "Waiting for story text. Use Write action to take a turn."}</p>
+        <p class="prose" class:with-composer={composing} aria-live="polite">{bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Write action to take a turn."}</p>
+        {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
         {#if $settings.novelTtsEnabled}
           <div class="narration-controls">
+            {#if bufferingNarration}<button onclick={() => readWithoutAudio = frame?.text ?? ""}>Read now</button>{/if}
             <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>

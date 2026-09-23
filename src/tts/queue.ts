@@ -1,6 +1,32 @@
 export type NarrationOptions = { voice: "M5" | "F5"; steps: number; threads: string };
 export type NarrationAudio = { samples: Float32Array; sampleRate: number };
 
+/** Debounce each text independently so a streaming tail cannot starve earlier sentences. */
+export class StableNarrationWindow {
+  private texts: string[] = [];
+  private stable = new Set<string>();
+  private timers = new Map<string, ReturnType<typeof setTimeout>>();
+  constructor(private update: (texts: string[]) => void) {}
+  setWindow(texts: string[]) {
+    this.texts = texts;
+    for (const [text, timer] of this.timers) {
+      if (!texts.includes(text)) { clearTimeout(timer); this.timers.delete(text); }
+    }
+    for (const text of this.stable) if (!texts.includes(text)) this.stable.delete(text);
+    for (const text of texts) {
+      if (this.stable.has(text) || this.timers.has(text)) continue;
+      this.timers.set(text, setTimeout(() => {
+        this.timers.delete(text); this.stable.add(text);
+        this.update(this.texts.filter(value => this.stable.has(value)));
+      }, 500));
+    }
+    // Retain the current desired window while its new text settles. The inference
+    // queue receives only stable text, and removed work is dropped immediately.
+    this.update(this.texts.filter(value => this.stable.has(value)));
+  }
+  dispose() { for (const timer of this.timers.values()) clearTimeout(timer); this.timers.clear(); }
+}
+
 /** One inference at a time. Navigation replaces pending work without discarding useful audio. */
 export class NarrationQueue {
   private wanted: string[] = [];
@@ -20,6 +46,7 @@ export class NarrationQueue {
     void this.pump();
   }
   get(text: string) { return this.cache.get(text); }
+  hasFailed(text: string) { return this.failed.has(text); }
   retry(text: string) { this.failed.delete(text); void this.pump(); }
   dispose() { this.disposed = true; this.wanted = []; this.cache.clear(); this.failed.clear(); }
 
