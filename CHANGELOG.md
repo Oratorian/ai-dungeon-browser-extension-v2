@@ -59,13 +59,12 @@ button's quick actions. The quick-action icon highlights while the mode is enabl
   pronouns. The choice stays local to that loaded paragraph and resets when its text changes or
   the reader is reset. You can clear it, edit the chosen card's artwork, or create a character
   card in your selected set without adding global pronoun triggers.
-- **Write action** includes AI Dungeon's native **Do**, **Say**, **Story**, and **Guide** modes.
+- **Actions** includes AI Dungeon's native **Do**, **Say**, **Story**, and **Guide** modes.
   Your draft is shared with the game; Enter adds a line and **Send** submits the action.
-- Reaching the final reader line opens Write Action alongside the story. Dismissing it keeps
-  it closed for that paragraph. Submitting closes it and pauses automatic reopening until you
-  navigate the story again.
+- **Actions** sits beside **Continue** in the bottom controls. The action box opens only
+  when clicked, and stays closed when reaching the end of a passage.
 - **Continue** uses AI Dungeon's native command. An unfinished draft is kept in memory and restored
-  when you next open Write Action, without reopening the textbox during generation.
+  when you next open Actions, without reopening the textbox during generation.
 - **Return to game** reveals the normal interface; **Resume visual novel** reopens the reader.
   **Exit mode** switches it off.
 

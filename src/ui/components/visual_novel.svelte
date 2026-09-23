@@ -28,10 +28,8 @@
   let assignments = $state<NovelAssignment[]>([]);
   let continuing = $state(false);
   let composerBusy = $state(false);
-  let autoOpenAllowed = $state(true);
   let actionError = $state("");
   let continueController: AbortController | undefined;
-  let openedParagraphs = new WeakMap<HTMLElement, Set<number>>();
   let scene: HTMLElement | undefined = $state();
   let output: HTMLElement | null = null;
   let lastSignature = "";
@@ -194,8 +192,7 @@
     const set = $selected;
     const narrated = narrationEnabled;
     untrack(() => {
-      continueController?.abort(); continuing = false; actionError = ""; openedParagraphs = new WeakMap();
-      autoOpenAllowed = true;
+      continueController?.abort(); continuing = false; actionError = "";
       continuationSnapshot = null; readWithoutAudio = false;
       assignments = []; assigning = false; newCharacterName = "";
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
@@ -237,25 +234,11 @@
     editAssignedCard(card.id);
   }
 
-  $effect(() => {
-    if (!active || paused || !frame || !autoOpenAllowed || bufferingNarration || continuationSnapshot) return;
-    if (index !== frames.length - 1) return;
-    const lastParagraph = frames.findLastIndex(f => f.startsParagraph);
-    if (lastParagraph < 0) return;
-    const start = frames[lastParagraph]!;
-    untrack(() => {
-      const opened = openedParagraphs.get(start.source) ?? new Set<number>();
-      if (opened.has(start.offset)) return;
-      opened.add(start.offset); openedParagraphs.set(start.source, opened);
-      composing = true;
-    });
-  });
 
   async function continueReading() {
     if (continuing || (composing && composerBusy) || playedShortId() !== $playedAdventureId) return;
     continuing = true; actionError = "";
     continuationSnapshot = frames.map(f => f.text);
-    autoOpenAllowed = false;
     const controller = new AbortController();
     continueController = controller;
     try {
@@ -270,14 +253,10 @@
     // Snapshot before the native Send click: an action may be inserted synchronously.
     refresh();
     continuationSnapshot = frames.map(f => f.text);
-    autoOpenAllowed = false;
     stopNarration();
   }
 
   function submitted() {
-    // Submitting appends a new final paragraph before generation starts. It must not reopen
-    // the composer while AI Dungeon is dismantling its input controls for that generation.
-    autoOpenAllowed = false;
     composing = false;
     refresh();
   }
@@ -286,7 +265,6 @@
     next = Math.max(0, Math.min(frames.length - 1, next));
     if (next === index) return;
     continuationSnapshot = null; readWithoutAudio = false;
-    autoOpenAllowed = true;
     index = next;
   }
 
@@ -322,9 +300,8 @@
     await tick();
     document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
   }
-  function latest(rearm = true) {
+  function latest() {
     continuationSnapshot = null; readWithoutAudio = false;
-    if (rearm) autoOpenAllowed = true;
     const source = frames.at(-1)?.source;
     index = Math.max(0, frames.findIndex(f => f.source === source));
   }
@@ -361,7 +338,6 @@
           <button onclick={openSettings}>Settings</button>
           <button onclick={() => $settings.visualNovelMode = false}>Exit mode</button>
           <button onclick={write}>Return to game</button>
-          <button class="accent" onclick={() => composing = !composing}>Write action</button>
         </div>
       </header>
       <div class="stage" role="group" aria-label="Characters in the scene">
@@ -409,7 +385,7 @@
             {/if}
           </div>
         {/if}
-        <p class="prose" class:with-composer={composing} aria-live="polite">{bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Write action to take a turn."}</p>
+        <p class="prose" class:with-composer={composing} aria-live="polite">{bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
         {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
         {#if $settings.novelTtsEnabled}
           <div class="narration-controls">
@@ -434,6 +410,7 @@
           <button onclick={() => latest()} disabled={!frames.length}>Latest passage</button>
           <button class="accent" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
           <button onclick={continueReading} disabled={continuing || (composing && composerBusy)}>{continuing ? "Continuing..." : "Continue"}</button>
+          <button class="accent" aria-expanded={composing} disabled={continuing || (composing && composerBusy)} onclick={() => composing = !composing}>Actions</button>
         </footer>
       </div>
     </div>
