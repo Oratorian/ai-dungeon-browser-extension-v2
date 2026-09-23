@@ -438,7 +438,7 @@
       </header>
       <div class="stage" role="group" aria-label="Characters in the scene">
         {#each stageCharacters as character, slot (slot)}
-          <div class="stage-slot" data-side={slot % 2 === 0 ? "left" : "right"} style:grid-column={stageCharacters.filter(Boolean).length <= 2 ? ["1 / 3", "3 / 5", "1", "4"][slot] : String([2, 3, 1, 4][slot])}>
+          <div class="stage-slot" data-edge={stageCharacters.filter(Boolean).length <= 2 ? (slot === 0 ? "left" : "right") : slot === 2 ? "left" : slot === 3 ? "right" : "middle"} style:grid-column={stageCharacters.filter(Boolean).length <= 2 ? ["1 / 3", "3 / 5", "1", "4"][slot] : String([2, 3, 1, 4][slot])}>
             {#if character}
               {#key character.id}
                 <div class="stage-character" transition:portraitFade>
@@ -541,10 +541,12 @@
   button:disabled { opacity: .4; cursor: default; }
   .accent { background: #f8ae2c; color: #191c22; border-color: #f8ae2c; }
   .accent:hover:enabled { background: #ffc761; }
-  .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, 1440px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: hidden; pointer-events: none; }
+  .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, 1440px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: visible; pointer-events: none; }
   .stage-slot { position: relative; grid-row: 1; min-width: 0; min-height: 0; }
   .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
-  .portrait { width: 100%; height: 100%; object-fit: cover; object-position: center top; mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
+  .portrait { position: absolute; left: 50%; transform: translateX(-50%); width: auto; max-width: min(100vw, 1440px); height: 100%; object-fit: contain; object-position: center top; mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
+  .stage-slot[data-edge="left"] .portrait { left: 0; transform: none; object-position: left top; }
+  .stage-slot[data-edge="right"] .portrait { left: auto; right: 0; transform: none; object-position: right top; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
   .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + 24px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
@@ -582,6 +584,7 @@
   .reading-controls span { color: #b9c2c8; font-size: 13px; white-space: nowrap; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 900px) {
+    .portrait { left: -17.5%; transform: none; width: 135%; max-width: none; }
     .reader-panels { grid-template-columns: minmax(0, 1fr); max-height: 65%; }
     .dialogue { grid-column: 1; }
     .voice-panel, .action-panel { bottom: calc(100% + 12px); width: calc(50% - 8px); max-height: 30vh; }
