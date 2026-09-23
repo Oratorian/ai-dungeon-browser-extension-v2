@@ -367,6 +367,7 @@
     index = Math.max(0, frames.findIndex(f => f.source === source));
   }
   function key(event: KeyboardEvent) {
+    if (!active || paused || historyOpen) return;
     if (event.key === "Escape" && locationMenuOpen) {
       event.preventDefault(); event.stopPropagation(); scene?.focus(); locationMenuOpen = false; return;
     }
@@ -378,7 +379,17 @@
       else if (!event.shiftKey && focused === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
       return;
     }
-    if (event.target !== scene || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
+    if (event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
+    const origin = event.composedPath()[0];
+    const target = origin instanceof Element ? origin : null;
+    // Keep Space usable after clicking reader controls, without stealing it from
+    // the composer, retry instructions, or location picker.
+    if (event.key === " " && !target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], .location-control')) {
+      event.preventDefault();
+      if (!event.repeat) navigate(index + 1);
+      return;
+    }
+    if (target !== scene) return;
     if (!["ArrowLeft", "ArrowRight", " ", "Escape"].includes(event.key)) return;
     event.preventDefault(); event.stopPropagation();
     if (event.key === "Escape") write();
@@ -390,6 +401,8 @@
     extensionState.isEditorOpen = true;
   }
 </script>
+
+<svelte:window onkeydown={(event) => { if (event.key === " " && !event.defaultPrevented) key(event); }} />
 
 {#if active}
   {#if historyOpen}
@@ -474,7 +487,7 @@
           <button onclick={() => navigate(index - 1)} disabled={index === 0 || !frames.length}>Back</button>
           <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
           <button onclick={() => latest()} disabled={!frames.length}>Latest passage</button>
-          <button class="accent" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
+          <button class="accent" aria-keyshortcuts="Space" title="Next (Space)" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
           <div class="retry-control" role="group" aria-label="Retry controls">
             <button onclick={() => retryReading()} title="Regenerate AI Dungeon's latest response" disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{retryTracker ? "Retrying..." : "Retry"}</button>
             <button class="retry-edit" aria-label="Retry with changes" aria-expanded={retryEditing} title="Retry with an instruction" onclick={() => { retryEditing = !retryEditing; composing = false; }} disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}><span class="font-symbol" aria-hidden="true">edit</span></button>
