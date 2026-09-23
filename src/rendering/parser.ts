@@ -2,6 +2,7 @@ import type { TextChunk, StoryCard } from "@/shared/types";
 import { get } from "svelte/store";
 import { settings } from "@/storage";
 
+/** Parse plain text. HTML callers must use parseResponseHtml to keep markup out of matching. */
 export function parseResponse(text: string, cardMap: Map<string, StoryCard>): TextChunk[] {
   if (!text) return [];
 

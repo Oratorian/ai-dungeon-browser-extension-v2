@@ -6,10 +6,8 @@ import DOMPurify from "dompurify";
  *
  * AI Dungeon's presentational markup is atomic-CSS class soup full of underscores, and its
  * accessibility attributes repeat the visible text (a player action carries an aria-label with the
- * whole action in it, plus aria-level). The parser runs markdown regexes over the serialized HTML,
- * so any attribute that gets through is fair game for a `*...*` or `_..._` match, which then splits
- * the tag in half and leaks the attribute's tail into the story as text. Everyone has seen the
- * class-soup version of that; the aria-label version appeared the day AI Dungeon added the label.
+ * whole action in it, plus aria-level). Keep only story formatting. The response renderer walks
+ * this sanitized tree and matches cards/markdown on text nodes, never serialized HTML syntax.
  *
  * ALLOWED_ATTR: [] is not enough on its own: DOMPurify lets every aria-* and data-* attribute
  * through by default regardless of the allowlist, so both switches are turned off explicitly.
@@ -24,4 +22,8 @@ export const RESPONSE_SANITIZE_CONFIG = {
 /** AI Dungeon's response markup reduced to what the parser may see. */
 export function sanitizeResponseHtml(html: string): string {
   return DOMPurify.sanitize(html, RESPONSE_SANITIZE_CONFIG);
+}
+
+export function sanitizeResponseFragment(html: string): DocumentFragment {
+  return DOMPurify.sanitize(html, { ...RESPONSE_SANITIZE_CONFIG, RETURN_DOM_FRAGMENT: true });
 }
