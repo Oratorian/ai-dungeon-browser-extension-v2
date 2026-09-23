@@ -453,9 +453,8 @@
           </div>
         {/each}
       </div>
-      <div class="dialogue">
-        <p class="prose" class:with-composer={composing} aria-live="polite">{retryTracker ? "Waiting for the replacement response..." : bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
-        {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
+      <div class="reader-panels">
+        <aside class="voice-panel" aria-label="Narration controls">
         {#if $settings.novelTtsEnabled}
           <div class="narration-controls">
             {#if bufferingNarration && !retryTracker}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
@@ -468,10 +467,10 @@
             <span class="queue-badge" role="status" title="Generated audio for the next available lines, excluding the current line">{upcomingNarration.ready}/{upcomingNarration.total} upcoming lines ready</span>
           </div>
         {/if}
-        {#if composing}
-          <NovelComposer blocked={continuing || !!retryTracker} onbusychange={busy => composerBusy = busy} onclose={() => composing = false}
-            onsubmitting={submitting} onsubmitted={submitted} onsubmitfailed={() => { continuationSnapshot = null; }} />
-        {/if}
+        </aside>
+      <div class="dialogue">
+        <p class="prose" aria-live="polite">{retryTracker ? "Waiting for the replacement response..." : bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
+        {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
         {#if retryEditing}
           <form class="retry-instructions" onsubmit={event => { event.preventDefault(); void retryReading(retryInstruction); }}>
             <label for="vn-retry-instructions">What should the AI change?</label>
@@ -494,8 +493,16 @@
             {#if historyCount > 1}<button class="retry-count" onclick={showRetryHistory} aria-label={`Retry history: ${historyCount} responses`} title="Choose an existing retry response" disabled={continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{historyCount}</button>{/if}
           </div>
           <button onclick={continueReading} disabled={continuing || !!retryTracker || (composing && composerBusy)}>{continuing && !retryTracker ? "Continuing..." : "Continue"}</button>
-          <button class="accent" aria-expanded={composing} disabled={continuing || !!retryTracker || (composing && composerBusy)} onclick={() => { composing = !composing; retryEditing = false; }}>Actions</button>
+
         </footer>
+      </div>
+        <aside class="action-panel" class:expanded={composing} aria-label="Story actions">
+          <button class="accent" aria-expanded={composing} disabled={continuing || !!retryTracker || (composing && composerBusy)} onclick={() => { composing = !composing; retryEditing = false; }}>Actions</button>
+        {#if composing}
+          <NovelComposer blocked={continuing || !!retryTracker} onbusychange={busy => composerBusy = busy} onclose={() => composing = false}
+            onsubmitting={submitting} onsubmitted={submitted} onsubmitfailed={() => { continuationSnapshot = null; }} />
+        {/if}
+        </aside>
       </div>
     </div>
   {/if}
@@ -526,9 +533,15 @@
   .portrait { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
   .stage-caption { position: absolute; bottom: 8px; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
-  .dialogue { width: min(100%, 1080px); align-self: center; max-height: 55%; display: flex; flex-direction: column; gap: 16px; background: #141e27f5; border: 1px solid #65717b; border-top: 2px solid #f8ae2c; border-radius: 14px; padding: clamp(14px, 3vw, 28px); box-shadow: 0 16px 48px #0005; }
+  .reader-panels { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 3.6fr) minmax(220px, 1.25fr); gap: 16px; width: 100%; max-height: 55%; min-height: 220px; flex-shrink: 0; }
+  .voice-panel, .action-panel { min-width: 0; overflow: auto; align-self: end; max-height: 100%; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; }
+  .voice-panel:empty { visibility: hidden; }
+  .voice-panel .narration-controls { align-items: stretch; flex-direction: column; }
+  .voice-panel .queue-badge { white-space: normal; }
+  .action-panel { display: flex; flex-direction: column; gap: 12px; }
+  .dialogue { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: #141e27f5; border: 1px solid #65717b; border-top: 2px solid #f8ae2c; border-radius: 14px; padding: clamp(14px, 3vw, 28px); box-shadow: 0 16px 48px #0005; }
   .prose { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 3em; font: clamp(18px, 2vw, 25px)/1.6 Georgia, serif; margin: 0; }
-  .prose.with-composer { min-height: 0; max-height: 14vh; }
+  .prose { flex: 1; }
   .dialogue { overflow: auto; }
   .action-error { color: #ffadb2; margin: 0; font-size: 13px; }
   .narration-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: #b9c2c8; }
@@ -546,5 +559,12 @@
   .retry-instructions textarea { resize: vertical; min-height: 60px; max-height: 20vh; border: 1px solid #64727c; border-radius: 8px; padding: 10px; background: #0e171f; color: #eee8de; font: inherit; }
   footer span { margin-right: auto; color: #b9c2c8; font-size: 13px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
-  @media (max-width: 500px) { .novel { --scene-gap: 10px; } .tools { gap: 6px; } button { padding: 7px 10px; font-size: 13px; } .dialogue { max-height: 65%; gap: 10px; } .stage-caption { font-size: 13px; } }
+  @media (max-width: 900px) {
+    .reader-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 65%; min-height: 0; overflow: auto; }
+    .dialogue { grid-column: 1 / -1; grid-row: 1; min-height: 180px; }
+    .voice-panel, .action-panel { align-self: start; max-height: none; }
+    .voice-panel { grid-column: 1; grid-row: 2; }
+    .action-panel { grid-column: 2; grid-row: 2; }
+  }
+  @media (max-width: 500px) { .novel { --scene-gap: 10px; } .tools { gap: 6px; } button { padding: 7px 10px; font-size: 13px; } .dialogue { gap: 10px; } .stage-caption { font-size: 13px; } }
 </style>
