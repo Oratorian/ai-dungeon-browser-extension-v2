@@ -9,7 +9,6 @@
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
   import { createNovelStageTracker } from "@/rendering/novel_stage";
-  import { resolveNovelAssignments, type NovelAssignment } from "@/rendering/novel_assignments";
   import NovelComposer from "./novel_composer.svelte";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
@@ -25,9 +24,6 @@
   let composing = $state(false);
   let retryEditing = $state(false);
   let retryInstruction = $state("");
-  let assigning = $state(false);
-  let newCharacterName = $state("");
-  let assignments = $state<NovelAssignment[]>([]);
   let continuing = $state(false);
   let composerBusy = $state(false);
   let actionError = $state("");
@@ -156,15 +152,8 @@
     const upcoming = frames.slice(index + 1, index + queueSize + 1);
     return { ready: upcoming.filter(frame => narrationQueue?.get(frame.text)).length, total: upcoming.length };
   });
-  const paragraphIndex = $derived.by(() => {
-    for (let i = index; i >= 0; i--) if (frames[i]?.startsParagraph) return i;
-    return -1;
-  });
-  const paragraphFrame = $derived(frames[paragraphIndex]);
-  const resolvedAssignments = $derived(resolveNovelAssignments(frames, assignments));
-  const assignedId = $derived(characters.some(c => c.id === resolvedAssignments[paragraphIndex]) ? resolvedAssignments[paragraphIndex] : "");
   const trackStage = $derived(createNovelStageTracker(characters));
-  const stages = $derived(trackStage(frames, resolvedAssignments));
+  const stages = $derived(trackStage(frames));
   const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => characters.find(c => c.id === id)));
   const active = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
 
@@ -186,7 +175,6 @@
       return ($settings.novelTtsEnabled ? splitNarratedFrames(parsed) : parsed)
         .map((f, offset) => ({ ...f, source: p.element, offset }));
     });
-    assignments = assignments.filter(a => frames.some(f => f.startsParagraph && f.source === a.source && f.offset === a.offset && f.paragraph === a.paragraph));
     const retained = previous ? retainedNovelIndex(previous, index, frames) : -1;
     const latest = passages.at(-1)?.element;
     index = retained >= 0 ? retained : Math.max(0, frames.findIndex(f => f.source === latest));
@@ -212,7 +200,6 @@
       continueController?.abort(); continuing = false; actionError = "";
       historyController?.abort(); closeRetryHistory(); historyOpen = false; historyCount = 0;
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
-      assignments = []; assigning = false; newCharacterName = "";
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
       retryEditing = false; retryInstruction = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
@@ -230,29 +217,6 @@
     untrack(refresh);
     return () => { observer.disconnect(); cancelAnimationFrame(queued); continueController?.abort(); historyController?.abort(); closeRetryHistory(); };
   });
-
-  function assignCharacter(characterId: string) {
-    if (!paragraphFrame) return;
-    assignments = assignments.filter(a => a.source !== paragraphFrame.source || a.offset !== paragraphFrame.offset);
-    if (characterId) assignments = [...assignments, { source: paragraphFrame.source, offset: paragraphFrame.offset, paragraph: paragraphFrame.paragraph, characterId }];
-  }
-
-  function editAssignedCard(characterId: string) {
-    if (!$selected) return;
-    extensionState.editorTab = Tab.Adventure;
-    extensionState.isEditorOpen = true;
-    Storage.openStoryCardEditor($selected, characterId);
-  }
-
-  function createCharacter() {
-    if (!$selected || !newCharacterName.trim()) return;
-    const card = Storage.createStoryCard($selected, newCharacterName.trim());
-    if (!card) return;
-    assignCharacter(card.id);
-    newCharacterName = "";
-    editAssignedCard(card.id);
-  }
-
 
   async function continueReading() {
     if (continuing || retryTracker || (composing && composerBusy) || playedShortId() !== $playedAdventureId) return;
@@ -439,32 +403,6 @@
         {/each}
       </div>
       <div class="dialogue">
-        <div class="assignment-tools">
-          <button aria-expanded={assigning} onclick={() => assigning = !assigning} disabled={!frame}>Assign character{assignedId ? " (assigned)" : ""}</button>
-        </div>
-        {#if assigning && frame}
-          <div class="assignment-panel">
-            <label>Character for this paragraph
-              <select aria-label="Character for this paragraph" value={assignedId} onchange={e => assignCharacter(e.currentTarget.value)}>
-                <option value="">Automatic characters only</option>
-                {#each characters.filter(c => c.id !== "player" && c.name.trim().toLowerCase() !== "you") as character (character.id)}
-                  <option value={character.id}>{character.name}</option>
-                {/each}
-              </select>
-            </label>
-            <p>This choice lasts for this loaded paragraph, until its text changes or the reader is reset. It does not add name or pronoun triggers.</p>
-            {#if assignedId}<button onclick={() => editAssignedCard(assignedId)}>Edit character artwork</button>{/if}
-            {#if $selected}
-              <div class="create-character">
-                <input aria-label="New character name" placeholder="New character name" bind:value={newCharacterName} />
-                <button disabled={!newCharacterName.trim()} onclick={createCharacter}>Create and edit character</button>
-              </div>
-              <p>New character cards are saved in your selected set.</p>
-            {:else}
-              <p>Select a card set in the editor before creating a character.</p>
-            {/if}
-          </div>
-        {/if}
         <p class="prose" class:with-composer={composing} aria-live="polite">{retryTracker ? "Waiting for the replacement response..." : bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
         {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
         {#if $settings.novelTtsEnabled}
@@ -537,13 +475,6 @@
   .action-error { color: #ffadb2; margin: 0; font-size: 13px; }
   .narration-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: #b9c2c8; }
   .queue-badge { padding: 3px 8px; border: 1px solid #59636b; border-radius: 999px; background: #20272c; color: #e2e8ec; font-variant-numeric: tabular-nums; }
-  .assignment-tools { display: flex; justify-content: flex-end; }
-  .assignment-panel { display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #65717b; padding-bottom: 12px; }
-  .assignment-panel p { margin: 0; color: #b9c2c8; font-size: 12px; }
-  .assignment-panel label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
-  .assignment-panel select, .assignment-panel input { min-width: 0; max-width: 100%; padding: 8px; background: #202b34; color: #eee8de; border: 1px solid #64727c; border-radius: 8px; font: inherit; }
-  .assignment-panel select:focus-visible, .assignment-panel input:focus-visible { outline: 2px solid #f8ae2c; }
-  .create-character { display: flex; flex-wrap: wrap; gap: 8px; }
   footer { flex-wrap: wrap; flex-shrink: 0; }
   .retry-control { display: inline-flex; flex-shrink: 0; }
   .retry-control button { border-radius: 0; }
