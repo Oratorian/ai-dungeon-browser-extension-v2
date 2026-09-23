@@ -1,5 +1,28 @@
 import { splitNovelSentences, type NovelFrame } from "./novel";
 
+type RetryPassage = { element: HTMLElement; text: string };
+
+/** Retry replaces the last passage, sometimes removing it before streaming its replacement. */
+export function trackRetriedPassage(before: RetryPassage[]) {
+  const original = before.at(-1);
+  const normalize = (text: string) => text.replace(/\s+/gu, " ").trim();
+  const oldText = normalize(original?.text ?? "");
+  let removed = false;
+  return (after: RetryPassage[]): number => {
+    if (!original) return -1;
+    const last = after.at(-1);
+    if (!last) { removed = true; return -1; }
+    // Do not mistake the preceding player action for the replacement when the
+    // old response disappears. Older virtualized history may also be removed.
+    if (before.slice(0, -1).some(p => p.element === last.element || normalize(p.text) === normalize(last.text))) {
+      removed = true;
+      return -1;
+    }
+    if (!removed && normalize(last.text) === oldText) return -1;
+    return after.length - 1;
+  };
+}
+
 /** Short stable sentences can be synthesized while the rest of a response streams. */
 export function splitNarratedFrames(frames: NovelFrame[]): NovelFrame[] {
   return frames.flatMap(frame => {

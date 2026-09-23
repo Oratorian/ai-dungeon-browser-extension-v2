@@ -3,7 +3,7 @@
   import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
-  import { continueStory } from "@/aid/action_input";
+  import { continueStory, retryStory } from "@/aid/action_input";
   import { extensionState, type SettingsSection } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
@@ -14,7 +14,7 @@
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
   import { NarrationQueue, StableNarrationWindow, narrationQueueSize } from "@/tts/queue";
-  import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames } from "@/rendering/novel_narration";
+  import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames, trackRetriedPassage } from "@/rendering/novel_narration";
 
   const adventures = Storage.adventures;
   const selected = Storage.selectedAdventureId;
@@ -44,6 +44,7 @@
   let narrationUrl: string | undefined;
   let playbackToken = 0;
   let continuationSnapshot = $state<string[] | null>(null);
+  let retryTracker = $state<ReturnType<typeof trackRetriedPassage> | null>(null);
   let readWithoutAudio = $state(false);
   const ttsReady = $derived($ttsState.phase === "ready");
   const narrationEnabled = $derived($settings.novelTtsEnabled);
@@ -71,7 +72,7 @@
   function playNarration() {
     stopNarration();
     const audio = frame && narrationQueue?.get(frame.text);
-    if (!audio || !active || paused || continuing || continuationSnapshot || narrationMuted) return;
+    if (!audio || !active || paused || continuing || continuationSnapshot || retryTracker || narrationMuted) return;
     const token = playbackToken;
     narrationUrl = URL.createObjectURL(narrationWav(audio, $settings.novelTtsPitch));
     narrationAudio = new Audio(narrationUrl);
@@ -105,7 +106,7 @@
   // Compare text, not frame objects/paragraph metadata: streaming later text must
   // not keep postponing synthesis of an already-complete sentence.
   const queueSize = $derived(narrationQueueSize($settings.novelTtsQueue));
-  const narrationWindow = $derived(JSON.stringify(frames.slice(index, index + queueSize + 1).map(f => f.text)));
+  const narrationWindow = $derived(JSON.stringify(retryTracker ? [] : frames.slice(index, index + queueSize + 1).map(f => f.text)));
   $effect(() => {
     const scheduler = narrationScheduler;
     const texts: string[] = JSON.parse(narrationWindow);
@@ -116,7 +117,7 @@
   $effect(() => {
     const text = narrationText;
     const position = index;
-    const visible = active && !paused && !continuing && !continuationSnapshot && !narrationMuted;
+    const visible = active && !paused && !continuing && !continuationSnapshot && !retryTracker && !narrationMuted;
     const queue = narrationQueue;
     untrack(stopNarration);
     if (!visible || !text || !queue) return;
@@ -187,6 +188,13 @@
       const next = firstContinuationFrame(continuationSnapshot, frames.map(f => f.text));
       if (next >= 0) { index = next; continuationSnapshot = null; readWithoutAudio = false; }
     }
+    if (retryTracker) {
+      const replacement = retryTracker(passages);
+      if (replacement >= 0) {
+        index = Math.max(0, frames.findIndex(f => f.source === passages[replacement]!.element));
+        retryTracker = null; readWithoutAudio = false;
+      }
+    }
   }
 
   $effect(() => {
@@ -196,7 +204,7 @@
     const narrated = narrationEnabled;
     untrack(() => {
       continueController?.abort(); continuing = false; actionError = "";
-      continuationSnapshot = null; readWithoutAudio = false;
+      continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
       assignments = []; assigning = false; newCharacterName = "";
       frames = []; index = 0; paused = false; composing = false; lastSignature = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
@@ -239,7 +247,7 @@
 
 
   async function continueReading() {
-    if (continuing || (composing && composerBusy) || playedShortId() !== $playedAdventureId) return;
+    if (continuing || retryTracker || (composing && composerBusy) || playedShortId() !== $playedAdventureId) return;
     continuing = true; actionError = "";
     continuationSnapshot = frames.map(f => f.text);
     const controller = new AbortController();
@@ -259,6 +267,26 @@
     stopNarration();
   }
 
+  async function retryReading() {
+    if (continuing || retryTracker || continuationSnapshot || (composing && composerBusy) || playedShortId() !== $playedAdventureId) return;
+    refresh();
+    const passages = output ? readNovelPassages(output) : [];
+    if (!passages.length) return;
+    retryTracker = trackRetriedPassage(passages);
+    stopNarration();
+    narrationScheduler?.setWindow([]);
+    narrationQueue?.setWindow([]);
+    continuing = true; actionError = "";
+    const controller = new AbortController();
+    continueController = controller;
+    try {
+      await retryStory(controller.signal);
+      if (!controller.signal.aborted) { composing = false; refresh(); }
+    } catch (e) {
+      if (!controller.signal.aborted) { retryTracker = null; actionError = (e as Error).message; }
+    } finally { if (!controller.signal.aborted) continuing = false; }
+  }
+
   function submitted() {
     composing = false;
     refresh();
@@ -267,7 +295,7 @@
   function navigate(next: number) {
     next = Math.max(0, Math.min(frames.length - 1, next));
     if (next === index) return;
-    continuationSnapshot = null; readWithoutAudio = false;
+    continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
     index = next;
   }
 
@@ -304,7 +332,7 @@
     document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
   }
   function latest() {
-    continuationSnapshot = null; readWithoutAudio = false;
+    continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
     const source = frames.at(-1)?.source;
     index = Math.max(0, frames.findIndex(f => f.source === source));
   }
@@ -388,22 +416,22 @@
             {/if}
           </div>
         {/if}
-        <p class="prose" class:with-composer={composing} aria-live="polite">{bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
+        <p class="prose" class:with-composer={composing} aria-live="polite">{retryTracker ? "Waiting for the replacement response..." : bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
         {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
         {#if $settings.novelTtsEnabled}
           <div class="narration-controls">
-            {#if bufferingNarration}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
+            {#if bufferingNarration && !retryTracker}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
             {#if !ttsReady}
               <button onclick={() => void initializeTts()} disabled={$ttsState.phase === "checking" || $ttsState.phase === "loading"}>Initialize TTS</button>
             {/if}
-            <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame || !ttsReady}>Read line</button>
+            <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame || !ttsReady || !!retryTracker}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>
             <span class="queue-badge" role="status" title="Generated audio for the next available lines, excluding the current line">{upcomingNarration.ready}/{upcomingNarration.total} upcoming lines ready</span>
           </div>
         {/if}
         {#if composing}
-          <NovelComposer blocked={continuing} onbusychange={busy => composerBusy = busy} onclose={() => composing = false}
+          <NovelComposer blocked={continuing || !!retryTracker} onbusychange={busy => composerBusy = busy} onclose={() => composing = false}
             onsubmitting={submitting} onsubmitted={submitted} onsubmitfailed={() => { continuationSnapshot = null; }} />
         {/if}
         {#if actionError}<p role="alert" class="action-error">{actionError}</p>{/if}
@@ -412,8 +440,9 @@
           <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
           <button onclick={() => latest()} disabled={!frames.length}>Latest passage</button>
           <button class="accent" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
-          <button onclick={continueReading} disabled={continuing || (composing && composerBusy)}>{continuing ? "Continuing..." : "Continue"}</button>
-          <button class="accent" aria-expanded={composing} disabled={continuing || (composing && composerBusy)} onclick={() => composing = !composing}>Actions</button>
+          <button onclick={retryReading} title="Regenerate AI Dungeon's latest response" disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{retryTracker ? "Retrying..." : "Retry"}</button>
+          <button onclick={continueReading} disabled={continuing || !!retryTracker || (composing && composerBusy)}>{continuing && !retryTracker ? "Continuing..." : "Continue"}</button>
+          <button class="accent" aria-expanded={composing} disabled={continuing || !!retryTracker || (composing && composerBusy)} onclick={() => composing = !composing}>Actions</button>
         </footer>
       </div>
     </div>

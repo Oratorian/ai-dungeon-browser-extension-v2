@@ -67,6 +67,9 @@ button's quick actions. The quick-action icon highlights while the mode is enabl
   when clicked, and stays closed when reaching the end of a passage.
 - **Continue** uses AI Dungeon's native command. An unfinished draft is kept in memory and restored
   when you next open Actions, without reopening the textbox during generation.
+- **Retry** regenerates AI Dungeon's latest response. It stops narration, clears the upcoming
+  audio queue, waits for replacement text, and starts reading at the replacement's first line.
+  Your unfinished action draft is preserved.
 - **Return to game** reveals the normal interface; **Resume visual novel** reopens the reader.
   **Exit mode** switches it off.
 

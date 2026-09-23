@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { ACTION_MODES, continueStory, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft } from "@/aid/action_input";
+import { ACTION_MODES, continueStory, retryStory, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft } from "@/aid/action_input";
 
 let sent: { value: string; mode: string | null }[];
 beforeEach(() => {
@@ -39,6 +39,37 @@ beforeEach(() => {
 });
 
 describe("visual novel native action adapter", () => {
+  it("retries only the visible native command without submitting a draft", async () => {
+    writeActionDraft("Unsaved action");
+    let retries = 0, hiddenClicks = 0;
+    const hidden = document.createElement("div"); hidden.setAttribute("aria-hidden", "true");
+    hidden.innerHTML = '<button aria-label="Command: retry">Hidden</button>';
+    (hidden.firstChild as HTMLElement).onclick = () => hiddenClicks++;
+    const retry = document.createElement("button"); retry.setAttribute("aria-label", "Command: retry");
+    retry.onclick = () => retries++;
+    document.body.append(hidden, retry);
+    await retryStory(new AbortController().signal);
+    expect(retries).toBe(1); expect(hiddenClicks).toBe(0);
+    expect(readActionInput().value).toBe("Unsaved action"); expect(sent).toEqual([]);
+    retry.disabled = true;
+    const controller = new AbortController(); const pending = retryStory(controller.signal); controller.abort();
+    await expect(pending).rejects.toThrow(); expect(retries).toBe(1);
+  });
+  it("preserves the draft when closing the input to reveal Retry", async () => {
+    writeActionDraft("Draft after retry");
+    let retries = 0;
+    const close = document.createElement("button"); close.setAttribute("aria-label", "Close text input");
+    close.onclick = () => {
+      document.querySelector<HTMLTextAreaElement>("textarea")!.value = "";
+      const retry = document.createElement("button"); retry.setAttribute("aria-label", "Command: retry");
+      retry.onclick = () => retries++; document.body.append(retry);
+    };
+    document.body.append(close);
+    await retryStory(new AbortController().signal);
+    expect(retries).toBe(1); expect(sent).toEqual([]);
+    await openActionInput(new AbortController().signal);
+    expect(document.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("Draft after retry");
+  });
   it("opens a collapsed input even when the textarea remains mounted without aria-hidden", async () => {
     const mode = document.querySelector('[aria-label="Change input mode"]')!;
     mode.remove();

@@ -5,27 +5,37 @@ export type ActionMode = typeof ACTION_MODES[number];
 const input = () => document.querySelector<HTMLTextAreaElement>("#game-text-input");
 const modeButton = () => document.querySelector<HTMLElement>('[aria-label="Change input mode"]');
 const submitButton = () => document.querySelector<HTMLElement>('[aria-label="Submit action"]');
-// Continue closes the native composer. Restore its draft when the user next opens it, rather
+// Continue/Retry may close the native composer. Restore its draft when the user next opens it, rather
 // than reopening controls that AI Dungeon removes while generating the continuation.
 const deferredDrafts = new Map<string, string>();
 const disabled = (element: HTMLElement | null) => !element || element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true";
-const continueButton = () => [...document.querySelectorAll<HTMLElement>('[aria-label="Command: continue"]')]
+const commandButton = (command: "continue" | "retry") => [...document.querySelectorAll<HTMLElement>(`[aria-label="Command: ${command}"]`)]
   .find(button => !button.closest('[aria-hidden="true"]') && !disabled(button)) ?? null;
 
 /** Continue uses the native command, never an empty draft submission. */
 export async function continueStory(signal: AbortSignal) {
+  return runStoryCommand("continue", signal);
+}
+
+/** Retry replaces the latest response through AI Dungeon's own command. */
+export async function retryStory(signal: AbortSignal) {
+  return runStoryCommand("retry", signal);
+}
+
+async function runStoryCommand(command: "continue" | "retry", signal: AbortSignal) {
   signal.throwIfAborted();
   const route = location.pathname;
   const draft = input()?.value ?? "";
   const close = document.querySelector<HTMLElement>('[aria-label="Close text input"]');
-  const restore = !continueButton() && !!close;
+  const restore = !commandButton(command) && !!close;
   if (restore && draft) deferredDrafts.set(route, draft);
   try {
     if (restore) close!.click();
-    const button = await until(continueButton, signal, "Continue is not available yet. Wait for AI Dungeon to finish generating, then try again.");
+    const label = command === "retry" ? "Retry" : "Continue";
+    const button = await until(() => commandButton(command), signal, `${label} is not available yet. Wait for AI Dungeon to finish generating, then try again.`);
     signal.throwIfAborted();
-    if (location.pathname !== route) throw new Error("The adventure changed. Continue was cancelled.");
-    if (disabled(button)) throw new Error("AI Dungeon is not ready to continue yet.");
+    if (location.pathname !== route) throw new Error(`The adventure changed. ${label} was cancelled.`);
+    if (disabled(button)) throw new Error(`AI Dungeon is not ready to ${command} yet.`);
     button.click();
   } catch (error) {
     if (restore && !signal.aborted && location.pathname === route) {

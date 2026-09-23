@@ -1,9 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
 import { parseNovel } from "@/rendering/novel";
-import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames } from "@/rendering/novel_narration";
+import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames, trackRetriedPassage } from "@/rendering/novel_narration";
 import { StableNarrationWindow } from "@/tts/queue";
 
 describe("narrated continuation", () => {
+  it("waits through Retry removal and selects the replacement, not the preceding action", () => {
+    const action = { element: {} as HTMLElement, text: "You wave." };
+    const response = { element: {} as HTMLElement, text: "Old response. Old ending." };
+    const track = trackRetriedPassage([action, response]);
+    expect(track([action, response])).toBe(-1);
+    expect(track([action, { ...response, element: {} as HTMLElement }])).toBe(-1);
+    expect(track([action])).toBe(-1);
+    expect(track([])).toBe(-1);
+    expect(track([{ element: {} as HTMLElement, text: "New response." }])).toBe(0);
+  });
+  it("handles in-place Retry edits and an identical replacement after removal", () => {
+    const response = { element: {} as HTMLElement, text: "Old response." };
+    expect(trackRetriedPassage([response])([{ ...response, text: "New response." }])).toBe(0);
+    const track = trackRetriedPassage([response]);
+    expect(track([])).toBe(-1);
+    expect(track([{ ...response, element: {} as HTMLElement }])).toBe(0);
+  });
   it("keeps paragraph metadata and never cuts a sentence at an arbitrary word limit", () => {
     const paragraph = "The door opens. A traveler arrives. " + "Footsteps echo through the hall, ".repeat(30);
     const frames = splitNarratedFrames(parseNovel(paragraph));
