@@ -23,7 +23,7 @@ if (!(Test-Path -LiteralPath (Join-Path $destination 'installed.json'))) {
         description = 'Dungeon Extension Firefox TTS Helper'
         path = Join-Path $destination 'DungeonTtsHelper.exe'
         type = 'stdio'
-        allowed_extensions = @('dungeon-extension-v2@oratorian')
+        allowed_extensions = @('dungeon-extension-v2@oratorian', 'dungeon-extension-betas@oratorian')
     }
     [IO.File]::WriteAllText((Join-Path $destination 'installed.json'), ($manifest | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
 }

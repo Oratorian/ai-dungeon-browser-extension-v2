@@ -67,7 +67,7 @@ try {
   const incompatible = host(); incompatible.send({ type: 'start', protocol: 2 });
   assert.equal((await incompatible.next()).type, 'error'); await incompatible.exited;
   const wrong = host('unrelated@example.org'); assert.equal((await wrong.exited)[0], 1);
-  const restart = host(); restart.send({ type: 'start', protocol: 1 });
+  const restart = host('dungeon-extension-betas@oratorian'); restart.send({ type: 'start', protocol: 1 });
   assert.equal((await restart.next()).type, 'ready'); restart.child.stdin.end(); await restart.exited;
   console.log('PASS: native framing, ready handshake, bundled assets, isolation headers, HTTP restrictions, port conflict, EOF shutdown, restart, protocol and extension validation.');
 } finally { clearTimeout(deadline); for (const child of children) if (child.exitCode === null) child.kill(); }

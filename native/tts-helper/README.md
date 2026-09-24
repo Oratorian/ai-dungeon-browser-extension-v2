@@ -37,4 +37,10 @@ same native protocol and compatible engine assets. This initial build is unsigne
 For maintainers: run `powershell -NoProfile -File scripts/build-tts-helper.ps1`
 from the repository after `npm ci`, with a .NET SDK supporting .NET 8 installed.
 The ZIP is written to `.output/DungeonExtension-TTS-Helper-windows-x64.zip`.
-Firefox's only allowlisted extension ID is `dungeon-extension-v2@oratorian`.
+Firefox allows the stable ID `dungeon-extension-v2@oratorian` and the beta ID
+`dungeon-extension-betas@oratorian`. Run Install.cmd from the updated package to
+enable beta access if you installed an earlier helper.
+
+Build the Firefox beta extension with `npm run build:firefox:beta`. Its Manifest V2
+output is `.output/firefox-mv2-beta`, named `Dungeon Extension-beta`, so it can be
+installed separately from the stable extension.

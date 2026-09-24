@@ -8,10 +8,9 @@ using System.Text.Json;
 // This process serves packaged engine files, never model downloads or story text.
 internal static class Program
 {
-    private const string ExtensionId = "dungeon-extension-v2@oratorian";
     public static async Task<int> Main(string[] args)
     {
-        if (args.Length != 2 || args[1] != ExtensionId) return 1;
+        if (args.Length != 2 || args[1] is not ("dungeon-extension-v2@oratorian" or "dungeon-extension-betas@oratorian")) return 1;
         using var input = Console.OpenStandardInput();
         using var output = Console.OpenStandardOutput();
         using var shutdown = new CancellationTokenSource();
