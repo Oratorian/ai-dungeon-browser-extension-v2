@@ -35,8 +35,9 @@ to launch the new installation. The installed helper and extension must use the
 same native protocol and compatible engine assets. This initial build is unsigned.
 
 For maintainers: run `npm run build:tts-helper` after `npm ci`, with a .NET SDK
-supporting .NET 8 and Inno Setup 6.7 or newer installed. Set `ISCC_PATH` to the
-compiler executable if it is not on PATH or in the default Inno Setup 6 folder.
+supporting .NET 8 and Inno Setup 6.7 or newer installed. Compiler discovery checks
+PATH, `.output/tools/inno/ISCC.exe`, and standard system/per-user Inno Setup 6/7
+folders. Set `ISCC_PATH` or pass `-IsccPath` for a compiler elsewhere.
 The installer is written to `.output/DungeonExtension-TTS-Helper-Setup-windows-x64.exe`.
 To build only the executable and engine files for testing, run
 `powershell -NoProfile -File scripts/build-tts-helper.ps1`.

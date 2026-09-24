@@ -6,9 +6,18 @@ if (!(Test-Path -LiteralPath (Join-Path $package 'DungeonTtsHelper.exe'))) { thr
 if (!$IsccPath) {
     $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
     if ($command) { $IsccPath = $command.Source }
-    else { $IsccPath = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe' }
+    else {
+        $candidates = @(Join-Path $repo '.output\tools\inno\ISCC.exe')
+        foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs'))) {
+            if ($root) {
+                foreach ($version in @(7, 6)) { $candidates += Join-Path $root "Inno Setup $version\ISCC.exe" }
+            }
+        }
+        $IsccPath = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    }
 }
-if (!(Test-Path -LiteralPath $IsccPath)) { throw 'Install Inno Setup 6.7 or newer, or pass -IsccPath / set ISCC_PATH to ISCC.exe.' }
+if (!$IsccPath -or !(Test-Path -LiteralPath $IsccPath -PathType Leaf)) { throw 'Install Inno Setup 6.7 or newer, or pass -IsccPath / set ISCC_PATH to ISCC.exe. A portable compiler is also supported at .output/tools/inno/ISCC.exe.' }
+Write-Host "Inno Setup compiler: $IsccPath"
 
 # Use existing extension artwork in the native Windows setup and Installed apps entry.
 $iconStream = [IO.MemoryStream]::new()
