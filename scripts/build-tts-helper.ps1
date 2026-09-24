@@ -28,7 +28,7 @@ try {
     Get-ChildItem -LiteralPath (Join-Path $repo 'native\tts-helper\licenses') -File | Copy-Item -Destination $licenses -Force
     [xml]$project = Get-Content -LiteralPath (Join-Path $repo 'native\tts-helper\DungeonTtsHelper.csproj')
     $runtimeVersion = $project.Project.PropertyGroup.RuntimeFrameworkVersion
-    $assets = Get-Content -LiteralPath (Join-Path $repo 'native\tts-helper\obj\project.assets.json') -Raw | ConvertFrom-Json
+    $assets = Get-Content -LiteralPath (Join-Path $repo '.output\dotnet\tts-helper\obj\project.assets.json') -Raw | ConvertFrom-Json
     $runtimePackage = $assets.packageFolders.PSObject.Properties.Name | ForEach-Object {
         Join-Path $_ "microsoft.netcore.app.runtime.win-x64\$runtimeVersion"
     } | Where-Object { Test-Path -LiteralPath (Join-Path $_ 'LICENSE.TXT') } | Select-Object -First 1

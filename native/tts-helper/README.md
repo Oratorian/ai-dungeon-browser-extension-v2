@@ -42,6 +42,8 @@ The installer is written to `.output/DungeonExtension-TTS-Helper-Setup-windows-x
 To build only the executable and engine files for testing, run
 `powershell -NoProfile -File scripts/build-tts-helper.ps1`.
 These are staged in `.output/tts-helper/windows-x64`; distribute the setup executable.
+Native build and IDE restore intermediates live in `.output/dotnet/tts-helper`, so
+switching to a branch without the helper does not leave build files in `native`.
 
 The wizard uses a separate managed installation directory and takes over Firefox's
 helper registration from an earlier script-based installation. Old script-installed

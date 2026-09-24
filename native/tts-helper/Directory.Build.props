@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Set before the SDK imports so builds and IDE restores stay outside source folders. -->
+    <BaseOutputPath>$(MSBuildThisFileDirectory)..\..\.output\dotnet\tts-helper\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)..\..\.output\dotnet\tts-helper\obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>
