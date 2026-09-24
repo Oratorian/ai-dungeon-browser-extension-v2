@@ -4,8 +4,7 @@
   import { Storage, settings } from "@/storage";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
   import { continueStory, retryStory, retryStoryWithChanges, browseRetryHistory, closeRetryHistory, retryHistoryCount } from "@/aid/action_input";
-  import { extensionState, type SettingsSection } from "@/shared/state.svelte";
-  import { Tab } from "@/shared/types";
+  import { extensionState } from "@/shared/state.svelte";
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
   import { createNovelStageTracker } from "@/rendering/novel_stage";
@@ -18,7 +17,7 @@
   import TtsPreview from "./tts_preview.svelte";
   import NovelComposer from "./novel_composer.svelte";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
-  import { configureTts, generateNarration, ttsState } from "@/tts/service";
+  import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
   import { NarrationQueue, StableNarrationWindow, narrationQueueSize } from "@/tts/queue";
   import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames, trackRetriedPassage } from "@/rendering/novel_narration";
 
@@ -38,6 +37,8 @@
   let retryInstruction = $state("");
   let locationOverride = $state("__auto");
   let locationMenuOpen = $state(false);
+  let settingsOpen = $state(false);
+  let settingsButton: HTMLButtonElement | undefined = $state();
   let locationSeed = $state<string | null>(null);
   let failedBackground = $state("");
   let continuing = $state(false);
@@ -381,12 +382,15 @@
   }
   function key(event: KeyboardEvent) {
     if (!active || paused || historyOpen) return;
+    if (event.key === "Escape" && settingsOpen) {
+      event.preventDefault(); event.stopPropagation(); closeSettings(); return;
+    }
     if (event.key === "Escape" && locationMenuOpen) {
       event.preventDefault(); event.stopPropagation(); scene?.focus(); locationMenuOpen = false; return;
     }
     event.stopPropagation();
     if (event.key === "Tab" && scene) {
-      const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex='0']")];
+      const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex='0']")].filter(control => !control.closest("[inert], [hidden]") && control.getClientRects().length);
       const focused = (scene.getRootNode() as ShadowRoot).activeElement;
       if (event.shiftKey && (focused === controls[0] || focused === scene)) { event.preventDefault(); controls.at(-1)?.focus(); }
       else if (!event.shiftKey && focused === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
@@ -397,7 +401,7 @@
     const target = origin instanceof Element ? origin : null;
     // Keep Space usable after clicking reader controls, without stealing it from
     // the composer, retry instructions, or location picker.
-    if (event.key === " " && !target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], .location-control')) {
+    if (event.key === " " && !target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], .location-control, .vn-settings-control')) {
       event.preventDefault();
       if (!event.repeat) navigate(index + 1);
       return;
@@ -408,10 +412,9 @@
     if (event.key === "Escape") write();
     else navigate(index + (event.key === "ArrowLeft" ? -1 : 1));
   }
-  function openSettings() {
-    extensionState.editorTab = Tab.Settings;
-    extensionState.settingsSection = "extension" satisfies SettingsSection;
-    extensionState.isEditorOpen = true;
+  function closeSettings() {
+    settingsOpen = false;
+    settingsButton?.focus();
   }
 </script>
 
@@ -452,7 +455,32 @@
       <header>
         <span class="title">VISUAL NOVEL <small>Story reader</small></span>
         <div class="tools">
-          <button onclick={openSettings}>Settings</button>
+          <div class="vn-settings-control">
+            <button bind:this={settingsButton} aria-expanded={settingsOpen} aria-controls="novel-settings-panel" onclick={() => settingsOpen = !settingsOpen}>Settings</button>
+            {#if settingsOpen}
+              <section id="novel-settings-panel" class="vn-settings-panel" aria-label="Visual novel narration settings">
+                <div class="settings-heading"><strong>Narration settings</strong><button onclick={closeSettings} aria-label="Close narration settings">Close</button></div>
+                <TtsSettings grid disableInitializeWhenOff />
+                <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
+                  <div class="voice-option">
+                    <span>Voice</span>
+                    <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
+                      bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
+                      items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
+                  </div>
+                  <div class="voice-option">
+                    <span>Generation steps</span>
+                    <Select ariaLabel="Generation steps" allowDeselect={false} portal={false}
+                      bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
+                      items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
+                  </div>
+                  <div class="voice-option"><span>Pitch</span><Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} /></div>
+                  <div class="voice-option"><span>Queue</span><Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} /></div>
+                  <div class="voice-preview"><TtsPreview /></div>
+                </fieldset>
+              </section>
+            {/if}
+          </div>
           <button onclick={() => $settings.visualNovelMode = false}>Exit mode</button>
           <button onclick={write}>Return to game</button>
           <div class="location-control" role="group" aria-label="Location controls"
@@ -489,32 +517,19 @@
       </div>
       <div class="reading-shade" aria-hidden="true"></div>
       <div class="reader-panels" bind:clientHeight={readerHeight}>
+        {#if $settings.novelTtsEnabled}
         <aside class="voice-panel" aria-label="Narration controls" aria-describedby="novel-audio-hint">
           <div id="novel-audio-menu" class="narration-controls audio-menu">
-            <TtsSettings disableInitializeWhenOff />
-            <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice and playback settings">
-              <span>Voice</span>
-              <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
-                bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
-                items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
-              <span>Generation steps</span>
-              <Select ariaLabel="Generation steps" allowDeselect={false} portal={false}
-                bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
-                items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
-              <span>Pitch</span>
-              <Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} />
-              <span>Queue</span>
-              <Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} />
-              <TtsPreview />
+            {#if !ttsReady}<button onclick={() => void initializeTts()} disabled={$ttsState.phase === "checking" || $ttsState.phase === "loading"}>Initialize TTS</button>{/if}
             {#if bufferingNarration && !retryTracker}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
             <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame || !ttsReady || !!retryTracker}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>
             <span class="queue-badge" role="status" title="Generated audio for the next available lines, excluding the current line">{upcomingNarration.ready}/{upcomingNarration.total} upcoming lines ready</span>
-            </fieldset>
           </div>
           <small id="novel-audio-hint" class="hover-hint">Hover here for audio controls</small>
         </aside>
+        {/if}
       <div class="dialogue">
         <p class="prose" aria-live="polite">{retryTracker ? "Waiting for the replacement response..." : bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
         {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
@@ -606,7 +621,11 @@
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + var(--bottom-inset) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
   .voice-panel, .action-panel { display: flex; flex-direction: column; }
-  .voice-options { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 0; margin: 0; border: 0; }
+  .vn-settings-panel { position: absolute; top: calc(100% + 12px); right: 0; width: min(480px, calc(100vw - 40px)); max-height: calc(100dvh - 150px); overflow: auto; box-sizing: border-box; padding: 16px; border: 1px solid #65717b; border-radius: 12px; background: #141e27fa; box-shadow: 0 12px 32px #0008; }
+  .settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .voice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; padding: 8px; margin: 0; border: 0; }
+  .voice-option { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 13px; }
+  .voice-preview { grid-column: 1 / -1; min-width: 0; }
   .voice-options:disabled { opacity: 0.4; }
   .hover-hint { flex-shrink: 0; text-align: center; font-size: 11px; line-height: 1.4; color: #b9c2c8; margin: 6px 0 0; }
   .voice-panel { position: absolute; bottom: 0; left: 0; z-index: 1; width: clamp(160px, 18vw, 220px); max-height: 60vh; overflow: auto; }
