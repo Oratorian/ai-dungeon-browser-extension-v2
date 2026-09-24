@@ -10,7 +10,7 @@ await build({
   configFile: false, root: resolve(repo, 'prototypes/tts-firefox'), publicDir: false,
   resolve: { conditions: ['onnxruntime-web-use-extern-wasm'] },
   build: { outDir: output, emptyOutDir: true, rollupOptions: {
-    input: { benchmark: resolve(repo, 'prototypes/tts-firefox/index.html'), engine: resolve(repo, 'prototypes/tts-firefox/engine.html') },
+    input: { ...(!process.argv.includes('--engine-only') ? { benchmark: resolve(repo, 'prototypes/tts-firefox/index.html') } : {}), engine: resolve(repo, 'prototypes/tts-firefox/engine.html') },
   } },
 });
 await mkdir(resolve(output, 'runtime'), { recursive: true });
