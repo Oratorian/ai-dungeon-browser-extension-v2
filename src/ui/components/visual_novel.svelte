@@ -524,7 +524,7 @@
 {/if}
 
 <style>
-  .novel { --scene-gap: 16px; position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px); gap: var(--scene-gap); color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
+  .novel { --scene-gap: 16px; --bottom-inset: max(30px, env(safe-area-inset-bottom, 0px)); position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px) clamp(12px, 3vw, 32px) var(--bottom-inset); gap: var(--scene-gap); color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
   .location-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; pointer-events: none; }
   .location-shade { position: absolute; inset: 0; background: linear-gradient(#10171d9c, #10171d30 45%, #10171dc9); z-index: -1; pointer-events: none; }
   .location-control { position: relative; }
@@ -549,9 +549,9 @@
   .stage-slot[data-edge="left"] .portrait { left: 0; transform: none; object-position: left top; }
   .stage-slot[data-edge="right"] .portrait { left: auto; right: 0; transform: none; object-position: right top; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
-  .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + 24px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
+  .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + var(--bottom-inset) + 8px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
-  .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + clamp(12px, 3vw, 32px) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
+  .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + var(--bottom-inset) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
   .voice-panel, .action-panel { display: flex; flex-direction: column; }
   .hover-hint { flex-shrink: 0; text-align: center; font-size: 11px; line-height: 1.4; color: #b9c2c8; margin: 6px 0 0; }
   .voice-panel { position: absolute; bottom: 0; left: 0; z-index: 1; width: clamp(160px, 18vw, 220px); max-height: 60vh; overflow: auto; }
