@@ -41,5 +41,24 @@ it("disables a saved VN session and its stale card before accepting explicit ena
   syncVnCard();
   expect(post.mock.calls[4]![0]).toMatchObject({ enabled: false });
   finish(4);
+  // Lite mode keeps VN open without enabling instructions, even during a save.
+  settings.update(value => ({ ...value, visualNovelMode: true, novelStoryCardInstructions: true }));
+  syncVnCard();
+  expect(post.mock.calls[5]![0]).toMatchObject({ enabled: true });
+  settings.update(value => ({ ...value, novelStoryCardInstructions: false }));
+  syncVnCard();
+  finish(5);
+  expect(post.mock.calls[6]![0]).toMatchObject({ enabled: false });
+  expect(get(settings).visualNovelMode).toBe(true);
+  finish(6);
+  syncVnCard();
+  expect(post).toHaveBeenCalledTimes(7);
+  // Exiting and entering again must preserve the instructions-off preference.
+  settings.update(value => ({ ...value, visualNovelMode: false })); syncVnCard();
+  settings.update(value => ({ ...value, visualNovelMode: true })); syncVnCard();
+  expect(post).toHaveBeenCalledTimes(7);
+  settings.update(value => ({ ...value, novelStoryCardInstructions: true })); syncVnCard();
+  expect(post.mock.calls[7]![0]).toMatchObject({ enabled: true });
+  finish(7);
   post.mockRestore();
 });

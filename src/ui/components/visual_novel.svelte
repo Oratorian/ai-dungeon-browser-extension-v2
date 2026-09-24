@@ -516,6 +516,10 @@
                   <button role="switch" aria-checked={$settings.novelBlur} aria-label="Background blur" onclick={() => $settings.novelBlur = !$settings.novelBlur} title="Soften the location background">Blur: {$settings.novelBlur ? "On" : "Off"}</button>
                   <button role="switch" aria-checked={$settings.novelGlow} aria-label="Character glow" onclick={() => $settings.novelGlow = !$settings.novelGlow} title="Light outline around characters">Glow: {$settings.novelGlow ? "On" : "Off"}</button>
                 </div>
+                <div class="instruction-options">
+                  <button role="switch" aria-checked={$settings.novelStoryCardInstructions} aria-label="Story-card instructions" onclick={() => $settings.novelStoryCardInstructions = !$settings.novelStoryCardInstructions}>Story-card instructions: {$settings.novelStoryCardInstructions ? "On" : "Off"}</button>
+                  <small>Off keeps VN running without activating its formatting instructions. Turn Blur and Glow off too for a lite setup.</small>
+                </div>
                 <TtsSettings grid disableInitializeWhenOff />
                 <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
                   <div class="voice-option">
@@ -656,6 +660,9 @@
   .location-backdrop.no-blur { filter: none; transform: none; }
   .visual-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
   .visual-options button[aria-checked="true"] { border-color: #f8ae2c; }
+  .instruction-options { margin-bottom: 16px; }
+  .instruction-options button { width: 100%; }
+  .instruction-options button[aria-checked="true"] { border-color: #f8ae2c; }
   .location-shade { position: absolute; inset: 0; background: linear-gradient(#10171d9c, #10171d30 45%, #10171dc9); z-index: -1; pointer-events: none; }
   .location-control { position: relative; }
   .location-panel { position: absolute; top: 100%; right: 0; z-index: 10; width: min(320px, calc(100vw - 24px)); padding: 12px; display: flex; flex-direction: column; gap: 4px; background: #202b34; border: 1px solid #64727c; border-radius: 8px; box-shadow: 0 8px 24px #0006; }

@@ -68,6 +68,7 @@ const defaultSettings = {
   visualNovelMode: false,
   novelBlur: true,
   novelGlow: true,
+  novelStoryCardInstructions: true,
   novelTtsEnabled: false,
   novelTtsAccelerated: false,
   novelTtsThreads: 2,

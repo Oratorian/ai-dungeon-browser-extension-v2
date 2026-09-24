@@ -12,6 +12,11 @@ let connected = false;
 let desired = "";
 const managed = new Set<string>();
 
+function instructionsEnabled() {
+  const value = get(settings);
+  return value.visualNovelMode && value.novelStoryCardInstructions !== false;
+}
+
 /** A saved preference is not consent to resume VN in a newly opened page. */
 export function startVnCardSession() {
   settings.update(value => ({ ...value, visualNovelMode: false }));
@@ -33,7 +38,7 @@ export function syncVnCard(retry = false) {
       const finishedKey = pending.key;
       pending = undefined;
       // Send a queued exit immediately after an in-flight enable completes.
-      if (finishedKey !== `${playedShortId()}:${get(settings).visualNovelMode}`) syncVnCard();
+      if (finishedKey !== `${playedShortId()}:${instructionsEnabled()}`) syncVnCard();
     });
   }
   if (retry) { failed = ""; completed = ""; }
@@ -43,7 +48,7 @@ export function syncVnCard(retry = false) {
   }
   const shortId = playedShortId();
   if (!shortId) return;
-  const enabled = get(settings).visualNovelMode;
+  const enabled = instructionsEnabled();
   const detected = get(aidDetected);
   if (enabled || detected.shortId === shortId && detected.cards.some(card => card.name === "VN Mode")) managed.add(shortId);
   if (!enabled && !managed.has(shortId)) return;
