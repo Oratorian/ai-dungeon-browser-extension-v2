@@ -31,6 +31,7 @@ web-ext-artifacts
 
 # Local scratch files that must never be committed
 *do-not-commit*
+/plan-for-later.md
 
 # Diagnostics reports pasted in for debugging, not part of the project.
 DExtV2R*diagnostics*.txt
