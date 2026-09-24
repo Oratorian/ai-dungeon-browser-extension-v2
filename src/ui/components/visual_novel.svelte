@@ -412,6 +412,24 @@
     <button class="resume" onclick={resume}>Resume visual novel</button>
   {:else}
     <div class="novel" style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
+      <svg class="portrait-filters" width="0" height="0" aria-hidden="true" focusable="false">
+        <defs>
+          <filter id="novel-portrait-depth" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+            <!-- Sum the alpha neighborhood to expand the silhouette, then keep only its outer rim. -->
+            <feConvolveMatrix in="SourceAlpha" order="3" kernelMatrix="1 1 1 1 1 1 1 1 1" divisor="1" edgeMode="none" preserveAlpha="false" result="expanded" />
+            <feComposite in="expanded" in2="SourceAlpha" operator="out" result="rim" />
+            <feGaussianBlur in="rim" stdDeviation="0.45" result="soft-rim" />
+            <feFlood flood-color="#101820" flood-opacity="0.8" result="outline-color" />
+            <feComposite in="outline-color" in2="soft-rim" operator="in" result="outline" />
+            <feDropShadow in="SourceAlpha" dx="2" dy="5" stdDeviation="5" flood-color="#05090d" flood-opacity="0.5" result="shadow" />
+            <feMerge>
+              <feMergeNode in="shadow" />
+              <feMergeNode in="outline" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
       {#if background}
         {#key background}<img class="location-backdrop" src={background} alt="" aria-hidden="true" onerror={() => failedBackground = background ?? ""} transition:portraitFade />{/key}
         <div class="location-shade" aria-hidden="true"></div>
@@ -525,7 +543,8 @@
 
 <style>
   .novel { --scene-gap: 16px; --bottom-inset: max(30px, env(safe-area-inset-bottom, 0px)); position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px) clamp(12px, 3vw, 32px) var(--bottom-inset); gap: var(--scene-gap); color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
-  .location-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; pointer-events: none; }
+  .portrait-filters { position: absolute; pointer-events: none; }
+  .location-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(1px); transform: scale(1.005); z-index: -2; pointer-events: none; }
   .location-shade { position: absolute; inset: 0; background: linear-gradient(#10171d9c, #10171d30 45%, #10171dc9); z-index: -1; pointer-events: none; }
   .location-control { position: relative; }
   .location-panel { position: absolute; top: 100%; right: 0; z-index: 10; width: min(320px, calc(100vw - 24px)); padding: 12px; display: flex; flex-direction: column; gap: 4px; background: #202b34; border: 1px solid #64727c; border-radius: 8px; box-shadow: 0 8px 24px #0006; }
@@ -545,7 +564,7 @@
   .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, 1440px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: visible; pointer-events: none; }
   .stage-slot { position: relative; grid-row: 1; min-width: 0; min-height: 0; }
   .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
-  .portrait { position: absolute; left: 50%; transform: translateX(-50%); width: auto; max-width: min(100vw, 1440px); height: 100%; object-fit: contain; object-position: center top; mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
+  .portrait { position: absolute; left: 50%; transform: translateX(-50%); width: auto; max-width: min(100vw, 1440px); height: 100%; object-fit: contain; object-position: center top; filter: url("#novel-portrait-depth"); mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
   .stage-slot[data-edge="left"] .portrait { left: 0; transform: none; object-position: left top; }
   .stage-slot[data-edge="right"] .portrait { left: auto; right: 0; transform: none; object-position: right top; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
