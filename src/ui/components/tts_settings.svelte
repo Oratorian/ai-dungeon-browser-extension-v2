@@ -28,22 +28,32 @@
   </button>
   <p role="status" class="text-xs text-theme-neutral-800">{$ttsState.message}</p>
     <div class="acceleration">
+      <div class="acceleration-row">
+      <div class="acceleration-field">
+        <span class="text-xs text-theme-neutral-800">Accelerated TTS</span>
       <button role="switch" aria-checked={$settings.novelTtsAccelerated} aria-label="Accelerated TTS"
         onclick={() => $settings.novelTtsAccelerated = !$settings.novelTtsAccelerated}
         class="flex w-full items-center justify-between gap-3 rounded-lg p-3 bg-theme-neutral-100">
-        <span>Accelerated TTS</span><span>{$settings.novelTtsAccelerated ? "On" : "Off"}</span>
+        <span>{$settings.novelTtsAccelerated ? "On" : "Off"}</span>
       </button>
-      <p class="text-xs text-theme-neutral-800">{import.meta.env.BROWSER === "firefox"
-        ? "Optional multithreaded narration. Requires the local server and a separate engine tab to stay open."
-        : "Optional multithreaded narration. Runs inside the extension without a server or extra tab."} Off uses the built-in one-thread engine.</p>
+      </div>
       {#if $settings.novelTtsAccelerated}
-        <span class="text-xs text-theme-neutral-800">Threads</span>
-        <Select ariaLabel="TTS threads" allowDeselect={false} portal={false}
-          bind:value={() => String($settings.novelTtsThreads), value => $settings.novelTtsThreads = Number(value)}
-          items={[2, 4, 6].map(threads => ({ value: String(threads), label: String(threads) }))} />
-        {#if import.meta.env.BROWSER === "firefox"}
-        <p class="text-xs text-theme-neutral-800">Start the server from the extension folder:<br /><code>node scripts/tts-firefox-prototype.mjs</code><br />Each engine uses its own model cache; initialization may be needed after switching.</p>
-        {/if}
+        <div class="acceleration-field">
+          <span class="text-xs text-theme-neutral-800">Threads</span>
+          <Select ariaLabel="TTS threads" allowDeselect={false} portal={false}
+            bind:value={() => String($settings.novelTtsThreads), value => $settings.novelTtsThreads = Number(value)}
+            items={[2, 4, 6].map(threads => ({ value: String(threads), label: String(threads) }))} />
+        </div>
+      {/if}
+      </div>
+      <p class="text-xs text-theme-neutral-800">{import.meta.env.BROWSER === "firefox"
+        ? "On requires the local server and engine tab. Off uses one thread."
+        : "On runs inside the extension; no extra tab. Off uses one thread."}</p>
+      {#if $settings.novelTtsAccelerated && import.meta.env.BROWSER === "firefox"}
+        <details class="text-xs text-theme-neutral-800">
+          <summary>Firefox setup</summary>
+          <p>Start the server from the extension folder:<br /><code>node scripts/tts-firefox-prototype.mjs</code><br />Each engine uses its own model cache; initialization may be needed after switching.</p>
+        </details>
       {/if}
     </div>
 </div>
@@ -55,6 +65,10 @@
   .grid .state { font-size: 12px; }
   .grid p { grid-column: 1 / -1; }
   .acceleration { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .acceleration-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: end; }
+  .acceleration-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .acceleration-field button { min-height: 44px; }
+  summary { cursor: pointer; }
   code { overflow-wrap: anywhere; }
   .state { color: #b9c2c8; }
   .state.pending { color: #f8ae2c; }
