@@ -3,7 +3,7 @@
 Windows x64 package. No Node, .NET installation, administrator account, or source
 checkout is needed to use the built package.
 
-1. [Download the Windows TTS Helper installer](https://github.com/Oratorian/dexv2res-repo/releases/download/Repository/DungeonExtension-TTS-Helper-Setup-windows-x64.exe).
+1. [Download the Windows TTS Helper installer](https://github.com/Oratorian/ai-dungeon-browser-extension-v2/releases/download/TTS-Helper/DungeonExtension-TTS-Helper-Setup-windows-x64.exe).
 2. Run the setup wizard. It installs into your local application data folder and
    registers the helper for your Windows account in Firefox.
 3. Reload the matching extension version, refresh AI Dungeon, and enable

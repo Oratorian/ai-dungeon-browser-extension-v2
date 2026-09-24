@@ -24,7 +24,7 @@ MV3 relay available during long synthesis operations.
 ## Firefox
 
 Acceleration uses a separate isolated local page served by the installed native helper.
-On Windows x64, [download the TTS Helper installer](https://github.com/Oratorian/dexv2res-repo/releases/download/Repository/DungeonExtension-TTS-Helper-Setup-windows-x64.exe), run it once, and
+On Windows x64, [download the TTS Helper installer](https://github.com/Oratorian/ai-dungeon-browser-extension-v2/releases/download/TTS-Helper/DungeonExtension-TTS-Helper-Setup-windows-x64.exe), run it once, and
 follow the setup wizard. No Node or .NET installation is needed. Firefox starts the helper automatically
 when accelerated narration is requested. See [helper setup and build instructions](../native/tts-helper/README.md).
 The engine opens beside its owning story in the same window. Firefox versions with tab-group
