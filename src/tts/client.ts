@@ -1,7 +1,7 @@
 import { browser } from "wxt/browser";
 import type { NarrationAudio, NarrationOptions } from "./queue";
 
-export class LocalNarrator {
+class EmbeddedNarrator {
   private iframe = document.createElement("iframe");
   private channel = new MessageChannel();
   private nextId = 0;
@@ -9,7 +9,7 @@ export class LocalNarrator {
   private ready: Promise<void>;
   private serial: Promise<unknown> = Promise.resolve();
   private disposed = false;
-  constructor(progress: (message: string) => void) {
+  constructor(progress: (message: string) => void, _failure?: (message: string) => void, _threads?: number) {
     this.iframe.hidden = true;
     this.iframe.title = "Local narration engine";
     this.iframe.src = browser.runtime.getURL("/tts.html");
@@ -73,4 +73,8 @@ export class LocalNarrator {
     }
     this.pending.clear();
   }
+  diagnostics() { return { context: "Embedded extension page", threads: 1, isolated: null }; }
 }
+
+export const LocalNarrator = EmbeddedNarrator;
+export type LocalNarrator = EmbeddedNarrator;

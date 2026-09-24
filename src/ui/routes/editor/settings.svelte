@@ -73,7 +73,7 @@
 <div in:fade={{ duration: 120 }} class="flex flex-col gap-4">
 <Field label="Extension">
   <Item foldout icon="theater_comedy" label="Visual Novel Mode">
-    <Field label="Enable Visual Novel Mode" info="Read the loaded story as scenes with character portraits and Back/Next dialogue controls. Write action opens Do, Say, Story and Guide inside the scene. Return to game exposes AI Dungeon's normal controls.">
+    <Field label="Enable Visual Novel Mode" info="Read the loaded story as scenes with character portraits and Back/Next dialogue controls. Actions opens Do, Say, Story and Guide inside the scene. Exit VN returns to AI Dungeon and saves your reading position.">
       <Switch bind:checked={$settings.visualNovelMode} />
     </Field>
     <Field label="Browser narration" info="Generate English narration locally. Initialize TTS downloads about 380 MiB of models through the background helper and loads both voices. Downloaded files are cached and load automatically next time TTS is enabled. Story text stays in your browser.">

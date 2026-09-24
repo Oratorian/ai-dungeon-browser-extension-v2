@@ -1,0 +1,10 @@
+{
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0",
+  "isolated": true,
+  "secure": true,
+  "sharedMemory": true,
+  "wasmThreads": true,
+  "logicalCores": 24,
+  "ortThreads": 4,
+  "ortExecutionPassed": true
+}

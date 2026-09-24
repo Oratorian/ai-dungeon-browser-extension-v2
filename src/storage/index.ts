@@ -67,6 +67,8 @@ const defaultSettings = {
   storyCardAutocomplete: true,
   visualNovelMode: false,
   novelTtsEnabled: false,
+  novelTtsAccelerated: false,
+  novelTtsThreads: 2,
   novelTtsVoice: "M5" as "M5" | "F5",
   novelTtsSteps: 5,
   novelTtsPitch: 0,

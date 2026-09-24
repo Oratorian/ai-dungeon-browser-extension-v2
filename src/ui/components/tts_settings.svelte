@@ -1,13 +1,18 @@
 <script lang="ts">
   import { settings } from "@/storage";
   import { configureTts, initializeTts, ttsState } from "@/tts/service";
+  import Select from "./select.svelte";
   let { grid = false, disableInitializeWhenOff = false }: { grid?: boolean; disableInitializeWhenOff?: boolean } = $props();
-  $effect(() => configureTts($settings.novelTtsEnabled));
+  $effect(() => configureTts($settings.novelTtsEnabled, $settings.novelTtsAccelerated, $settings.novelTtsThreads));
   const ready = $derived($ttsState.phase === "ready");
   const busy = $derived($ttsState.phase === "loading" || $ttsState.phase === "checking");
   const label = $derived(!$settings.novelTtsEnabled ? "Off" : ready ? "On (fully available)"
     : $ttsState.phase === "missing" ? "On (ONNX models not downloaded)" : "On (not ready)");
-  function initialize() { $settings.novelTtsEnabled = true; void initializeTts(); }
+  function initialize() {
+    $settings.novelTtsEnabled = true;
+    configureTts(true, $settings.novelTtsAccelerated, $settings.novelTtsThreads);
+    void initializeTts();
+  }
 </script>
 
 <div class="tts-actions gap-2 px-2" class:grid>
@@ -22,6 +27,25 @@
     {busy ? "Initializing TTS..." : ready ? "TTS initialized" : "Initialize TTS"}
   </button>
   <p role="status" class="text-xs text-theme-neutral-800">{$ttsState.message}</p>
+    <div class="acceleration">
+      <button role="switch" aria-checked={$settings.novelTtsAccelerated} aria-label="Accelerated TTS"
+        onclick={() => $settings.novelTtsAccelerated = !$settings.novelTtsAccelerated}
+        class="flex w-full items-center justify-between gap-3 rounded-lg p-3 bg-theme-neutral-100">
+        <span>Accelerated TTS</span><span>{$settings.novelTtsAccelerated ? "On" : "Off"}</span>
+      </button>
+      <p class="text-xs text-theme-neutral-800">{import.meta.env.BROWSER === "firefox"
+        ? "Optional multithreaded narration. Requires the local server and a separate engine tab to stay open."
+        : "Optional multithreaded narration. Runs inside the extension without a server or extra tab."} Off uses the built-in one-thread engine.</p>
+      {#if $settings.novelTtsAccelerated}
+        <span class="text-xs text-theme-neutral-800">Threads</span>
+        <Select ariaLabel="TTS threads" allowDeselect={false} portal={false}
+          bind:value={() => String($settings.novelTtsThreads), value => $settings.novelTtsThreads = Number(value)}
+          items={[2, 4, 6].map(threads => ({ value: String(threads), label: String(threads) }))} />
+        {#if import.meta.env.BROWSER === "firefox"}
+        <p class="text-xs text-theme-neutral-800">Start the server from the extension folder:<br /><code>node scripts/tts-firefox-prototype.mjs</code><br />Each engine uses its own model cache; initialization may be needed after switching.</p>
+        {/if}
+      {/if}
+    </div>
 </div>
 
 <style>
@@ -30,6 +54,8 @@
   .grid .enable { flex-direction: column; justify-content: center; gap: 4px; }
   .grid .state { font-size: 12px; }
   .grid p { grid-column: 1 / -1; }
+  .acceleration { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  code { overflow-wrap: anywhere; }
   .state { color: #b9c2c8; }
   .state.pending { color: #f8ae2c; }
   .state.ready { color: #77d69b; }

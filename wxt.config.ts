@@ -29,10 +29,11 @@ export default defineConfig({
     ...(browser !== "firefox" ? {
       cross_origin_embedder_policy: { value: "require-corp" as const },
       cross_origin_opener_policy: { value: "same-origin" as const },
+      minimum_chrome_version: "116",
     } : {}),
     name: "Dungeon Extension v2 Resurrected",
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
-    permissions: ["storage", "unlimitedStorage"],
+    permissions: ["storage", "unlimitedStorage", ...(browser !== "firefox" ? ["offscreen" as const] : ["tabGroups" as const])],
     // Keyboard shortcut to open the editor. The browser delivers it to the background, which
     // relays it to the active tab (see background.ts and content.ts). Users can rebind it in
     // the browser's extension shortcut settings.

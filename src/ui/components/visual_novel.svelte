@@ -79,7 +79,7 @@
   const narratorSteps = $derived($settings.novelTtsSteps);
 
   $effect(() => {
-    configureTts(narrationEnabled);
+    configureTts(narrationEnabled, $settings.novelTtsAccelerated, $settings.novelTtsThreads);
   });
   onDestroy(() => configureTts(false));
   $effect(() => {
@@ -197,7 +197,8 @@
   const automaticLocation = $derived(locations.find(location => location.id === locationTimeline[index]));
   const currentLocation = $derived(locationOverride === "__auto" ? automaticLocation : locations.find(location => location.id === locationOverride));
   const background = $derived(currentLocation?.background && currentLocation.background !== failedBackground ? currentLocation.background : undefined);
-  const active = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
+  const available = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
+  const active = $derived(available && !extensionState.novelMinimized);
 
   function refresh() {
     if (playedShortId() !== $playedAdventureId) return;
@@ -245,6 +246,7 @@
     const set = $selected;
     const narrated = narrationEnabled;
     untrack(() => {
+      extensionState.novelMinimized = false;
       continueController?.abort(); continuing = false; actionError = "";
       historyController?.abort(); closeRetryHistory(); historyOpen = false; historyCount = 0;
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
@@ -389,10 +391,19 @@
     return fade(node, { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180 });
   }
   async function exitNovel() {
+    extensionState.novelMinimized = false;
     stopNarration();
     narrationScheduler?.dispose();
     narrationQueue?.dispose();
     $settings.visualNovelMode = false;
+    await tick();
+    document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
+  }
+  async function minimizeNovel(event: MouseEvent) {
+    event.preventDefault();
+    stopNarration();
+    settingsOpen = false; locationMenuOpen = false; jumpOpen = false;
+    extensionState.novelMinimized = true;
     await tick();
     document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
   }
@@ -459,6 +470,9 @@
 {#if $vnCardError}
   <div class="vn-card-error" role="alert">VN Mode story card: {$vnCardError} <button onclick={() => syncVnCard(true)}>Retry</button></div>
 {/if}
+{#if available && extensionState.novelMinimized}
+  <button class="resume" onclick={() => extensionState.novelMinimized = false}>Return to VN</button>
+{/if}
 {#if active}
   {#if historyOpen}
     <button class="resume" onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
@@ -515,7 +529,7 @@
               </section>
             {/if}
           </div>
-          <button onclick={exitNovel}>Exit VN</button>
+          <button onclick={exitNovel} oncontextmenu={minimizeNovel} title="Exit VN. Right-click to temporarily return to the story.">Exit VN</button>
           <div class="location-control" role="group" aria-label="Location controls"
             onmouseenter={() => locationMenuOpen = true}
             onmouseleave={(event) => { if (!event.currentTarget.querySelector(".location-panel")?.matches(":focus-within")) locationMenuOpen = false; }}
