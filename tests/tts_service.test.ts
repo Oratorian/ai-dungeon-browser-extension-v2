@@ -33,15 +33,11 @@ describe("TTS availability", () => {
       expect(mock.generate).toHaveBeenLastCalledWith(text, options);
     }
   });
-  it.each(['"Hello!"', '\u201cHello!\u201d'])("generates player dialogue separately with a half-second pause: %s", async dialogue => {
+  it.each(['"Hello!"', '\u201cHello!\u201d', '«Hello!»'])("speaks only the dialogue in a native Say action: %s", async dialogue => {
     await initializeTts();
-    mock.generate.mockResolvedValueOnce({ samples: new Float32Array([1, 2]), sampleRate: 10 });
-    mock.generate.mockResolvedValueOnce({ samples: new Float32Array([3, 4]), sampleRate: 10 });
     const options = { voice: "M5" as const, steps: 5 };
-    const audio = await generateNarration(`You say, ${dialogue}`, options);
-    expect(mock.generate.mock.calls).toEqual([["You say.", options], [dialogue, options]]);
-    expect(Array.from(audio.samples)).toEqual([1, 2, 0, 0, 0, 0, 0, 3, 4]);
-    expect(audio.sampleRate).toBe(10);
+    await generateNarration(`You say, ${dialogue}`, options);
+    expect(mock.generate.mock.calls).toEqual([[dialogue, options]]);
   });
   it("keeps ordinary narration in a single generation", async () => {
     await initializeTts();
