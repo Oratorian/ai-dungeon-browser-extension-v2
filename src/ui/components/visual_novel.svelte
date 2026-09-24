@@ -459,7 +459,7 @@
       </header>
       <div class="stage" role="group" aria-label="Characters in the scene">
         {#each stageCharacters as character, slot (slot)}
-          <div class="stage-slot" data-edge={stageCharacters.filter(Boolean).length <= 2 ? (slot === 0 ? "left" : "right") : slot === 2 ? "left" : slot === 3 ? "right" : "middle"} style:grid-column={stageCharacters.filter(Boolean).length <= 2 ? ["1 / 3", "3 / 5", "1", "4"][slot] : String([2, 3, 1, 4][slot])}>
+          <div class="stage-slot" class:speaking={!!speaker && character?.id === speaker} data-edge={stageCharacters.filter(Boolean).length <= 2 ? (slot === 0 ? "left" : "right") : slot === 2 ? "left" : slot === 3 ? "right" : "middle"} style:grid-column={stageCharacters.filter(Boolean).length <= 2 ? ["1 / 3", "3 / 5", "1", "4"][slot] : String([2, 3, 1, 4][slot])}>
             {#if character}
               {#key character.id}
                 <div class="stage-character" class:dimmed={character.id !== speaker} transition:portraitFade>
@@ -569,6 +569,10 @@
   .accent:hover:enabled { background: #ffc761; }
   .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, 1440px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: visible; pointer-events: none; }
   .stage-slot { position: relative; grid-row: 1; min-width: 0; min-height: 0; }
+  /* Keep portrait ordering below the reading shade and controls. */
+  .stage { z-index: 0; }
+  .stage-slot { z-index: 0; }
+  .stage-slot.speaking { z-index: 1; }
   .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
   .portrait { position: absolute; left: 50%; transform: translateX(-50%); width: auto; max-width: min(100vw, 1440px); height: 100%; object-fit: contain; object-position: center top; filter: url("#novel-portrait-depth"); mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
   .stage-slot[data-edge="left"] .portrait { left: 0; transform: none; object-position: left top; }
