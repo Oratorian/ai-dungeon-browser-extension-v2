@@ -16,6 +16,10 @@ export function threadingCapabilities() {
 }
 
 export function requestedThreadCount(value: unknown, capabilities: { isolated: boolean; sharedMemory: boolean; wasmThreads: boolean }) {
-  const requested = typeof value === "number" && [1, 2, 4].includes(value) ? value : 1;
+  const requested = typeof value === "number" && [1, 2, 4, 6].includes(value) ? value : 1;
   return capabilities.isolated && capabilities.sharedMemory && capabilities.wasmThreads ? requested : 1;
+}
+
+export function narrationThreadCount(value: unknown): number {
+  return typeof value === "number" && [2, 4, 6].includes(value) ? value : 2;
 }

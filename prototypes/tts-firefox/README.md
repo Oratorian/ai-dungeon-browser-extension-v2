@@ -2,18 +2,21 @@
 
 ## Use with VN narration
 
-This branch now routes Firefox VN narration to a separate isolated local engine page, using two
-threads by default. Chrome keeps its existing embedded engine.
+Firefox uses the original embedded single-threaded engine by default, with no server or extra tab.
+Both VN Settings and Extension Settings > Visual Novel Mode have an **Accelerated Firefox TTS**
+switch. When enabled, a **Threads** selector appears with 2 (default), 4 and 6 as the only choices.
+Changing mode or thread count restarts the engine. Chrome keeps its existing embedded engine.
 
 1. Start `node scripts/tts-firefox-prototype.mjs` from the repository root and keep it running.
 2. Build with `npm run build:firefox`, reload that extension, and refresh AI Dungeon.
-3. Enable TTS in VN Settings. The extension opens an engine tab in the background automatically.
+3. Enable TTS and Accelerated Firefox TTS in either settings menu. The extension opens an engine tab in the background automatically.
    Keep it open. Existing cached prototype models are reused; otherwise click Initialize TTS.
 4. Use VN normally. Voice, steps, pitch, preview and the narration queue keep their existing controls.
 
 Exit VN stops playback and pending queue work, while retaining the loaded engine for re-entry.
 An in-progress synthesis may finish. Turning TTS off, closing the owning adventure tab, or reloading
-the extension disconnects and closes that engine tab. Each adventure tab gets a separate engine,
+the extension disconnects and closes that engine tab. Turning acceleration off closes the tab and
+returns to the embedded engine. Each adventure tab gets a separate engine,
 so multiple simultaneous adventures use additional model memory.
 
 If the server is unavailable or the engine tab is closed, the TTS status reports the problem.

@@ -1,5 +1,6 @@
 import { browser } from "wxt/browser";
 import type { NarrationAudio, NarrationOptions } from "./queue";
+import { narrationThreadCount } from "./capabilities";
 
 export class RemoteNarrator {
   private port = browser.runtime.connect({ name: "de-tts-client" });
@@ -10,7 +11,8 @@ export class RemoteNarrator {
   private disposed = false;
   private threads: number | null = null;
   private isolated: boolean | null = null;
-  constructor(progress: (message: string) => void, private failure?: (message: string) => void) {
+  constructor(progress: (message: string) => void, private failure?: (message: string) => void, private requestedThreads = 2) {
+    this.requestedThreads = narrationThreadCount(requestedThreads);
     this.ready = new Promise((resolve, reject) => {
       const timer = setTimeout(() => this.fail("Firefox TTS engine unavailable. Start node scripts/tts-firefox-prototype.mjs, then retry Initialize TTS.", this.failure), 20000);
       this.pending.set(0, { resolve, reject, timer });
@@ -50,10 +52,10 @@ export class RemoteNarrator {
   }
   async cached() { return (await this.request({ type: "status" })).complete === true; }
   async initialize(download: boolean) {
-    const result = await this.request({ type: "load", download, threads: 2 });
+    const result = await this.request({ type: "load", download, threads: this.requestedThreads });
     this.threads = result.threads;
     this.isolated = result.capabilities?.isolated === true;
-    if (this.threads !== 2 || !this.isolated) throw new Error("Firefox TTS engine could not enable two threads. Keep the isolated engine tab open.");
+    if (this.threads !== this.requestedThreads || !this.isolated) throw new Error(`Firefox TTS engine could not enable ${this.requestedThreads} threads. Keep the isolated engine tab open.`);
   }
   diagnostics() { return { context: "Firefox isolated page", threads: this.threads, isolated: this.isolated }; }
   generate(text: string, options: NarrationOptions): Promise<NarrationAudio> {

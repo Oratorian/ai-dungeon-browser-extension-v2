@@ -1,7 +1,9 @@
 import { get, writable } from "svelte/store";
 import { LocalNarrator } from "./client";
+import { RemoteNarrator } from "./remote";
 import type { NarrationOptions } from "./queue";
 import { ttsErrorCategory } from "./diagnostics";
+import { narrationThreadCount } from "./capabilities";
 
 type TtsState = {
   phase: "off" | "checking" | "missing" | "loading" | "ready" | "error";
@@ -9,7 +11,10 @@ type TtsState = {
 };
 export const ttsState = writable<TtsState>({ phase: "off", message: "Off" });
 let enabled = false;
-let narrator: LocalNarrator | undefined;
+let accelerated = false;
+let threadCount = 2;
+type Narrator = LocalNarrator | RemoteNarrator;
+let narrator: Narrator | undefined;
 let initialization: Promise<void> | undefined;
 let cacheComplete: boolean | null = null;
 let lastFailure = "none";
@@ -29,19 +34,20 @@ export function ttsDiagnostics() {
 }
 
 function createNarrator() {
-  const client = new LocalNarrator(message => {
+  const Engine = accelerated ? RemoteNarrator : LocalNarrator;
+  const client = new Engine(message => {
     if (narrator === client) ttsState.update(state => ({ ...state, message }));
   }, message => {
     if (narrator === client) {
       lastFailure = "connection: " + ttsErrorCategory(message);
       ttsState.set({ phase: "error", message });
     }
-  });
+  }, threadCount);
   narrator = client;
   return client;
 }
 
-async function load(client: LocalNarrator, download: boolean) {
+async function load(client: Narrator, download: boolean) {
   ttsState.set({ phase: "loading", message: download ? "Initializing TTS..." : "Loading cached TTS models..." });
   try {
     await client.initialize(download);
@@ -53,9 +59,14 @@ async function load(client: LocalNarrator, download: boolean) {
 }
 
 /** Enablement checks real extension cache contents, never a persisted 'downloaded' flag. */
-export function configureTts(value: boolean) {
-  if (enabled === value) return;
+export function configureTts(value: boolean, acceleratedMode = accelerated, threads = threadCount) {
+  const useAccelerated = import.meta.env.BROWSER === "firefox" && acceleratedMode === true;
+  const nextThreads = narrationThreadCount(threads);
+  const unchanged = enabled === value && accelerated === useAccelerated && (!useAccelerated || threadCount === nextThreads);
+  threadCount = nextThreads;
+  if (unchanged) return;
   enabled = value;
+  accelerated = useAccelerated;
   narrator?.dispose(); narrator = undefined; initialization = undefined;
   requests.clear(); startedRequests.clear(); cacheComplete = null;
   if (!value) { ttsState.set({ phase: "off", message: "Off" }); return; }

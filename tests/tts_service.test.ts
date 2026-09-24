@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 const mock = vi.hoisted(() => ({ cached: vi.fn(), initialize: vi.fn(), dispose: vi.fn(), generate: vi.fn() }));
+const remote = vi.hoisted(() => ({ created: vi.fn(), cached: vi.fn(), initialize: vi.fn(), dispose: vi.fn(), generate: vi.fn() }));
+vi.mock("@/tts/remote", () => ({ RemoteNarrator: class {
+  constructor(...args: unknown[]) { remote.created(...args); }
+  cached = remote.cached;
+  initialize = remote.initialize;
+  dispose = remote.dispose;
+  generate = remote.generate;
+} }));
 vi.mock("@/tts/client", () => ({ LocalNarrator: class {
   cached = mock.cached;
   initialize = mock.initialize;
@@ -11,14 +19,42 @@ import { configureTts, generateNarration, initializeTts, ttsState, ttsDiagnostic
 const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 
 beforeEach(() => {
-  configureTts(false);
+  configureTts(false, false, 2);
   vi.clearAllMocks();
   mock.cached.mockResolvedValue(false);
   mock.initialize.mockResolvedValue(undefined);
+  remote.cached.mockResolvedValue(false);
+  remote.initialize.mockResolvedValue(undefined);
 });
-afterEach(() => configureTts(false));
+afterEach(() => { configureTts(false, false, 2); vi.unstubAllEnvs(); });
 
 describe("TTS availability", () => {
+  it("defaults Firefox to the embedded engine and replaces the engine when opting in or changing threads", async () => {
+    vi.stubEnv("BROWSER", "firefox");
+    configureTts(true); await flush();
+    expect(mock.cached).toHaveBeenCalledTimes(1);
+    expect(remote.created).not.toHaveBeenCalled();
+    configureTts(true, true, 4); await flush();
+    expect(mock.dispose).toHaveBeenCalledTimes(1);
+    expect(remote.created.mock.calls.at(-1)?.[2]).toBe(4);
+    await initializeTts();
+    expect(remote.created).toHaveBeenCalledTimes(1);
+    configureTts(true, true, 6); await flush();
+    expect(remote.dispose).toHaveBeenCalledTimes(1);
+    expect(remote.created.mock.calls.at(-1)?.[2]).toBe(6);
+    configureTts(true, false, 6); await flush();
+    expect(remote.dispose).toHaveBeenCalledTimes(2);
+    expect(mock.cached).toHaveBeenCalledTimes(2);
+  });
+  it("does not open an accelerated engine while TTS is off or on other browsers", async () => {
+    vi.stubEnv("BROWSER", "firefox");
+    configureTts(false, true, 6);
+    expect(remote.created).not.toHaveBeenCalled();
+    vi.stubEnv("BROWSER", "chrome");
+    configureTts(true, true, 6); await flush();
+    expect(remote.created).not.toHaveBeenCalled();
+    expect(mock.cached).toHaveBeenCalledTimes(1);
+  });
   it("reports pending work and sanitized failures without starting extra synthesis", async () => {
     await initializeTts();
     const before = ttsDiagnostics();

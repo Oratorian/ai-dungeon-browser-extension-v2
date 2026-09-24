@@ -1,4 +1,5 @@
 import TtsWorker from '../../src/tts/worker.js?worker';
+import { narrationThreadCount } from '../../src/tts/capabilities';
 import './style.css';
 
 const status = document.getElementById('status');
@@ -77,7 +78,7 @@ window.addEventListener('message', async ({ source, origin, data }) => {
     } else {
       if (command.type === 'load') allowDownload = command.download === true;
       if (!worker) startWorker();
-      worker.postMessage({ ...command, threads: 2 });
+      worker.postMessage({ ...command, threads: narrationThreadCount(command.threads) });
     }
   } catch (error) { send({ type: 'error', id: command.id, message: String(error) }); request = undefined; }
 });

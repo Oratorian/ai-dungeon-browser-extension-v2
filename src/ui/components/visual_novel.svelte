@@ -79,7 +79,7 @@
   const narratorSteps = $derived($settings.novelTtsSteps);
 
   $effect(() => {
-    configureTts(narrationEnabled);
+    configureTts(narrationEnabled, $settings.novelTtsAccelerated, $settings.novelTtsThreads);
   });
   onDestroy(() => configureTts(false));
   $effect(() => {

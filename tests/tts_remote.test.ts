@@ -11,6 +11,15 @@ const flush = async () => { for (let i = 0; i < 6; i++) await Promise.resolve();
 beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); mock.messages.length = 0; mock.disconnects.length = 0; });
 afterEach(() => vi.useRealTimers());
 describe("Firefox isolated narrator", () => {
+  it.each([2, 4, 6])("requests the selected %i threads and rejects a runtime fallback", async threads => {
+    const client = new RemoteNarrator(vi.fn(), undefined, threads);
+    reply({ type: 'connected' });
+    const initialized = client.initialize(false); await flush();
+    expect(mock.send).toHaveBeenLastCalledWith(expect.objectContaining({ threads }));
+    reply({ type: 'ready', id: 1, threads: 1, capabilities: { isolated: true } });
+    await expect(initialized).rejects.toThrow(`could not enable ${threads} threads`);
+    client.dispose();
+  });
   it("uses two threads and serializes synthesis across queue changes", async () => {
     const client = new RemoteNarrator(vi.fn()); reply({ type: 'connected' });
     const initialized = client.initialize(false); await flush();
