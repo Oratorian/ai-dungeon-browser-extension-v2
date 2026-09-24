@@ -24,12 +24,18 @@ export function ttsDiagnostics() {
   const oldest = Math.min(...startedRequests.values());
   return { phase: get(ttsState).phase, enginePresent: !!narrator, initializing: !!initialization,
     cacheComplete, lastFailure, lastGenerationMs, completed, failed, pending: requests.size,
-    pendingMs: requests.size ? Math.round(performance.now() - oldest) : 0 };
+    pendingMs: requests.size ? Math.round(performance.now() - oldest) : 0,
+    runtime: narrator?.diagnostics?.() ?? null };
 }
 
 function createNarrator() {
   const client = new LocalNarrator(message => {
     if (narrator === client) ttsState.update(state => ({ ...state, message }));
+  }, message => {
+    if (narrator === client) {
+      lastFailure = "connection: " + ttsErrorCategory(message);
+      ttsState.set({ phase: "error", message });
+    }
   });
   narrator = client;
   return client;

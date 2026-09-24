@@ -1,4 +1,5 @@
 import { bgFetchBytes } from "@/media/bg_fetch";
+import { browser } from "wxt/browser";
 
 // Experimental loopback benchmark only. Never accept arbitrary download URLs.
 const origin = "http://localhost:4177";
@@ -8,13 +9,25 @@ export default defineContentScript({
   matches: ["http://localhost/*"],
   runAt: "document_start",
   main(ctx) {
-    if (location.origin !== origin || location.pathname !== "/") return;
+    if (location.origin !== origin || !["/", "/engine.html"].includes(location.pathname)) return;
     const controller = new AbortController();
     let busy = false;
-    ctx.onInvalidated(() => controller.abort());
+    let hostPort: ReturnType<typeof browser.runtime.connect> | undefined;
+    ctx.onInvalidated(() => { controller.abort(); hostPort?.disconnect(); });
     ctx.addEventListener(window, "message", async event => {
       const data = event.data;
       if (event.source !== window || event.origin !== origin || !data || typeof data !== "object") return;
+      if (location.pathname === "/engine.html" && /^#[\da-f-]{36}$/i.test(location.hash)) {
+        if (data.type === "de-tts-host-ready" && !hostPort) {
+          hostPort = browser.runtime.connect({ name: "de-tts-host:" + location.hash.slice(1) });
+          hostPort.onMessage.addListener(payload => window.postMessage({ type: "de-tts-host-request", payload }, origin));
+          hostPort.onDisconnect.addListener(() => window.postMessage({ type: "de-tts-host-disconnected" }, origin));
+          return;
+        }
+        if (data.type === "de-tts-host-response" && hostPort) {
+          hostPort.postMessage(data.payload); return;
+        }
+      }
       if (data.type === "de-tts-prototype-ping") {
         window.postMessage({ type: "de-tts-prototype-pong" }, origin); return;
       }

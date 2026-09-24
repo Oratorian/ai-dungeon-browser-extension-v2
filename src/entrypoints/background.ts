@@ -11,6 +11,8 @@
 //   bg -> content: { type: "chunk", data } (repeated), then { type: "done" }
 //                  or { type: "error", status? }
 
+import { installTtsRelay } from "@/tts/relay";
+
 const HEAD_DEFAULT_BYTES = 16384;
 const CHUNK_FLUSH_CHARS = 1_000_000;
 // The MV3 service worker's idle timer (~30s) only resets on messages/extension-API calls, not on
@@ -28,6 +30,7 @@ function toBase64(buf: ArrayBuffer): string {
 }
 
 export default defineBackground(() => {
+  if (import.meta.env.BROWSER === "firefox") installTtsRelay();
   // Keyboard shortcut (manifest `commands`). Shortcuts arrive here, not in the page, so tell the
   // active tab's content script to open the editor. A tab without our script (not AI Dungeon)
   // rejects the message, which is the correct outcome and is swallowed.

@@ -350,7 +350,10 @@ export async function collectDiagnostics(): Promise<string> {
   const narration = narrationDiagnostics();
   detail.push("", "[TTS]");
   detail.push(row("VN / TTS enabled", (cfg.visualNovelMode ? "on" : "off") + " / " + (cfg.novelTtsEnabled ? "on" : "off")));
-  detail.push(row("engine", "Supertonic, WASM CPU, 1 thread"));
+  detail.push(row("engine", "Supertonic, WASM CPU"));
+  detail.push(row("engine context", tts.runtime?.context ?? "not connected"));
+  detail.push(row("engine threads", tts.runtime?.threads == null ? "not initialized" : String(tts.runtime.threads)));
+  detail.push(row("engine isolated", tts.runtime?.isolated == null ? "not reported" : tts.runtime.isolated ? "yes" : "no"));
   detail.push(row("readiness", tts.phase + (tts.initializing ? " (initializing)" : "")));
   detail.push(row("engine present", tts.enginePresent ? "yes" : "no"));
   detail.push(row("last cache check", tts.cacheComplete === null ? "not checked this session" : tts.cacheComplete ? "complete" : "incomplete (may since have downloaded)"));
