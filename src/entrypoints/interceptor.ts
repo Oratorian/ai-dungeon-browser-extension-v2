@@ -1,5 +1,6 @@
 import { AID_MSG, sanitizeCards, type AidCard, type AidMessage, type AidStats } from "@/aid/protocol";
 import { installVnCardWriter } from "@/aid/vn_card";
+import { readStoryMetadata } from "@/aid/story_metadata";
 
 // Page-world (MAIN) script. It is injected as a <script> tag by aid-inject.content.ts at
 // document_start, so it patches window.fetch and window.WebSocket before AI Dungeon's own bundle
@@ -171,6 +172,16 @@ export default defineUnlistedScript(() => {
     stats.holders += holders.length;
     const holder = pick(holders);
     if (holder) capture(holder, full);
+    // Metadata is often loaded in a separate query with no storyCards field.
+    const shortId = pageShortId();
+    const metadata = readStoryMetadata(json, shortId);
+    if (metadata) {
+      if (!latest || latest.shortId !== shortId) {
+        latest = { shortId, scenarioId: null, title: null, scenarioTitle: null, byId: new Map() };
+      }
+      Object.assign(latest, metadata);
+      post();
+    }
   }
 
   // --- fetch (initial + refetched adventure loads: authoritative full sets) ---
@@ -190,10 +201,9 @@ export default defineUnlistedScript(() => {
             .text()
             .then((t) => {
               stats.responses++;
-              // Cheap pre-filter: only parse responses that actually carry cards, not every
-              // action/streaming response during play.
-              if (t.includes('"storyCards"')) {
-                stats.withStoryCards++;
+              if (t.includes('"storyCards"')) stats.withStoryCards++;
+              // Include title-only responses rather than tying names to card loading.
+              if (t.includes('"storyCards"') || t.includes('"title"')) {
                 try {
                   scan(JSON.parse(t), true);
                 } catch {

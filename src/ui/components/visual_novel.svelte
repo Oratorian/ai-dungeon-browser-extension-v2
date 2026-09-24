@@ -172,7 +172,7 @@
   });
   const frame = $derived(frames[index]);
   const storyMetadata = $derived($playedAdventureId && $aidDetected.shortId === $playedAdventureId ? $aidDetected : null);
-  const scenarioName = $derived(storyMetadata?.scenarioTitle || "VISUAL NOVEL");
+  const scenarioName = $derived(storyMetadata?.scenarioTitle || storyMetadata?.title || "Adventure");
   const adventureName = $derived(storyMetadata?.title || "Adventure");
   // Opening native action controls can remount identical story DOM. Depend on
   // the text value so a replacement frame does not restart its cached audio.
@@ -505,7 +505,7 @@
         <div class="location-shade" aria-hidden="true"></div>
       {/if}
       <header>
-        <span class="title"><span class="scenario-name" title={scenarioName}>{scenarioName}</span><small title={adventureName}>{adventureName}</small></span>
+        <span class="title"><span class="scenario-name" title={scenarioName}>{scenarioName}</span>{#if storyMetadata?.scenarioTitle}<small title={adventureName}>{adventureName}</small>{/if}</span>
         <div class="tools">
           <div class="vn-settings-control">
             <button bind:this={settingsButton} aria-expanded={settingsOpen} aria-controls="novel-settings-panel" onclick={() => settingsOpen = !settingsOpen}>Settings</button>
