@@ -54,7 +54,6 @@ const defaultSettings = {
   // AI Dungeon's top menu. It lives in our own shadow root rather than AID's action bar, which
   // other extensions also inject into. The position is the viewport coordinate of its top-left
   // corner; -1 means "never moved", so it parks itself in the bottom-right corner.
-  floatingButton: true,
   floatingButtonX: -1,
   floatingButtonY: -1,
   // Hovering the button fans out one shortcut per editor tab.

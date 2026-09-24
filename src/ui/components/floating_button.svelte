@@ -33,7 +33,7 @@
   const DRAG_THRESHOLD = 4; // px of travel before a press counts as a drag instead of a click
   const CLOSE_GRACE = 250; // ms the ring survives the pointer crossing a gap between its parts
 
-  type ActionId = "sets" | "stamp" | "sync" | "novel" | "settings";
+  type ActionId = "sets" | "stamp" | "sync" | "novel" | "settings" | "hide";
   type QuickAction = { id: ActionId; icon: string; label: string; panel: boolean };
 
   // Clockwise order around the ring, always this sequence however much of the ring fits.
@@ -43,6 +43,7 @@
     { id: "sync", icon: "sync", label: "AID Sync", panel: false },
     { id: "novel", icon: "theater_comedy", label: "Visual Novel Mode", panel: true },
     { id: "settings", icon: "settings", label: "Settings", panel: false },
+    { id: "hide", icon: "visibility_off", label: "Hide until refresh", panel: false },
   ];
 
   // Tracked so the puck re-clamps itself into view when the window is resized.
@@ -126,7 +127,7 @@
   // gone, so the hover state has to be reset by hand or the ring is open again when the editor
   // closes, with the pointer nowhere near it.
   $effect(() => {
-    if (extensionState.isEditorOpen) closeAll();
+    if (extensionState.isEditorOpen || extensionState.floatingButtonHidden) closeAll();
   });
 
   function cancelClose() {
@@ -167,6 +168,11 @@
   }
 
   function onActionClick(action: QuickAction) {
+    if (action.id === "hide") {
+      closeAll();
+      extensionState.floatingButtonHidden = true;
+      return;
+    }
     if (!action.panel) {
       openAt(action.id === "sync" ? Tab.Import : Tab.Settings);
       return;
@@ -256,7 +262,7 @@
 />
 
 <!-- Hidden while the editor is open: it would only sit dimmed under the modal's backdrop. -->
-{#if $settings.floatingButton && !extensionState.isEditorOpen}
+{#if !extensionState.floatingButtonHidden && !extensionState.isEditorOpen}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     bind:this={group}

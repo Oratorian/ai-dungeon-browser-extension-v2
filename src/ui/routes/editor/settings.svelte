@@ -126,23 +126,15 @@
   </Item>
   <Item foldout icon="drag_pan" label="Floating Button">
     <Field
-      label="Show Floating Button"
-      info="Shows a small draggable button over the game that opens this editor.<br>- <b>Click</b> it to open the editor<br>- <b>Drag</b> it anywhere you like; it stays put<br><em>With it off, the editor opens with Ctrl+Shift+L, and the toggle shortcut below brings the button back.</em>"
-    >
-      <Switch bind:checked={$settings.floatingButton} />
-    </Field>
-
-    <Field
       label="Toggle Shortcut"
-      info="A key combination that shows or hides the floating button while you play, so it can get out of the way mid-story without a trip back here.<br>Click the field and press the combination. It needs Ctrl, Alt or Meta in it, so typing never triggers it. Backspace clears it."
+      info="Shows or hides the floating button for this page session. Refreshing or reopening the page always brings it back. The ring's <b>Hide until refresh</b> action also hides it.<br>Click the field and press a combination with Ctrl, Alt or Meta. Backspace clears it."
     >
       <HotkeyRecorder bind:value={$settings.floatingButtonHotkey} ariaLabel="Floating button toggle shortcut" />
     </Field>
 
-    {#if $settings.floatingButton}
       <Field
         label="Quick Actions"
-        info="Hovering the button brings up a ring of quick actions around it: <b>Sets</b> to switch, create or import a card set, <b>Stamp</b> to bind the set to the story you are playing, <b>AID Sync</b> and <b>Settings</b>. Sets and Stamp open right there; click one to pin it open.<br><em>Off: the button only opens the editor where you last left it.</em>"
+        info="Hovering the button brings up <b>Sets</b>, <b>Stamp</b>, <b>AID Sync</b>, <b>Visual Novel Mode</b>, <b>Settings</b>, and <b>Hide until refresh</b>. Sets and Stamp open right there; click one to pin it open.<br><em>Off: the button only opens the editor where you last left it.</em>"
       >
         <Switch bind:checked={$settings.floatingButtonQuickActions} />
       </Field>
@@ -160,7 +152,6 @@
           Reset Position
         </button>
       </Field>
-    {/if}
   </Item>
 
   <Item foldout icon="motion_mode" label="Card Effects">
