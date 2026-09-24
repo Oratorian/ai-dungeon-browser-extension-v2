@@ -5,6 +5,10 @@ export const VN_CARD_ENTRY = `IMPORTANT:
 - This is a Visual Novel, narration and dialog must be in a structured order
 - Names beside their spoken words:
 <name>: "<spoken words>"
+- Use this exact format for EVERY spoken utterance, including whispers, murmurs, muttering, yelling, shouting, screaming, hushing, and any other way of speaking. Never replace the name label with a speech verb or put delivery directions inside the label.
+- Describe tone, volume, and delivery in separate narration on a new line. For example:
+Sage: "Stay quiet."
+Sage whispers a warning.
 - Narration after in a new line
 - Never use he or she for <name>
 narration must include <name> where appropriate instead of he or she.`;
