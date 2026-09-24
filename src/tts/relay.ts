@@ -1,12 +1,16 @@
 import { browser } from "wxt/browser";
+import { FirefoxTtsHelper, FIREFOX_ENGINE_URL } from "./firefox_helper";
 
-const engineUrl = "http://localhost:4177/engine.html";
+const engineUrl = FIREFOX_ENGINE_URL;
 type Port = ReturnType<typeof browser.runtime.connect>;
 type Route = { client: Port; owner: number; host?: Port; tab?: number; timer: ReturnType<typeof setTimeout>; closed: boolean };
 
 /** Each adventure tab owns its own engine tab and request stream. */
 export function installTtsRelay() {
   const routes = new Map<string, Route>();
+  const helper = new FirefoxTtsHelper(message => {
+    for (const token of routes.keys()) close(token, message);
+  });
   function close(token: string, reason?: string) {
     const route = routes.get(token);
     if (!route || route.closed) return;
@@ -14,6 +18,7 @@ export function installTtsRelay() {
     if (reason) { try { route.client.postMessage({ type: "fatal", message: reason }); } catch {} }
     route.client.disconnect(); route.host?.disconnect();
     if (route.tab != null) void browser.tabs.remove(route.tab).catch(() => {});
+    if (!routes.size) helper.stop();
   }
   browser.tabs.onRemoved.addListener(tabId => {
     for (const [token, route] of routes) {
@@ -22,6 +27,8 @@ export function installTtsRelay() {
     }
   });
   async function openEngine(token: string, route: Route) {
+    await helper.start();
+    if (route.closed) return;
     const owner = await browser.tabs.get(route.owner);
     if (route.closed) return;
     const tab = await browser.tabs.create({ url: engineUrl + "#" + token, active: false,
@@ -52,14 +59,14 @@ export function installTtsRelay() {
       if (!/^https:\/\/(play|beta|alpha)\.aidungeon\.com\//.test(port.sender?.url ?? "") || port.sender?.tab?.id == null) { port.disconnect(); return; }
       const token = crypto.randomUUID();
       const route: Route = { client: port, owner: port.sender.tab.id, closed: false, timer: setTimeout(() => close(token,
-        "Firefox TTS engine unavailable. Start node scripts/tts-firefox-prototype.mjs, then retry Initialize TTS."), 18000) };
+        "Firefox TTS engine unavailable. Check the TTS Helper installation, then retry Initialize TTS."), 18000) };
       routes.set(token, route);
       port.onDisconnect.addListener(() => close(token));
       port.onMessage.addListener(data => {
         if (!route.host || !Number.isSafeInteger(data?.id) || !["status", "load", "speak"].includes(data.type)) return;
         route.host.postMessage(data);
       });
-      void openEngine(token, route).catch(() => close(token, "Could not open Firefox TTS engine tab."));
+      void openEngine(token, route).catch(error => close(token, error instanceof Error ? error.message : "Could not open Firefox TTS engine tab."));
     } else if (port.name.startsWith("de-tts-host:")) {
       const token = port.name.slice("de-tts-host:".length);
       const route = routes.get(token);

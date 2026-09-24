@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const mock = vi.hoisted(() => ({ connect: [] as any[], removed: [] as any[], create: vi.fn(), remove: vi.fn(), get: vi.fn(), group: vi.fn(), update: vi.fn() }));
+const mock = vi.hoisted(() => ({ connect: [] as any[], removed: [] as any[], create: vi.fn(), remove: vi.fn(), get: vi.fn(), group: vi.fn(), update: vi.fn(), start: vi.fn(), stop: vi.fn(), failed: undefined as ((message: string) => void) | undefined }));
+vi.mock("@/tts/firefox_helper", () => ({
+  FIREFOX_ENGINE_URL: 'http://localhost:4177/engine.html',
+  FirefoxTtsHelper: class {
+    constructor(failed: (message: string) => void) { mock.failed = failed; }
+    start = mock.start;
+    stop = mock.stop;
+  },
+}));
 vi.mock("wxt/browser", () => ({ browser: {
   runtime: { onConnect: { addListener: (fn: any) => mock.connect.push(fn) } },
   tabs: { create: mock.create, remove: mock.remove, get: mock.get, group: mock.group, onRemoved: { addListener: (fn: any) => mock.removed.push(fn) } },
@@ -16,8 +24,9 @@ function port(name: string, url: string, tab = 1) {
     receive: (data: any) => messages.forEach(fn => fn(data)),
   };
 }
-const flush = async () => { for (let i = 0; i < 6; i++) await Promise.resolve(); };
+const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 beforeEach(() => { vi.useFakeTimers(); vi.resetAllMocks(); mock.connect.length = 0; mock.removed.length = 0;
+  mock.start.mockResolvedValue(undefined);
   mock.get.mockResolvedValue({ id: 1, windowId: 7, index: 3, groupId: -1 });
   mock.group.mockResolvedValue(20); mock.update.mockResolvedValue(undefined);
   mock.create.mockResolvedValue({ id: 10 }); mock.remove.mockResolvedValue(undefined); installTtsRelay(); });
@@ -76,7 +85,7 @@ describe("Firefox TTS background relay", () => {
     expect(wrong.disconnect).toHaveBeenCalled(); expect(mock.create).not.toHaveBeenCalled();
     const client = port('de-tts-client', 'https://alpha.aidungeon.com/adventure/test');
     mock.connect[0](client); await flush(); vi.advanceTimersByTime(18000);
-    expect(client.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'fatal', message: expect.stringContaining('Start node') }));
+    expect(client.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'fatal', message: expect.stringContaining('TTS Helper') }));
     expect(mock.remove).toHaveBeenCalledWith(10);
   });
   it("reports host loss instead of leaving narration waiting", async () => {
@@ -86,5 +95,34 @@ describe("Firefox TTS background relay", () => {
     const host = port('de-tts-host:' + url.split('#')[1], url, 10);
     mock.connect[0](host); host.disconnect();
     expect(client.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'fatal', message: expect.stringContaining('disconnected') }));
+  });
+  it("waits for native readiness and stops the helper only after the last reader closes", async () => {
+    let ready!: () => void;
+    mock.start.mockImplementation(() => new Promise<void>(resolve => { ready = resolve; }));
+    const one = port('de-tts-client', 'https://play.aidungeon.com/adventure/one', 1);
+    mock.connect[0](one); await flush();
+    expect(mock.create).not.toHaveBeenCalled();
+    ready(); await flush();
+    mock.start.mockResolvedValue(undefined);
+    mock.create.mockResolvedValue({ id: 11 });
+    const two = port('de-tts-client', 'https://play.aidungeon.com/adventure/two', 2);
+    mock.connect[0](two); await flush();
+    one.disconnect(); expect(mock.stop).not.toHaveBeenCalled();
+    two.disconnect(); expect(mock.stop).toHaveBeenCalledTimes(1);
+  });
+  it("does not open an orphan tab if the reader closes while its helper is starting", async () => {
+    let ready!: () => void;
+    mock.start.mockImplementation(() => new Promise<void>(resolve => { ready = resolve; }));
+    const client = port('de-tts-client', 'https://play.aidungeon.com/adventure/one');
+    mock.connect[0](client); client.disconnect(); ready(); await flush();
+    expect(mock.stop).toHaveBeenCalled(); expect(mock.create).not.toHaveBeenCalled();
+  });
+  it("tears down every engine when the native helper fails", async () => {
+    const client = port('de-tts-client', 'https://play.aidungeon.com/adventure/one');
+    mock.connect[0](client); await flush();
+    mock.failed?.('Helper failed');
+    expect(mock.remove).toHaveBeenCalledWith(10);
+    expect(client.postMessage).toHaveBeenCalledWith({ type: 'fatal', message: 'Helper failed' });
+    expect(mock.stop).toHaveBeenCalled();
   });
 });

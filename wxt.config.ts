@@ -22,7 +22,7 @@ export default defineConfig({
     artifactTemplate: "DExtV2-Resurrect-{{browser}}-{{version}}.zip",
     sourcesTemplate: "DExtV2-Resurrect-{{version}}-sources.zip",
   },
-  manifest: ({ browser }) => ({
+  manifest: ({ browser, mode }) => ({
     content_security_policy: { extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'" },
     // Firefox does not recognize these manifest keys. Its narration worker uses
     // the existing single-thread fallback when cross-origin isolation is unavailable.
@@ -31,9 +31,9 @@ export default defineConfig({
       cross_origin_opener_policy: { value: "same-origin" as const },
       minimum_chrome_version: "116",
     } : {}),
-    name: "Dungeon Extension v2 Resurrected",
+    name: browser === "firefox" && mode === "beta" ? "Dungeon Extension-beta" : "Dungeon Extension v2 Resurrected",
     description: "Enhance AI Dungeon with visuals, audio effects, and text formatting",
-    permissions: ["storage", "unlimitedStorage", ...(browser !== "firefox" ? ["offscreen" as const] : ["tabGroups" as const])],
+    permissions: ["storage", "unlimitedStorage", ...(browser !== "firefox" ? ["offscreen" as const] : ["tabGroups" as const, "nativeMessaging" as const])],
     // Keyboard shortcut to open the editor. The browser delivers it to the background, which
     // relays it to the active tab (see background.ts and content.ts). Users can rebind it in
     // the browser's extension shortcut settings.
@@ -100,7 +100,7 @@ export default defineConfig({
     ],
     browser_specific_settings: {
       gecko: {
-        id: "dungeon-extension-v2@oratorian",
+        id: browser === "firefox" && mode === "beta" ? "dungeon-extension-betas@oratorian" : "dungeon-extension-v2@oratorian",
         data_collection_permissions: {
           required: ["none"],
         },

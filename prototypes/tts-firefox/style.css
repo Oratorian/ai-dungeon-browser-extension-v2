@@ -1,8 +1,0 @@
-:root { color-scheme: dark; font: 16px/1.5 system-ui; background: #101820; color: #e6edf1; }
-main { max-width: 1000px; margin: 32px auto; padding: 24px; }
-h1 { color: #f8ae2c; } fieldset { border: 1px solid #536675; border-radius: 10px; display: flex; flex-wrap: wrap; gap: 16px; }
-label { display: flex; flex-direction: column; gap: 6px; } label:last-child { flex-basis: 100%; }
-button, select, textarea { font: inherit; padding: 10px; border: 1px solid #536675; border-radius: 8px; background: #202e39; color: inherit; }
-button:enabled { cursor: pointer; } button:disabled { opacity: .45; } button:focus-visible { outline: 2px solid #f8ae2c; }
-pre { background: #18242e; padding: 16px; border-radius: 8px; } table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th, td { padding: 10px; text-align: left; border-bottom: 1px solid #536675; } audio { margin-top: 20px; width: 100%; }

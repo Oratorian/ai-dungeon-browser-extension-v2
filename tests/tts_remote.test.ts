@@ -54,6 +54,6 @@ describe("Firefox isolated narrator", () => {
   it("fails clearly when the local server never connects", async () => {
     const failure = vi.fn(); const client = new RemoteNarrator(vi.fn(), failure);
     const request = client.cached(); vi.advanceTimersByTime(20000);
-    await expect(request).rejects.toThrow('Start node'); expect(failure).toHaveBeenCalled();
+    await expect(request).rejects.toThrow('setup wizard'); expect(failure).toHaveBeenCalled();
   });
 });

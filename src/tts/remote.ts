@@ -2,6 +2,7 @@ import { browser } from "wxt/browser";
 import type { NarrationAudio, NarrationOptions } from "./queue";
 import { narrationThreadCount } from "./capabilities";
 import { AudioReceiver } from "./audio_wire";
+import { FIREFOX_HELPER_INSTALL } from "./firefox_helper";
 
 export class RemoteNarrator {
   private port = browser.runtime.connect({ name: "de-tts-client" });
@@ -18,7 +19,7 @@ export class RemoteNarrator {
     this.requestedThreads = narrationThreadCount(requestedThreads);
     this.ready = new Promise((resolve, reject) => {
       const timer = setTimeout(() => this.fail(this.firefox
-        ? "Firefox TTS engine unavailable. Start node scripts/tts-firefox-prototype.mjs, then retry Initialize TTS."
+        ? FIREFOX_HELPER_INSTALL
         : "Chrome TTS engine unavailable. Retry Initialize TTS or turn acceleration off.", this.failure), 20000);
       this.pending.set(0, { resolve, reject, timer });
     });
