@@ -13,9 +13,12 @@
   import { vnCardError, syncVnCard } from "@/aid/vn_card_sync";
   import { createNovelLocationTracker, retainedLocationSeed, type NovelLocation } from "@/rendering/novel_location";
   import Select from "./select.svelte";
+  import Slider from "./slider.svelte";
+  import TtsSettings from "./tts_settings.svelte";
+  import TtsPreview from "./tts_preview.svelte";
   import NovelComposer from "./novel_composer.svelte";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
-  import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
+  import { configureTts, generateNarration, ttsState } from "@/tts/service";
   import { NarrationQueue, StableNarrationWindow, narrationQueueSize } from "@/tts/queue";
   import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames, trackRetriedPassage } from "@/rendering/novel_narration";
 
@@ -25,6 +28,11 @@
   let frames = $state<Frame[]>([]);
   let index = $state(0);
   let paused = $state(false);
+  $effect(() => {
+    extensionState.novelOpenRequest;
+    // The quick action also resumes after Return to game without toggling VN off/on.
+    paused = false;
+  });
   let composing = $state(false);
   let retryEditing = $state(false);
   let retryInstruction = $state("");
@@ -481,21 +489,32 @@
       </div>
       <div class="reading-shade" aria-hidden="true"></div>
       <div class="reader-panels" bind:clientHeight={readerHeight}>
-        {#if $settings.novelTtsEnabled}
         <aside class="voice-panel" aria-label="Narration controls" aria-describedby="novel-audio-hint">
           <div id="novel-audio-menu" class="narration-controls audio-menu">
+            <TtsSettings disableInitializeWhenOff />
+            <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice and playback settings">
+              <span>Voice</span>
+              <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
+                bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
+                items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
+              <span>Generation steps</span>
+              <Select ariaLabel="Generation steps" allowDeselect={false} portal={false}
+                bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
+                items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
+              <span>Pitch</span>
+              <Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} />
+              <span>Queue</span>
+              <Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} />
+              <TtsPreview />
             {#if bufferingNarration && !retryTracker}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
-            {#if !ttsReady}
-              <button onclick={() => void initializeTts()} disabled={$ttsState.phase === "checking" || $ttsState.phase === "loading"}>Initialize TTS</button>
-            {/if}
             <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame || !ttsReady || !!retryTracker}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>
             <span class="queue-badge" role="status" title="Generated audio for the next available lines, excluding the current line">{upcomingNarration.ready}/{upcomingNarration.total} upcoming lines ready</span>
+            </fieldset>
           </div>
           <small id="novel-audio-hint" class="hover-hint">Hover here for audio controls</small>
         </aside>
-        {/if}
       <div class="dialogue">
         <p class="prose" aria-live="polite">{retryTracker ? "Waiting for the replacement response..." : bufferingNarration ? "Preparing narration for this line..." : frame?.text ?? "Waiting for story text. Use Actions to take a turn."}</p>
         {#if continuationSnapshot}<p class="narration-controls" role="status">Waiting for the continuation...</p>{/if}
@@ -587,6 +606,8 @@
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + var(--bottom-inset) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
   .voice-panel, .action-panel { display: flex; flex-direction: column; }
+  .voice-options { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 0; margin: 0; border: 0; }
+  .voice-options:disabled { opacity: 0.4; }
   .hover-hint { flex-shrink: 0; text-align: center; font-size: 11px; line-height: 1.4; color: #b9c2c8; margin: 6px 0 0; }
   .voice-panel { position: absolute; bottom: 0; left: 0; z-index: 1; width: clamp(160px, 18vw, 220px); max-height: 60vh; overflow: auto; }
   .voice-panel .audio-menu { min-height: 0; overflow: auto; display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }

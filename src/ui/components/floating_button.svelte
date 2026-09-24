@@ -9,8 +9,6 @@
   import { FLOATING_BUTTON_ICON, floatingButtonSize, ringLayout, compactLayout } from "@/shared/floating_button";
   import SetSwitcher from "./set_switcher.svelte";
   import StampBinding from "./stamp_binding.svelte";
-  import TtsSettings from "./tts_settings.svelte";
-  import Select from "./select.svelte";
 
   // A draggable quick-access puck that opens the editor. It replaces the button we used to clone
   // into AI Dungeon's Do/Say/Story/Guide/See action bar: other extensions inject there too, so we
@@ -21,7 +19,7 @@
   // second level in place: Sets switches, creates or imports a card set, Stamp binds the set to the
   // story being played. Both are things people do every time they start or duplicate an adventure,
   // and the editor was a detour for them. Hide dismisses the menu until refresh; Visual Novel Mode
-  // opens reader and TTS controls. A plain click
+  // opens the reader immediately. A plain click
   // on the puck still opens the editor where it was last left.
   //
   // The second level opens on hover, like the ring, and a click pins it so it survives the pointer
@@ -40,7 +38,7 @@
   const actions: QuickAction[] = [
     { id: "sets", icon: "swap_horiz", label: "Sets", panel: true },
     { id: "stamp", icon: "approval", label: "Stamp", panel: true },
-    { id: "novel", icon: "theater_comedy", label: "Visual Novel Mode", panel: true },
+    { id: "novel", icon: "theater_comedy", label: "Visual Novel Mode", panel: false },
     { id: "hide", icon: "visibility_off", label: "Hide until refresh", panel: false },
   ];
 
@@ -174,6 +172,12 @@
   }
 
   function onActionClick(action: QuickAction) {
+    if (action.id === "novel") {
+      $settings.visualNovelMode = true;
+      extensionState.novelOpenRequest++;
+      closeAll();
+      return;
+    }
     if (action.id === "hide") {
       closeAll();
       extensionState.floatingButtonHidden = true;
@@ -324,22 +328,6 @@
             <SetSwitcher onsync={() => openAt(Tab.Import)} />
           {:else if panel === "stamp"}
             <StampBinding standalone />
-          {:else if panel === "novel"}
-            <div class="flex flex-col gap-2">
-              <button aria-pressed={$settings.visualNovelMode}
-                onclick={() => { $settings.visualNovelMode = !$settings.visualNovelMode; closeAll(); }}
-                class="flex items-center gap-2 rounded-lg p-3 bg-theme-neutral-100 hover:bg-theme-neutral-300">
-                <span aria-hidden="true" class="font-symbol">theater_comedy</span>
-                {$settings.visualNovelMode ? "Exit Visual Novel Mode" : "Enable Visual Novel Mode"}
-              </button>
-              <TtsSettings />
-              <div class="flex flex-col gap-2 px-2 pb-2">
-                <span class="text-xs text-theme-neutral-800">Voice</span>
-                <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
-                  bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
-                  items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
-              </div>
-            </div>
           {/if}
         </div>
       {/if}
