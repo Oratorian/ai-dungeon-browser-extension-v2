@@ -19,6 +19,7 @@
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
   import { NarrationQueue, StableNarrationWindow, narrationQueueSize } from "@/tts/queue";
+  import { createNovelBookmark, readNovelBookmark, restoreNovelBookmark, type NovelBookmark } from "@/rendering/novel_bookmark";
   import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames, trackRetriedPassage } from "@/rendering/novel_narration";
 
   const adventures = Storage.adventures;
@@ -26,11 +27,16 @@
   type Frame = NovelFrame & { source: HTMLElement; offset: number };
   let frames = $state<Frame[]>([]);
   let index = $state(0);
-  let paused = $state(false);
+  let frameAdventure = $state("");
+  let pendingBookmark: NovelBookmark | undefined;
+  let jumpOpen = $state(false);
+  let jumpPage = $state<number | undefined>(1);
+  let jumpInput: HTMLInputElement | undefined = $state();
+  let jumpButton: HTMLButtonElement | undefined = $state();
   $effect(() => {
-    extensionState.novelOpenRequest;
-    // The quick action also resumes after Return to game without toggling VN off/on.
-    paused = false;
+    const bookmark = createNovelBookmark(frames, index);
+    const adventure = frameAdventure;
+    if (bookmark && adventure) void chrome.storage.local.set({ [`vn-position:${adventure}`]: bookmark }).catch(() => {});
   });
   let composing = $state(false);
   let retryEditing = $state(false);
@@ -91,7 +97,7 @@
   function playNarration() {
     stopNarration();
     const audio = frame && narrationQueue?.get(frame.text);
-    if (!audio || !active || paused || historyOpen || continuing || continuationSnapshot || retryTracker || narrationMuted) return;
+    if (!audio || !active || historyOpen || continuing || continuationSnapshot || retryTracker || narrationMuted) return;
     const token = playbackToken;
     narrationUrl = URL.createObjectURL(narrationWav(audio, $settings.novelTtsPitch));
     narrationAudio = new Audio(narrationUrl);
@@ -136,7 +142,7 @@
   $effect(() => {
     const text = narrationText;
     const position = index;
-    const visible = active && !paused && !continuing && !continuationSnapshot && !retryTracker && !narrationMuted;
+    const visible = active && !continuing && !continuationSnapshot && !retryTracker && !narrationMuted;
     const queue = narrationQueue;
     untrack(stopNarration);
     if (!visible || !text || !queue) return;
@@ -209,7 +215,10 @@
     locationSeed = retainedLocationSeed(previousFrames, previousLocations, frames, locationSeed);
     const retained = previous ? retainedNovelIndex(previous, index, frames) : -1;
     const latest = passages.at(-1)?.element;
-    index = retained >= 0 ? retained : Math.max(0, frames.findIndex(f => f.source === latest));
+    index = retained >= 0 ? retained : pendingBookmark && frames.length
+      ? restoreNovelBookmark(pendingBookmark, frames)
+      : Math.max(0, frames.findIndex(f => f.source === latest));
+    if (frames.length) pendingBookmark = undefined;
     if (continuationSnapshot) {
       const next = firstContinuationFrame(continuationSnapshot, frames.map(f => f.text));
       if (next >= 0) { index = next; continuationSnapshot = null; readWithoutAudio = false; }
@@ -232,23 +241,31 @@
       continueController?.abort(); continuing = false; actionError = "";
       historyController?.abort(); closeRetryHistory(); historyOpen = false; historyCount = 0;
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
-      frames = []; index = 0; paused = false; composing = false; lastSignature = "";
-      retryEditing = false; retryInstruction = "";
+      frameAdventure = adventure ?? ""; pendingBookmark = undefined;
+      frames = []; index = 0; composing = false; lastSignature = "";
+      retryEditing = false; retryInstruction = ""; settingsOpen = false; jumpOpen = false;
       locationMenuOpen = false; locationOverride = "__auto"; locationSeed = null; failedBackground = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
     });
     if (!enabled || !adventure) return;
     let queued = 0;
+    let disposed = false;
+    let loaded = false;
     const schedule = () => {
-      if (!queued) queued = requestAnimationFrame(() => { queued = 0; refresh(); });
+      if (loaded && !queued) queued = requestAnimationFrame(() => { queued = 0; refresh(); });
     };
     const observer = new MutationObserver(records => {
       if (records.some(record => output?.contains(record.target) || [...record.addedNodes, ...record.removedNodes].some(node =>
         node instanceof HTMLElement && (node.id === "gameplay-output" || node.querySelector("#gameplay-output"))))) schedule();
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    untrack(refresh);
-    return () => { observer.disconnect(); cancelAnimationFrame(queued); continueController?.abort(); historyController?.abort(); closeRetryHistory(); };
+    void chrome.storage.local.get(`vn-position:${adventure}`).then(saved => {
+      if (!disposed) pendingBookmark = readNovelBookmark(saved[`vn-position:${adventure}`]);
+    }).catch(() => {}).finally(() => {
+      if (disposed) return;
+      loaded = true; refresh();
+    });
+    return () => { disposed = true; observer.disconnect(); cancelAnimationFrame(queued); continueController?.abort(); historyController?.abort(); closeRetryHistory(); };
   });
 
   async function continueReading() {
@@ -346,7 +363,7 @@
   // The scene is a modal reader. Keep the covered game out of the tab order, and restore its
   // previous state when returning to the textbox or opening extension settings.
   $effect(() => {
-    if (!active || paused || historyOpen) return;
+    if (!active || historyOpen) return;
     const previous = new Map<HTMLElement, boolean>();
     const isolate = () => {
       for (const child of document.body.children) {
@@ -357,23 +374,32 @@
     isolate();
     const observer = new MutationObserver(isolate);
     observer.observe(document.body, { childList: true });
-    void tick().then(() => { if (active && !paused) scene?.focus(); });
+    void tick().then(() => { if (active) scene?.focus(); });
     return () => { observer.disconnect(); previous.forEach((inert, element) => element.inert = inert); };
   });
 
   function portraitFade(node: Element) {
     return fade(node, { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180 });
   }
-  async function resume() {
-    refresh();
-    paused = false;
-    await tick();
-    scene?.focus();
-  }
-  async function write() {
-    paused = true;
+  async function exitNovel() {
+    stopNarration();
+    narrationScheduler?.dispose();
+    narrationQueue?.dispose();
+    $settings.visualNovelMode = false;
     await tick();
     document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
+  }
+  async function openJump() {
+    jumpPage = index + 1;
+    jumpOpen = true;
+    await tick();
+    jumpInput?.focus(); jumpInput?.select();
+  }
+  function closeJump() { jumpOpen = false; jumpButton?.focus(); }
+  function jump() {
+    if (!Number.isInteger(jumpPage) || !jumpPage || jumpPage < 1 || jumpPage > frames.length) return;
+    navigate(jumpPage - 1);
+    closeJump();
   }
   function latest() {
     continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
@@ -381,7 +407,10 @@
     index = Math.max(0, frames.findIndex(f => f.source === source));
   }
   function key(event: KeyboardEvent) {
-    if (!active || paused || historyOpen) return;
+    if (!active || historyOpen) return;
+    if (event.key === "Escape" && jumpOpen) {
+      event.preventDefault(); event.stopPropagation(); closeJump(); return;
+    }
     if (event.key === "Escape" && settingsOpen) {
       event.preventDefault(); event.stopPropagation(); closeSettings(); return;
     }
@@ -401,7 +430,7 @@
     const target = origin instanceof Element ? origin : null;
     // Keep Space usable after clicking reader controls, without stealing it from
     // the composer, retry instructions, or location picker.
-    if (event.key === " " && !target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], .location-control, .vn-settings-control')) {
+    if (event.key === " " && !target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], .location-control, .vn-settings-control, .page-jump')) {
       event.preventDefault();
       if (!event.repeat) navigate(index + 1);
       return;
@@ -409,7 +438,7 @@
     if (target !== scene) return;
     if (!["ArrowLeft", "ArrowRight", " ", "Escape"].includes(event.key)) return;
     event.preventDefault(); event.stopPropagation();
-    if (event.key === "Escape") write();
+    if (event.key === "Escape") void exitNovel();
     else navigate(index + (event.key === "ArrowLeft" ? -1 : 1));
   }
   function closeSettings() {
@@ -426,8 +455,6 @@
 {#if active}
   {#if historyOpen}
     <button class="resume" onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
-  {:else if paused}
-    <button class="resume" onclick={resume}>Resume visual novel</button>
   {:else}
     <div class="novel" style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
       <svg class="portrait-filters" width="0" height="0" aria-hidden="true" focusable="false">
@@ -481,8 +508,7 @@
               </section>
             {/if}
           </div>
-          <button onclick={() => $settings.visualNovelMode = false}>Exit mode</button>
-          <button onclick={write}>Return to game</button>
+          <button onclick={exitNovel}>Exit VN</button>
           <div class="location-control" role="group" aria-label="Location controls"
             onmouseenter={() => locationMenuOpen = true}
             onmouseleave={(event) => { if (!event.currentTarget.querySelector(".location-panel")?.matches(":focus-within")) locationMenuOpen = false; }}
@@ -548,9 +574,17 @@
       </div>
         <footer>
           <div class="reading-controls" role="group" aria-label="Reading position">
-            <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
+            <div class="page-jump">
+              <button class="page-counter" bind:this={jumpButton} onclick={() => jumpOpen ? closeJump() : openJump()} disabled={!frames.length} aria-label={`Jump to page, current page ${index + 1} of ${frames.length}`} aria-expanded={jumpOpen} aria-controls="novel-page-jump" title="Jump to page">{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</button>
+              {#if jumpOpen}
+                <form id="novel-page-jump" class="jump-panel" onsubmit={event => { event.preventDefault(); jump(); }}>
+                  <label for="novel-page-number">Page (1-{frames.length})</label>
+                  <input id="novel-page-number" type="number" min="1" max={frames.length} step="1" required bind:value={jumpPage} bind:this={jumpInput} />
+                  <div class="jump-actions"><button type="submit">Go</button><button type="button" onclick={() => { latest(); closeJump(); }}>Jump to latest</button><button type="button" onclick={closeJump}>Cancel</button></div>
+                </form>
+              {/if}
+            </div>
             <button onclick={() => navigate(index - 1)} disabled={index === 0 || !frames.length}>Back</button>
-          <button onclick={() => latest()} disabled={!frames.length}>Last passage</button>
           <button class="accent" aria-keyshortcuts="Space" title="Next (Space)" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
           </div>
           <div class="generation-controls" role="group" aria-label="Story generation">
@@ -656,7 +690,11 @@
   .retry-instructions textarea { resize: vertical; min-height: 60px; max-height: 20vh; border: 1px solid #64727c; border-radius: 8px; padding: 10px; background: #0e171f; color: #eee8de; font: inherit; }
   .reading-controls, .generation-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
   .generation-controls { margin-left: auto; }
-  .reading-controls span { color: #b9c2c8; font-size: 13px; white-space: nowrap; }
+  .page-jump { position: relative; }
+  .page-counter { color: #b9c2c8; font-size: 13px; white-space: nowrap; background: transparent; border-color: transparent; padding-inline: 4px; }
+  .jump-panel { position: absolute; bottom: calc(100% + 12px); left: 0; z-index: 4; width: min(300px, calc(100vw - 64px)); padding: 14px; border: 1px solid #65717b; border-radius: 12px; background: #141e27fa; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 8px 24px #0008; }
+  .jump-panel input { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid #64727c; border-radius: 8px; padding: 8px; background: #202b34; color: #eee8de; font: inherit; }
+  .jump-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 900px) {
     .portrait { left: -17.5%; transform: none; width: 135%; max-width: none; }

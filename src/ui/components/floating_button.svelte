@@ -174,7 +174,6 @@
   function onActionClick(action: QuickAction) {
     if (action.id === "novel") {
       $settings.visualNovelMode = true;
-      extensionState.novelOpenRequest++;
       closeAll();
       return;
     }
