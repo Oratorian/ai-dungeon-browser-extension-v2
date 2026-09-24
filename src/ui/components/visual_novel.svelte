@@ -489,7 +489,7 @@
             <feConvolveMatrix in="SourceAlpha" order="5" kernelMatrix="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1" divisor="1" edgeMode="none" preserveAlpha="false" result="expanded" />
             <feComposite in="expanded" in2="SourceAlpha" operator="out" result="rim" />
             <feGaussianBlur in="rim" stdDeviation="0.8" result="soft-rim" />
-            <feFlood flood-color="#f2dfc4" flood-opacity="0.7" result="outline-color" />
+            <feFlood flood-color="#f2dfc4" flood-opacity={$settings.novelGlow ? 0.7 : 0} result="outline-color" />
             <feComposite in="outline-color" in2="soft-rim" operator="in" result="outline" />
             <feDropShadow in="SourceAlpha" dx="3" dy="7" stdDeviation="9" flood-color="#05090d" flood-opacity="0.8" result="shadow" />
             <feMerge>
@@ -501,7 +501,7 @@
         </defs>
       </svg>
       {#if background}
-        {#key background}<img class="location-backdrop" src={background} alt="" aria-hidden="true" onerror={() => failedBackground = background ?? ""} transition:portraitFade />{/key}
+        {#key background}<img class="location-backdrop" class:no-blur={!$settings.novelBlur} src={background} alt="" aria-hidden="true" onerror={() => failedBackground = background ?? ""} transition:portraitFade />{/key}
         <div class="location-shade" aria-hidden="true"></div>
       {/if}
       <header>
@@ -510,8 +510,12 @@
           <div class="vn-settings-control">
             <button bind:this={settingsButton} aria-expanded={settingsOpen} aria-controls="novel-settings-panel" onclick={() => settingsOpen = !settingsOpen}>Settings</button>
             {#if settingsOpen}
-              <section id="novel-settings-panel" class="vn-settings-panel" aria-label="Visual novel narration settings">
-                <div class="settings-heading"><strong>Narration settings</strong><button onclick={closeSettings} aria-label="Close narration settings">Close</button></div>
+              <section id="novel-settings-panel" class="vn-settings-panel" aria-label="Visual novel settings">
+                <div class="settings-heading"><strong>VN settings</strong><button onclick={closeSettings} aria-label="Close VN settings">Close</button></div>
+                <div class="visual-options" role="group" aria-label="Visual effects">
+                  <button role="switch" aria-checked={$settings.novelBlur} aria-label="Background blur" onclick={() => $settings.novelBlur = !$settings.novelBlur} title="Soften the location background">Blur: {$settings.novelBlur ? "On" : "Off"}</button>
+                  <button role="switch" aria-checked={$settings.novelGlow} aria-label="Character glow" onclick={() => $settings.novelGlow = !$settings.novelGlow} title="Light outline around characters">Glow: {$settings.novelGlow ? "On" : "Off"}</button>
+                </div>
                 <TtsSettings grid disableInitializeWhenOff />
                 <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
                   <div class="voice-option">
@@ -649,6 +653,9 @@
   .stage-character.dimmed { filter: brightness(0.45); }
   @media (prefers-reduced-motion: reduce) { .stage-character { transition: none; } }
   .location-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(2.5px); transform: scale(1.012); z-index: -2; pointer-events: none; }
+  .location-backdrop.no-blur { filter: none; transform: none; }
+  .visual-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .visual-options button[aria-checked="true"] { border-color: #f8ae2c; }
   .location-shade { position: absolute; inset: 0; background: linear-gradient(#10171d9c, #10171d30 45%, #10171dc9); z-index: -1; pointer-events: none; }
   .location-control { position: relative; }
   .location-panel { position: absolute; top: 100%; right: 0; z-index: 10; width: min(320px, calc(100vw - 24px)); padding: 12px; display: flex; flex-direction: column; gap: 4px; background: #202b34; border: 1px solid #64727c; border-radius: 8px; box-shadow: 0 8px 24px #0006; }

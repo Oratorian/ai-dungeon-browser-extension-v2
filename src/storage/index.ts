@@ -66,6 +66,8 @@ const defaultSettings = {
   // Suggest API story-card names when typing @ in AI Dungeon's action textbox.
   storyCardAutocomplete: true,
   visualNovelMode: false,
+  novelBlur: true,
+  novelGlow: true,
   novelTtsEnabled: false,
   novelTtsAccelerated: false,
   novelTtsThreads: 2,
