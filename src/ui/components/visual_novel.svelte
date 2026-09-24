@@ -416,12 +416,12 @@
         <defs>
           <filter id="novel-portrait-depth" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
             <!-- Sum the alpha neighborhood to expand the silhouette, then keep only its outer rim. -->
-            <feConvolveMatrix in="SourceAlpha" order="3" kernelMatrix="1 1 1 1 1 1 1 1 1" divisor="1" edgeMode="none" preserveAlpha="false" result="expanded" />
+            <feConvolveMatrix in="SourceAlpha" order="5" kernelMatrix="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1" divisor="1" edgeMode="none" preserveAlpha="false" result="expanded" />
             <feComposite in="expanded" in2="SourceAlpha" operator="out" result="rim" />
-            <feGaussianBlur in="rim" stdDeviation="0.45" result="soft-rim" />
-            <feFlood flood-color="#101820" flood-opacity="0.8" result="outline-color" />
+            <feGaussianBlur in="rim" stdDeviation="0.8" result="soft-rim" />
+            <feFlood flood-color="#f2dfc4" flood-opacity="0.7" result="outline-color" />
             <feComposite in="outline-color" in2="soft-rim" operator="in" result="outline" />
-            <feDropShadow in="SourceAlpha" dx="2" dy="5" stdDeviation="5" flood-color="#05090d" flood-opacity="0.5" result="shadow" />
+            <feDropShadow in="SourceAlpha" dx="3" dy="7" stdDeviation="9" flood-color="#05090d" flood-opacity="0.8" result="shadow" />
             <feMerge>
               <feMergeNode in="shadow" />
               <feMergeNode in="outline" />
@@ -544,7 +544,7 @@
 <style>
   .novel { --scene-gap: 16px; --bottom-inset: max(30px, env(safe-area-inset-bottom, 0px)); position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px) clamp(12px, 3vw, 32px) var(--bottom-inset); gap: var(--scene-gap); color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
   .portrait-filters { position: absolute; pointer-events: none; }
-  .location-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(1px); transform: scale(1.005); z-index: -2; pointer-events: none; }
+  .location-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(2.5px); transform: scale(1.012); z-index: -2; pointer-events: none; }
   .location-shade { position: absolute; inset: 0; background: linear-gradient(#10171d9c, #10171d30 45%, #10171dc9); z-index: -1; pointer-events: none; }
   .location-control { position: relative; }
   .location-panel { position: absolute; top: 100%; right: 0; z-index: 10; width: min(320px, calc(100vw - 24px)); padding: 12px; display: flex; flex-direction: column; gap: 4px; background: #202b34; border: 1px solid #64727c; border-radius: 8px; box-shadow: 0 8px 24px #0006; }
