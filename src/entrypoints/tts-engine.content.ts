@@ -1,7 +1,8 @@
 import { bgFetchBytes } from "@/media/bg_fetch";
 import { browser } from "wxt/browser";
 
-// Native-helper engine and developer benchmark. Never accept arbitrary download URLs.
+// Native-helper engine. Never accept arbitrary download URLs.
+// Retain asset message names for compatibility with already installed helpers.
 const origin = "http://localhost:4177";
 const base = "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46/";
 const allowed = /^(onnx\/(tts\.json|unicode_indexer\.json|duration_predictor\.onnx|text_encoder\.onnx|vector_estimator\.onnx|vocoder\.onnx)|voice_styles\/[MF]5\.json)$/;
@@ -9,7 +10,7 @@ export default defineContentScript({
   matches: ["http://localhost/*"],
   runAt: "document_start",
   main(ctx) {
-    if (location.origin !== origin || !["/", "/engine.html"].includes(location.pathname)) return;
+    if (location.origin !== origin || location.pathname !== "/engine.html") return;
     const controller = new AbortController();
     let busy = false;
     let hostPort: ReturnType<typeof browser.runtime.connect> | undefined;
@@ -27,9 +28,6 @@ export default defineContentScript({
         if (data.type === "de-tts-host-response" && hostPort) {
           hostPort.postMessage(data.payload); return;
         }
-      }
-      if (data.type === "de-tts-prototype-ping") {
-        window.postMessage({ type: "de-tts-prototype-pong" }, origin); return;
       }
       if (data.type !== "de-tts-prototype-asset" || !Number.isSafeInteger(data.id)
         || typeof data.path !== "string" || !allowed.test(data.path)) return;

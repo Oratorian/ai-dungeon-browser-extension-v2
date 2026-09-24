@@ -6,7 +6,7 @@ try {
     $env:DOTNET_CLI_HOME = Join-Path $repo '.output\dotnet-home'
     $env:DOTNET_NOLOGO = '1'
     $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'
-    node scripts/tts-firefox-prototype.mjs --build-only --engine-only
+    node scripts/build-tts-engine.mjs
     if ($LASTEXITCODE -ne 0) { throw 'Engine build failed.' }
     $package = Join-Path $repo '.output\tts-helper\windows-x64'
     dotnet publish native/tts-helper/DungeonTtsHelper.csproj -c Release -r win-x64 --self-contained true -o $package
@@ -20,7 +20,7 @@ try {
         }
         Remove-Item -LiteralPath $resolved -Recurse -Force
     }
-    Copy-Item -LiteralPath (Join-Path $repo '.output\tts-firefox-prototype') -Destination $web -Recurse
+    Copy-Item -LiteralPath (Join-Path $repo '.output\tts-engine') -Destination $web -Recurse
     $licenses = Join-Path $package 'licenses'
     New-Item -ItemType Directory -Path $licenses -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $repo 'LICENSE') -Destination (Join-Path $licenses 'DUNGEON-EXTENSION-LICENSE.txt') -Force

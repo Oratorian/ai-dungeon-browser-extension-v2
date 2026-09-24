@@ -1,11 +1,12 @@
-import TtsWorker from '../../src/tts/worker.js?worker';
-import { narrationThreadCount } from '../../src/tts/capabilities';
+import TtsWorker from '../../../src/tts/worker.js?worker';
+import { narrationThreadCount } from '../../../src/tts/capabilities';
 import './style.css';
 
 const status = document.getElementById('status');
 const required = ['onnx/tts.json', 'onnx/unicode_indexer.json',
   ...['duration_predictor', 'text_encoder', 'vector_estimator', 'vocoder'].map(name => `onnx/${name}.onnx`),
   'voice_styles/M5.json', 'voice_styles/F5.json'];
+// Preserve the existing cache name so installed users keep their downloaded models.
 const cache = caches.open('de-tts-firefox-benchmark-v1');
 const key = path => new URL('/models/' + path, location.origin).href;
 const assets = new Map();

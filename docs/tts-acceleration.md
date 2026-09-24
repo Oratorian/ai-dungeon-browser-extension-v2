@@ -36,8 +36,8 @@ That closes the local server too. Exiting/minimizing VN retains the loaded reade
 turn TTS off or close its story to release it. Stop any old manual Node server first,
 because the helper requires port 4177. Other operating systems use single-thread TTS
 until a native-helper package is supplied for them.
-The standalone benchmark and accelerated engine share their model cache. See
-[`prototypes/tts-firefox/README.md`](../prototypes/tts-firefox/README.md).
+The active engine source lives in `native/tts-helper/engine` and is bundled by
+`scripts/build-tts-engine.mjs`. Its existing model cache is retained across updates.
 
 ## Verification
 
@@ -57,17 +57,11 @@ port conflicts, incompatible protocols/extensions, EOF shutdown, and restart. Po
 must be free; the check does not stop an existing server. Registry installation and full
 VN narration require a separate end-to-end check in Firefox.
 
-The Chrome smoke test launches a fresh Chromium profile with a copy of the built extension,
-creates a real offscreen document, and runs a tiny local ONNX model using the packaged CSP and
-WASM runtime. It requires no model downloads, account login, or changes to an existing profile:
+TTS routing and native-helper regression tests:
 
 ```powershell
-npm run build
-node scripts/tts-firefox-prototype.mjs --build-only
-node scripts/check-chrome-tts.mjs "C:/path/to/chromium/chrome.exe"
+npx vitest run tests/tts_remote.test.ts tests/tts_relay.test.ts tests/tts_firefox_helper.test.ts
 ```
 
-Use Chromium or Chrome for Testing with unpacked-extension command-line support. Evidence is
-saved to `.output/chrome-tts-capabilities.json`. The verified runtime reported isolation, shared
-memory, WASM threading, four effective ONNX threads, and correct test-model output. This verifies
-the execution environment, not full Supertonic speed or live VN playback.
+These tests check message transport and engine lifecycle. Live narration still requires
+a browser check. The standalone benchmark and threading-probe tools have been removed.
