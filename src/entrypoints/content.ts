@@ -10,6 +10,7 @@ import { installErrorCapture } from "@/shared/errors";
 import { matchesHotkey } from "@/shared/hotkey";
 import { Storage } from "@/storage";
 import { get } from "svelte/store";
+import { syncVnCard } from "@/aid/vn_card_sync";
 
 export default defineContentScript({
   matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
@@ -30,6 +31,10 @@ export default defineContentScript({
 
     // Do the startup events (loads storage).
     await Events.onStart();
+    syncVnCard();
+    ctx.setInterval(syncVnCard, 2000);
+    const stopVnCardSync = Storage.settings.subscribe(() => syncVnCard());
+    ctx.onInvalidated(stopVnCardSync);
 
     // Follow the played adventure: auto-select its imported card set as the URL changes (AI Dungeon
     // routes client-side, so poll). Must run after Events.onStart() so storage is loaded first;

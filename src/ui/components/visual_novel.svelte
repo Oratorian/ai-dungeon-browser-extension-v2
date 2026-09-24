@@ -10,6 +10,7 @@
   import { readNovelPassages } from "@/rendering/novel_dom";
   import { createNovelStageTracker } from "@/rendering/novel_stage";
   import { novelSpeakers } from "@/rendering/novel_speaker";
+  import { vnCardError, syncVnCard } from "@/aid/vn_card_sync";
   import { createNovelLocationTracker, retainedLocationSeed, type NovelLocation } from "@/rendering/novel_location";
   import Select from "./select.svelte";
   import NovelComposer from "./novel_composer.svelte";
@@ -408,6 +409,9 @@
 
 <svelte:window onkeydown={(event) => { if (event.key === " " && !event.defaultPrevented) key(event); }} />
 
+{#if $vnCardError}
+  <div class="vn-card-error" role="alert">VN Mode story card: {$vnCardError} <button onclick={() => syncVnCard(true)}>Retry</button></div>
+{/if}
 {#if active}
   {#if historyOpen}
     <button class="resume" onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
@@ -547,6 +551,7 @@
 <style>
   .novel { --scene-gap: 16px; --bottom-inset: max(30px, env(safe-area-inset-bottom, 0px)); position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px) clamp(12px, 3vw, 32px) var(--bottom-inset); gap: var(--scene-gap); color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
   .portrait-filters { position: absolute; pointer-events: none; }
+  .vn-card-error { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 950; max-width: 90vw; padding: 10px 16px; border-radius: 8px; background: #422e16; color: #fff; }
   .stage-character { filter: brightness(1); transition: filter 180ms ease; }
   .stage-character.dimmed { filter: brightness(0.45); }
   @media (prefers-reduced-motion: reduce) { .stage-character { transition: none; } }

@@ -1,10 +1,11 @@
 // Shared protocol between the page-world interceptor (src/entrypoints/interceptor.ts) and the
-// content-script bridge (src/utils/aid_import.ts). Deliberately dependency-free (no svelte, no
+// content-script bridge (src/aid/bridge.ts). Deliberately dependency-free (no svelte, no
 // storage) so the injected page script stays tiny and self-contained.
 //
 // The interceptor forwards ONLY the story-card skeleton the extension actually needs
-// (id, type, name, triggers). It never reads or sends entries, images, memory, author's note, or
-// any other adventure content, and it never modifies AI Dungeon's requests or responses.
+// (id, type, name, triggers). Entries are never sent through this import protocol. The separate
+// VN Mode writer retains only its managed card's fields in page memory to preserve them on save.
+// AI Dungeon's original requests and responses are never modified.
 
 export type AidCard = {
   /** AI Dungeon's story-card id (stable across edits); used to de-duplicate a capture. */

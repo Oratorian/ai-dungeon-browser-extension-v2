@@ -1,4 +1,5 @@
 import { AID_MSG, sanitizeCards, type AidCard, type AidMessage, type AidStats } from "@/aid/protocol";
+import { installVnCardWriter } from "@/aid/vn_card";
 
 // Page-world (MAIN) script. It is injected as a <script> tag by aid-inject.content.ts at
 // document_start, so it patches window.fetch and window.WebSocket before AI Dungeon's own bundle
@@ -7,7 +8,7 @@ import { AID_MSG, sanitizeCards, type AidCard, type AidMessage, type AidStats } 
 // forwards ONLY {id,type,name,triggers} to the content script via window.postMessage.
 //
 // Everything AID sends passes through untouched: we clone responses to read them and never alter a
-// request. If AID restructures its API this simply stops finding cards; nothing breaks.
+// request. The separate VN card writer only issues the explicitly requested mode-card updates.
 
 export default defineUnlistedScript(() => {
   const isGql = (u: unknown) => typeof u === "string" && /graphql/i.test(u);
@@ -59,6 +60,7 @@ export default defineUnlistedScript(() => {
   // A new shortId resets the set (the user switched adventures).
   function capture(holder: Holder, full: boolean) {
     const { shortId, scenarioId, title, cards } = holder;
+    vnWriter.capture(shortId, cards, full, holder.rawCards);
     if (!cards.length && !full) return;
     if (!latest || (shortId && shortId !== latest.shortId)) {
       latest = { shortId: shortId ?? null, scenarioId: null, title: title ?? null, byId: new Map() };
@@ -77,7 +79,7 @@ export default defineUnlistedScript(() => {
   /** The adventure shortId in the address bar, used to ignore captures for anything else. */
   const pageShortId = () => location.pathname.match(/adventure\/([^/]+)/)?.[1] ?? null;
 
-  type Holder = { shortId: string | null; scenarioId: string | null; title: string | null; cards: AidCard[] };
+  type Holder = { shortId: string | null; scenarioId: string | null; title: string | null; cards: AidCard[]; rawCards: any[] };
 
   /**
    * The scenario an adventure object says it came from. AI Dungeon's Adventure type carries a plain
@@ -127,7 +129,7 @@ export default defineUnlistedScript(() => {
       const name = typeof node.title === "string" && node.title.trim() ? node.title : title;
 
       if (Array.isArray(node.storyCards)) {
-        holders.push({ shortId: id, scenarioId: scenario, title: name, cards: sanitizeCards(node.storyCards) });
+        holders.push({ shortId: id, scenarioId: scenario, title: name, cards: sanitizeCards(node.storyCards), rawCards: node.storyCards });
       }
 
       for (const [key, value] of Object.entries(node)) {
@@ -166,6 +168,7 @@ export default defineUnlistedScript(() => {
 
   // --- fetch (initial + refetched adventure loads: authoritative full sets) ---
   const _fetch = window.fetch.bind(window);
+  const vnWriter = installVnCardWriter(_fetch, pageShortId);
   window.fetch = function (...args: any[]) {
     const p = _fetch(...(args as [any, any]));
     try {
@@ -173,6 +176,7 @@ export default defineUnlistedScript(() => {
       // input may be a string, a Request (has .url), or a URL (String() gives its href).
       const url = typeof input === "string" ? input : (input?.url ?? String(input ?? ""));
       if (isGql(url)) {
+        vnWriter.observe(input, args[1]);
         p.then((r: Response) =>
           r
             .clone()
