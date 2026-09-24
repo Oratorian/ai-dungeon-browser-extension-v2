@@ -1,6 +1,6 @@
 import type { NovelCharacter, NovelFrame } from "./novel";
 
-/** Resolve explicit dialogue labels only, including sentences inside a longer quotation. */
+/** Resolve dialogue labels and native Say actions, including longer quotations. */
 export function novelSpeakers(frames: NovelFrame[], characters: NovelCharacter[]): (string | null)[] {
   const aliases = new Map<string, Set<string>>();
   for (const character of characters) {
@@ -21,9 +21,9 @@ export function novelSpeakers(frames: NovelFrame[], characters: NovelCharacter[]
       offset = 0;
       spans = [];
       // Consume unlabeled quotes too, so names mentioned inside dialogue cannot become labels.
-      const quotes = /(?:([^:\n"“”«».!?]+):\s*)?("[^"\n]*(?:"|$)|“[^”\n]*(?:”|$)|«[^»\n]*(?:»|$))/gu;
+      const quotes = /(?:([^:\n"“”«».!?]+):\s*|\b(You)\s+say,\s*)?("[^"\n]*(?:"|$)|“[^”\n]*(?:”|$)|«[^»\n]*(?:»|$))/giu;
       for (const match of paragraph.matchAll(quotes)) {
-        const owners = aliases.get((match[1] ?? "").trim().toLowerCase());
+        const owners = aliases.get((match[1] ?? match[2] ?? "").trim().toLowerCase());
         spans.push({ start: match.index, end: match.index + match[0].length,
           speaker: owners?.size === 1 ? [...owners][0]! : null });
       }

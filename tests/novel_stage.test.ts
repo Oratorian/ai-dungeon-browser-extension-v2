@@ -12,6 +12,11 @@ const cast: NovelCharacter[] = [
 const track = (text: string) => createNovelStageTracker(cast)(parseNovel(text));
 
 describe("paragraph-based visual novel scenes", () => {
+  it("shows a character through its you alias", () => {
+    const tracker = createNovelStageTracker([{ id: "elarion", name: "Elarion", triggers: "Elarion, you" }]);
+    expect(tracker(parseNovel('You: "Hello."'))).toEqual([["elarion", null, null, null]]);
+    expect(tracker(parseNovel('You say, "Hello."'))).toEqual([["elarion", null, null, null]]);
+  });
   it("retains listeners across labeled turns without adding people mentioned in dialogue", () => {
     expect(track('Nyx and Sage wait.\nSage: "Coral is annoying."\nNyx: "I agree."\nThe room is empty.'))
       .toEqual([["nyx", "sage", null, null], ["nyx", "sage", null, null],

@@ -9,6 +9,14 @@ const characters = [
 const speakers = (text: string) => novelSpeakers(parseNovel(text), characters);
 
 describe("explicit VN speakers", () => {
+  it.each(["You", "you", "Elarion"])("resolves the player alias %s to the same card", label => {
+    expect(speakers(`${label}: "Hello."`)).toEqual(["elarion"]);
+  });
+  it("focuses the player card throughout native Say actions", () => {
+    expect(speakers('You say, "Hello. Stay here."')).toEqual(["elarion", "elarion"]);
+    expect(speakers('You say, “Hello.”')).toEqual(["elarion"]);
+    expect(speakers('Sage: "You say, hello."')).toEqual(["sage"]);
+  });
   it("keeps focus through a multi-sentence quote and clears it for narration", () => {
     expect(speakers('Sage: "Careful, Elarion. You will regret that." She smiles.'))
       .toEqual(["sage", "sage", null]);
