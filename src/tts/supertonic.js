@@ -102,6 +102,9 @@ export class UnicodeProcessor {
         // Remove extra spaces
         text = text.replace(/\s+/g, ' ').trim();
 
+        // Give the player-action introduction a longer pause before quoted speech.
+        text = text.replace(/^(You say),\s*(?=")/i, '$1... ');
+
         // If text doesn't end with punctuation, quotes, or closing brackets, add a period
         if (!/[.!?;:,'\"')\]}…。」』】〉》›»]$/.test(text)) {
             text += '.';
