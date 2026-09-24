@@ -44,6 +44,7 @@ export function connectAidBridge() {
       shortId: d.shortId,
       scenarioId: d.scenarioId ?? null,
       title: d.title ?? pageTitle(),
+      scenarioTitle: typeof d.scenarioTitle === "string" ? d.scenarioTitle.trim() || null : null,
       cards: d.cards,
       stats: d.stats ?? EMPTY_STATS,
     });

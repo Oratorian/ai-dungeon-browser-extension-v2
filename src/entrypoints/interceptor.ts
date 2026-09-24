@@ -19,6 +19,7 @@ export default defineUnlistedScript(() => {
     shortId: string | null;
     scenarioId: string | null;
     title: string | null;
+    scenarioTitle: string | null;
     byId: Map<string, AidCard>;
   } | null = null;
 
@@ -34,6 +35,7 @@ export default defineUnlistedScript(() => {
         shortId: latest!.shortId,
         scenarioId: latest!.scenarioId,
         title: latest!.title,
+        scenarioTitle: latest!.scenarioTitle,
         cards,
       };
     }
@@ -44,6 +46,7 @@ export default defineUnlistedScript(() => {
         shortId: latest?.shortId ?? null,
         scenarioId: latest?.scenarioId ?? null,
         title: latest?.title ?? null,
+        scenarioTitle: latest?.scenarioTitle ?? null,
         cards,
         stats: { ...stats },
       } as AidMessage,
@@ -59,15 +62,16 @@ export default defineUnlistedScript(() => {
   //    wipe the rest.
   // A new shortId resets the set (the user switched adventures).
   function capture(holder: Holder, full: boolean) {
-    const { shortId, scenarioId, title, cards } = holder;
+    const { shortId, scenarioId, title, scenarioTitle, cards } = holder;
     vnWriter.capture(shortId, cards, full, holder.rawCards);
     if (!cards.length && !full) return;
     if (!latest || (shortId && shortId !== latest.shortId)) {
-      latest = { shortId: shortId ?? null, scenarioId: null, title: title ?? null, byId: new Map() };
+      latest = { shortId: shortId ?? null, scenarioId: null, title: title ?? null, scenarioTitle: null, byId: new Map() };
     }
     if (shortId) latest.shortId = shortId;
     if (scenarioId) latest.scenarioId = scenarioId;
     if (title) latest.title = title;
+    if (scenarioTitle) latest.scenarioTitle = scenarioTitle;
     if (full) {
       if (cards.length) latest.byId = new Map(cards.map((c) => [c.id, c]));
     } else {
@@ -79,7 +83,7 @@ export default defineUnlistedScript(() => {
   /** The adventure shortId in the address bar, used to ignore captures for anything else. */
   const pageShortId = () => location.pathname.match(/adventure\/([^/]+)/)?.[1] ?? null;
 
-  type Holder = { shortId: string | null; scenarioId: string | null; title: string | null; cards: AidCard[]; rawCards: any[] };
+  type Holder = { shortId: string | null; scenarioId: string | null; title: string | null; scenarioTitle: string | null; cards: AidCard[]; rawCards: any[] };
 
   /**
    * The scenario an adventure object says it came from. AI Dungeon's Adventure type carries a plain
@@ -114,33 +118,36 @@ export default defineUnlistedScript(() => {
       depth: number,
       shortId: string | null,
       scenarioId: string | null,
-      title: string | null
+      title: string | null,
+      scenarioTitle: string | null
     ) => {
       if (!node || typeof node !== "object" || depth > 12 || seen.has(node)) return;
       seen.add(node);
 
       if (Array.isArray(node)) {
-        for (const item of node) walk(item, depth + 1, shortId, scenarioId, title);
+        for (const item of node) walk(item, depth + 1, shortId, scenarioId, title, scenarioTitle);
         return;
       }
 
       const id = node.shortId != null ? String(node.shortId) : shortId;
       const scenario = scenarioIdOf(node) ?? scenarioId;
       const name = typeof node.title === "string" && node.title.trim() ? node.title : title;
+      const scenarioName = typeof node.scenario?.title === "string" && node.scenario.title.trim()
+        ? node.scenario.title.trim() : scenarioTitle;
 
       if (Array.isArray(node.storyCards)) {
-        holders.push({ shortId: id, scenarioId: scenario, title: name, cards: sanitizeCards(node.storyCards), rawCards: node.storyCards });
+        holders.push({ shortId: id, scenarioId: scenario, title: name, scenarioTitle: scenarioName, cards: sanitizeCards(node.storyCards), rawCards: node.storyCards });
       }
 
       for (const [key, value] of Object.entries(node)) {
         // Never descend into the cards themselves: a story card has its own `title`, which would
         // otherwise be inherited as if it were the adventure's name.
         if (key === "storyCards") continue;
-        walk(value, depth + 1, id, scenario, name);
+        walk(value, depth + 1, id, scenario, name, scenarioName);
       }
     };
 
-    walk(json, 0, null, null, null);
+    walk(json, 0, null, null, null, null);
     return holders;
   }
 

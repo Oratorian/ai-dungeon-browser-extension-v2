@@ -43,6 +43,7 @@ export type AidDetected = {
    */
   scenarioId: string | null;
   title: string | null;
+  scenarioTitle?: string | null;
   cards: AidCard[];
   stats: AidStats;
 };
@@ -65,6 +66,7 @@ export type AidMessage =
       shortId: string | null;
       scenarioId: string | null;
       title: string | null;
+      scenarioTitle?: string | null;
       cards: AidCard[];
       stats: AidStats;
     }

@@ -3,6 +3,7 @@
   import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
+  import { aidDetected } from "@/aid/bridge";
   import { continueStory, retryStory, retryStoryWithChanges, browseRetryHistory, closeRetryHistory, retryHistoryCount } from "@/aid/action_input";
   import { extensionState } from "@/shared/state.svelte";
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
@@ -170,6 +171,9 @@
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
   const frame = $derived(frames[index]);
+  const storyMetadata = $derived($playedAdventureId && $aidDetected.shortId === $playedAdventureId ? $aidDetected : null);
+  const scenarioName = $derived(storyMetadata?.scenarioTitle || "VISUAL NOVEL");
+  const adventureName = $derived(storyMetadata?.title || "Adventure");
   // Opening native action controls can remount identical story DOM. Depend on
   // the text value so a replacement frame does not restart its cached audio.
   const narrationText = $derived(frame?.text);
@@ -501,7 +505,7 @@
         <div class="location-shade" aria-hidden="true"></div>
       {/if}
       <header>
-        <span class="title">VISUAL NOVEL <small>Story reader</small></span>
+        <span class="title"><span class="scenario-name" title={scenarioName}>{scenarioName}</span><small title={adventureName}>{adventureName}</small></span>
         <div class="tools">
           <div class="vn-settings-control">
             <button bind:this={settingsButton} aria-expanded={settingsOpen} aria-controls="novel-settings-panel" onclick={() => settingsOpen = !settingsOpen}>Settings</button>
@@ -653,7 +657,10 @@
   .location-control small { font-size: 11px; }
   header, .tools, footer { display: flex; align-items: center; gap: 12px; }
   header { position: relative; z-index: 3; justify-content: space-between; flex-wrap: wrap; }
-  .title { letter-spacing: .16em; font-size: 13px; color: #f8ae2c; }
+  .title { min-width: 0; max-width: min(50vw, 600px); letter-spacing: .08em; font-size: 15px; color: #f8ae2c; }
+  .scenario-name { display: block; text-transform: uppercase; }
+  .scenario-name, .title small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .title small { font-size: 12px; }
   small { display: block; color: #aeb9be; letter-spacing: .04em; margin-top: 4px; }
   button { border: 1px solid #64727c; border-radius: 8px; padding: 8px 14px; background: #202b34; color: #eee8de; cursor: pointer; font: inherit; }
   button:hover:enabled { background: #35434e; }
