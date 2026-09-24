@@ -10,7 +10,7 @@ import { installErrorCapture } from "@/shared/errors";
 import { matchesHotkey } from "@/shared/hotkey";
 import { Storage } from "@/storage";
 import { get } from "svelte/store";
-import { syncVnCard } from "@/aid/vn_card_sync";
+import { startVnCardSession, syncVnCard } from "@/aid/vn_card_sync";
 
 export default defineContentScript({
   matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
@@ -31,7 +31,7 @@ export default defineContentScript({
 
     // Do the startup events (loads storage).
     await Events.onStart();
-    syncVnCard();
+    startVnCardSession();
     ctx.setInterval(syncVnCard, 2000);
     const stopVnCardSync = Storage.settings.subscribe(() => syncVnCard());
     ctx.onInvalidated(stopVnCardSync);

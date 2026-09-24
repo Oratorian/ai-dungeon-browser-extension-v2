@@ -10,6 +10,12 @@ let pending: { id: string; key: string; deadline: number } | undefined;
 let failed = "";
 let connected = false;
 
+/** A saved preference is not consent to resume VN in a newly opened page. */
+export function startVnCardSession() {
+  settings.update(value => ({ ...value, visualNovelMode: false }));
+  syncVnCard();
+}
+
 /** Called independently of VN visibility so Exit mode can disable the native card. */
 export function syncVnCard(retry = false) {
   if (!connected) {
