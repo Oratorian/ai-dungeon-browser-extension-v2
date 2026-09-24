@@ -4,8 +4,7 @@
   import { Storage, settings } from "@/storage";
   import { playedAdventureId, playedShortId } from "@/aid/adventure";
   import { continueStory, retryStory, retryStoryWithChanges, browseRetryHistory, closeRetryHistory, retryHistoryCount } from "@/aid/action_input";
-  import { extensionState, type SettingsSection } from "@/shared/state.svelte";
-  import { Tab } from "@/shared/types";
+  import { extensionState } from "@/shared/state.svelte";
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
   import { createNovelStageTracker } from "@/rendering/novel_stage";
@@ -13,10 +12,14 @@
   import { vnCardError, syncVnCard } from "@/aid/vn_card_sync";
   import { createNovelLocationTracker, retainedLocationSeed, type NovelLocation } from "@/rendering/novel_location";
   import Select from "./select.svelte";
+  import Slider from "./slider.svelte";
+  import TtsSettings from "./tts_settings.svelte";
+  import TtsPreview from "./tts_preview.svelte";
   import NovelComposer from "./novel_composer.svelte";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
   import { NarrationQueue, StableNarrationWindow, narrationQueueSize } from "@/tts/queue";
+  import { createNovelBookmark, readNovelBookmark, restoreNovelBookmark, type NovelBookmark } from "@/rendering/novel_bookmark";
   import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames, trackRetriedPassage } from "@/rendering/novel_narration";
 
   const adventures = Storage.adventures;
@@ -24,12 +27,24 @@
   type Frame = NovelFrame & { source: HTMLElement; offset: number };
   let frames = $state<Frame[]>([]);
   let index = $state(0);
-  let paused = $state(false);
+  let frameAdventure = $state("");
+  let pendingBookmark: NovelBookmark | undefined;
+  let jumpOpen = $state(false);
+  let jumpPage = $state<number | undefined>(1);
+  let jumpInput: HTMLInputElement | undefined = $state();
+  let jumpButton: HTMLButtonElement | undefined = $state();
+  $effect(() => {
+    const bookmark = createNovelBookmark(frames, index);
+    const adventure = frameAdventure;
+    if (bookmark && adventure) void chrome.storage.local.set({ [`vn-position:${adventure}`]: bookmark }).catch(() => {});
+  });
   let composing = $state(false);
   let retryEditing = $state(false);
   let retryInstruction = $state("");
   let locationOverride = $state("__auto");
   let locationMenuOpen = $state(false);
+  let settingsOpen = $state(false);
+  let settingsButton: HTMLButtonElement | undefined = $state();
   let locationSeed = $state<string | null>(null);
   let failedBackground = $state("");
   let continuing = $state(false);
@@ -82,7 +97,7 @@
   function playNarration() {
     stopNarration();
     const audio = frame && narrationQueue?.get(frame.text);
-    if (!audio || !active || paused || historyOpen || continuing || continuationSnapshot || retryTracker || narrationMuted) return;
+    if (!audio || !active || historyOpen || continuing || continuationSnapshot || retryTracker || narrationMuted) return;
     const token = playbackToken;
     narrationUrl = URL.createObjectURL(narrationWav(audio, $settings.novelTtsPitch));
     narrationAudio = new Audio(narrationUrl);
@@ -127,7 +142,7 @@
   $effect(() => {
     const text = narrationText;
     const position = index;
-    const visible = active && !paused && !continuing && !continuationSnapshot && !retryTracker && !narrationMuted;
+    const visible = active && !continuing && !continuationSnapshot && !retryTracker && !narrationMuted;
     const queue = narrationQueue;
     untrack(stopNarration);
     if (!visible || !text || !queue) return;
@@ -200,7 +215,10 @@
     locationSeed = retainedLocationSeed(previousFrames, previousLocations, frames, locationSeed);
     const retained = previous ? retainedNovelIndex(previous, index, frames) : -1;
     const latest = passages.at(-1)?.element;
-    index = retained >= 0 ? retained : Math.max(0, frames.findIndex(f => f.source === latest));
+    index = retained >= 0 ? retained : pendingBookmark && frames.length
+      ? restoreNovelBookmark(pendingBookmark, frames)
+      : Math.max(0, frames.findIndex(f => f.source === latest));
+    if (frames.length) pendingBookmark = undefined;
     if (continuationSnapshot) {
       const next = firstContinuationFrame(continuationSnapshot, frames.map(f => f.text));
       if (next >= 0) { index = next; continuationSnapshot = null; readWithoutAudio = false; }
@@ -223,23 +241,31 @@
       continueController?.abort(); continuing = false; actionError = "";
       historyController?.abort(); closeRetryHistory(); historyOpen = false; historyCount = 0;
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
-      frames = []; index = 0; paused = false; composing = false; lastSignature = "";
-      retryEditing = false; retryInstruction = "";
+      frameAdventure = adventure ?? ""; pendingBookmark = undefined;
+      frames = []; index = 0; composing = false; lastSignature = "";
+      retryEditing = false; retryInstruction = ""; settingsOpen = false; jumpOpen = false;
       locationMenuOpen = false; locationOverride = "__auto"; locationSeed = null; failedBackground = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
     });
     if (!enabled || !adventure) return;
     let queued = 0;
+    let disposed = false;
+    let loaded = false;
     const schedule = () => {
-      if (!queued) queued = requestAnimationFrame(() => { queued = 0; refresh(); });
+      if (loaded && !queued) queued = requestAnimationFrame(() => { queued = 0; refresh(); });
     };
     const observer = new MutationObserver(records => {
       if (records.some(record => output?.contains(record.target) || [...record.addedNodes, ...record.removedNodes].some(node =>
         node instanceof HTMLElement && (node.id === "gameplay-output" || node.querySelector("#gameplay-output"))))) schedule();
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    untrack(refresh);
-    return () => { observer.disconnect(); cancelAnimationFrame(queued); continueController?.abort(); historyController?.abort(); closeRetryHistory(); };
+    void chrome.storage.local.get(`vn-position:${adventure}`).then(saved => {
+      if (!disposed) pendingBookmark = readNovelBookmark(saved[`vn-position:${adventure}`]);
+    }).catch(() => {}).finally(() => {
+      if (disposed) return;
+      loaded = true; refresh();
+    });
+    return () => { disposed = true; observer.disconnect(); cancelAnimationFrame(queued); continueController?.abort(); historyController?.abort(); closeRetryHistory(); };
   });
 
   async function continueReading() {
@@ -337,7 +363,7 @@
   // The scene is a modal reader. Keep the covered game out of the tab order, and restore its
   // previous state when returning to the textbox or opening extension settings.
   $effect(() => {
-    if (!active || paused || historyOpen) return;
+    if (!active || historyOpen) return;
     const previous = new Map<HTMLElement, boolean>();
     const isolate = () => {
       for (const child of document.body.children) {
@@ -348,23 +374,32 @@
     isolate();
     const observer = new MutationObserver(isolate);
     observer.observe(document.body, { childList: true });
-    void tick().then(() => { if (active && !paused) scene?.focus(); });
+    void tick().then(() => { if (active) scene?.focus(); });
     return () => { observer.disconnect(); previous.forEach((inert, element) => element.inert = inert); };
   });
 
   function portraitFade(node: Element) {
     return fade(node, { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180 });
   }
-  async function resume() {
-    refresh();
-    paused = false;
-    await tick();
-    scene?.focus();
-  }
-  async function write() {
-    paused = true;
+  async function exitNovel() {
+    stopNarration();
+    narrationScheduler?.dispose();
+    narrationQueue?.dispose();
+    $settings.visualNovelMode = false;
     await tick();
     document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
+  }
+  async function openJump() {
+    jumpPage = index + 1;
+    jumpOpen = true;
+    await tick();
+    jumpInput?.focus(); jumpInput?.select();
+  }
+  function closeJump() { jumpOpen = false; jumpButton?.focus(); }
+  function jump() {
+    if (!Number.isInteger(jumpPage) || !jumpPage || jumpPage < 1 || jumpPage > frames.length) return;
+    navigate(jumpPage - 1);
+    closeJump();
   }
   function latest() {
     continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
@@ -372,13 +407,19 @@
     index = Math.max(0, frames.findIndex(f => f.source === source));
   }
   function key(event: KeyboardEvent) {
-    if (!active || paused || historyOpen) return;
+    if (!active || historyOpen) return;
+    if (event.key === "Escape" && jumpOpen) {
+      event.preventDefault(); event.stopPropagation(); closeJump(); return;
+    }
+    if (event.key === "Escape" && settingsOpen) {
+      event.preventDefault(); event.stopPropagation(); closeSettings(); return;
+    }
     if (event.key === "Escape" && locationMenuOpen) {
       event.preventDefault(); event.stopPropagation(); scene?.focus(); locationMenuOpen = false; return;
     }
     event.stopPropagation();
     if (event.key === "Tab" && scene) {
-      const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex='0']")];
+      const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex='0']")].filter(control => !control.closest("[inert], [hidden]") && control.getClientRects().length);
       const focused = (scene.getRootNode() as ShadowRoot).activeElement;
       if (event.shiftKey && (focused === controls[0] || focused === scene)) { event.preventDefault(); controls.at(-1)?.focus(); }
       else if (!event.shiftKey && focused === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
@@ -389,7 +430,7 @@
     const target = origin instanceof Element ? origin : null;
     // Keep Space usable after clicking reader controls, without stealing it from
     // the composer, retry instructions, or location picker.
-    if (event.key === " " && !target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], .location-control')) {
+    if (event.key === " " && !target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], .location-control, .vn-settings-control, .page-jump')) {
       event.preventDefault();
       if (!event.repeat) navigate(index + 1);
       return;
@@ -397,13 +438,12 @@
     if (target !== scene) return;
     if (!["ArrowLeft", "ArrowRight", " ", "Escape"].includes(event.key)) return;
     event.preventDefault(); event.stopPropagation();
-    if (event.key === "Escape") write();
+    if (event.key === "Escape") void exitNovel();
     else navigate(index + (event.key === "ArrowLeft" ? -1 : 1));
   }
-  function openSettings() {
-    extensionState.editorTab = Tab.Settings;
-    extensionState.settingsSection = "extension" satisfies SettingsSection;
-    extensionState.isEditorOpen = true;
+  function closeSettings() {
+    settingsOpen = false;
+    settingsButton?.focus();
   }
 </script>
 
@@ -415,8 +455,6 @@
 {#if active}
   {#if historyOpen}
     <button class="resume" onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
-  {:else if paused}
-    <button class="resume" onclick={resume}>Resume visual novel</button>
   {:else}
     <div class="novel" style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
       <svg class="portrait-filters" width="0" height="0" aria-hidden="true" focusable="false">
@@ -444,9 +482,33 @@
       <header>
         <span class="title">VISUAL NOVEL <small>Story reader</small></span>
         <div class="tools">
-          <button onclick={openSettings}>Settings</button>
-          <button onclick={() => $settings.visualNovelMode = false}>Exit mode</button>
-          <button onclick={write}>Return to game</button>
+          <div class="vn-settings-control">
+            <button bind:this={settingsButton} aria-expanded={settingsOpen} aria-controls="novel-settings-panel" onclick={() => settingsOpen = !settingsOpen}>Settings</button>
+            {#if settingsOpen}
+              <section id="novel-settings-panel" class="vn-settings-panel" aria-label="Visual novel narration settings">
+                <div class="settings-heading"><strong>Narration settings</strong><button onclick={closeSettings} aria-label="Close narration settings">Close</button></div>
+                <TtsSettings grid disableInitializeWhenOff />
+                <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
+                  <div class="voice-option">
+                    <span>Voice</span>
+                    <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
+                      bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
+                      items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
+                  </div>
+                  <div class="voice-option">
+                    <span>Generation steps</span>
+                    <Select ariaLabel="Generation steps" allowDeselect={false} portal={false}
+                      bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
+                      items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
+                  </div>
+                  <div class="voice-option"><span>Pitch</span><Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} /></div>
+                  <div class="voice-option"><span>Queue</span><Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} /></div>
+                  <div class="voice-preview"><TtsPreview /></div>
+                </fieldset>
+              </section>
+            {/if}
+          </div>
+          <button onclick={exitNovel}>Exit VN</button>
           <div class="location-control" role="group" aria-label="Location controls"
             onmouseenter={() => locationMenuOpen = true}
             onmouseleave={(event) => { if (!event.currentTarget.querySelector(".location-panel")?.matches(":focus-within")) locationMenuOpen = false; }}
@@ -484,10 +546,8 @@
         {#if $settings.novelTtsEnabled}
         <aside class="voice-panel" aria-label="Narration controls" aria-describedby="novel-audio-hint">
           <div id="novel-audio-menu" class="narration-controls audio-menu">
+            {#if !ttsReady}<button onclick={() => void initializeTts()} disabled={$ttsState.phase === "checking" || $ttsState.phase === "loading"}>Initialize TTS</button>{/if}
             {#if bufferingNarration && !retryTracker}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
-            {#if !ttsReady}
-              <button onclick={() => void initializeTts()} disabled={$ttsState.phase === "checking" || $ttsState.phase === "loading"}>Initialize TTS</button>
-            {/if}
             <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame || !ttsReady || !!retryTracker}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>
@@ -514,9 +574,17 @@
       </div>
         <footer>
           <div class="reading-controls" role="group" aria-label="Reading position">
-            <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
+            <div class="page-jump">
+              <button class="page-counter" bind:this={jumpButton} onclick={() => jumpOpen ? closeJump() : openJump()} disabled={!frames.length} aria-label={`Jump to page, current page ${index + 1} of ${frames.length}`} aria-expanded={jumpOpen} aria-controls="novel-page-jump" title="Jump to page">{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</button>
+              {#if jumpOpen}
+                <form id="novel-page-jump" class="jump-panel" onsubmit={event => { event.preventDefault(); jump(); }}>
+                  <label for="novel-page-number">Page (1-{frames.length})</label>
+                  <input id="novel-page-number" type="number" min="1" max={frames.length} step="1" required bind:value={jumpPage} bind:this={jumpInput} />
+                  <div class="jump-actions"><button type="submit">Go</button><button type="button" onclick={() => { latest(); closeJump(); }}>Jump to latest</button><button type="button" onclick={closeJump}>Cancel</button></div>
+                </form>
+              {/if}
+            </div>
             <button onclick={() => navigate(index - 1)} disabled={index === 0 || !frames.length}>Back</button>
-          <button onclick={() => latest()} disabled={!frames.length}>Last passage</button>
           <button class="accent" aria-keyshortcuts="Space" title="Next (Space)" onclick={() => navigate(index + 1)} disabled={index >= frames.length - 1}>Next</button>
           </div>
           <div class="generation-controls" role="group" aria-label="Story generation">
@@ -587,6 +655,12 @@
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + var(--bottom-inset) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
   .voice-panel, .action-panel { display: flex; flex-direction: column; }
+  .vn-settings-panel { position: absolute; top: calc(100% + 12px); right: 0; width: min(480px, calc(100vw - 40px)); max-height: calc(100dvh - 150px); overflow: auto; box-sizing: border-box; padding: 16px; border: 1px solid #65717b; border-radius: 12px; background: #141e27fa; box-shadow: 0 12px 32px #0008; }
+  .settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .voice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; padding: 8px; margin: 0; border: 0; }
+  .voice-option { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 13px; }
+  .voice-preview { grid-column: 1 / -1; min-width: 0; }
+  .voice-options:disabled { opacity: 0.4; }
   .hover-hint { flex-shrink: 0; text-align: center; font-size: 11px; line-height: 1.4; color: #b9c2c8; margin: 6px 0 0; }
   .voice-panel { position: absolute; bottom: 0; left: 0; z-index: 1; width: clamp(160px, 18vw, 220px); max-height: 60vh; overflow: auto; }
   .voice-panel .audio-menu { min-height: 0; overflow: auto; display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
@@ -616,7 +690,11 @@
   .retry-instructions textarea { resize: vertical; min-height: 60px; max-height: 20vh; border: 1px solid #64727c; border-radius: 8px; padding: 10px; background: #0e171f; color: #eee8de; font: inherit; }
   .reading-controls, .generation-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
   .generation-controls { margin-left: auto; }
-  .reading-controls span { color: #b9c2c8; font-size: 13px; white-space: nowrap; }
+  .page-jump { position: relative; }
+  .page-counter { color: #b9c2c8; font-size: 13px; white-space: nowrap; background: transparent; border-color: transparent; padding-inline: 4px; }
+  .jump-panel { position: absolute; bottom: calc(100% + 12px); left: 0; z-index: 4; width: min(300px, calc(100vw - 64px)); padding: 14px; border: 1px solid #65717b; border-radius: 12px; background: #141e27fa; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 8px 24px #0008; }
+  .jump-panel input { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid #64727c; border-radius: 8px; padding: 8px; background: #202b34; color: #eee8de; font: inherit; }
+  .jump-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 900px) {
     .portrait { left: -17.5%; transform: none; width: 135%; max-width: none; }

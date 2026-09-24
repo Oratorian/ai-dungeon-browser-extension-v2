@@ -6,11 +6,9 @@
   import { extensionState } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
   import { fade, scale } from "svelte/transition";
-  import { FLOATING_BUTTON_ICON, floatingButtonSize, ringLayout } from "@/shared/floating_button";
+  import { FLOATING_BUTTON_ICON, floatingButtonSize, ringLayout, compactLayout } from "@/shared/floating_button";
   import SetSwitcher from "./set_switcher.svelte";
   import StampBinding from "./stamp_binding.svelte";
-  import TtsSettings from "./tts_settings.svelte";
-  import Select from "./select.svelte";
 
   // A draggable quick-access puck that opens the editor. It replaces the button we used to clone
   // into AI Dungeon's Do/Say/Story/Guide/See action bar: other extensions inject there too, so we
@@ -20,8 +18,8 @@
   // Hovering it (or tabbing onto it) brings up a ring of quick actions around it. Three of them open a
   // second level in place: Sets switches, creates or imports a card set, Stamp binds the set to the
   // story being played. Both are things people do every time they start or duplicate an adventure,
-  // and the editor was a detour for them. Sync and Settings open editor tabs; Visual Novel Mode
-  // opens reader and TTS controls. A plain click
+  // and the editor was a detour for them. Hide dismisses the menu until refresh; Visual Novel Mode
+  // opens the reader immediately. A plain click
   // on the puck still opens the editor where it was last left.
   //
   // The second level opens on hover, like the ring, and a click pins it so it survives the pointer
@@ -33,16 +31,15 @@
   const DRAG_THRESHOLD = 4; // px of travel before a press counts as a drag instead of a click
   const CLOSE_GRACE = 250; // ms the ring survives the pointer crossing a gap between its parts
 
-  type ActionId = "sets" | "stamp" | "sync" | "novel" | "settings";
+  type ActionId = "sets" | "stamp" | "novel" | "hide";
   type QuickAction = { id: ActionId; icon: string; label: string; panel: boolean };
 
   // Clockwise order around the ring, always this sequence however much of the ring fits.
   const actions: QuickAction[] = [
     { id: "sets", icon: "swap_horiz", label: "Sets", panel: true },
     { id: "stamp", icon: "approval", label: "Stamp", panel: true },
-    { id: "sync", icon: "sync", label: "AID Sync", panel: false },
-    { id: "novel", icon: "theater_comedy", label: "Visual Novel Mode", panel: true },
-    { id: "settings", icon: "settings", label: "Settings", panel: false },
+    { id: "novel", icon: "theater_comedy", label: "Visual Novel Mode", panel: false },
+    { id: "hide", icon: "visibility_off", label: "Hide until refresh", panel: false },
   ];
 
   // Tracked so the puck re-clamps itself into view when the window is resized.
@@ -97,7 +94,8 @@
   const ringOpen = $derived($settings.floatingButtonQuickActions && (hovered || focused || pinned) && !drag);
 
   const layout = $derived(
-    ringLayout({
+    ($settings.floatingButtonCompactLayout ? compactLayout : ringLayout)({
+      puckSize: SIZE,
       cx: pos.x + SIZE / 2,
       cy: pos.y + SIZE / 2,
       radius: baseRadius,
@@ -112,6 +110,13 @@
   const placed = $derived(layout.slots.map((slot, i) => ({ action: actions[i]!, slot })));
   // How far the whole ring reaches from the puck's centre; the panel sits just outside it.
   const reach = $derived(layout.radius + ringSize / 2);
+  const hoverBounds = $derived.by(() => {
+    const left = Math.min(-SIZE / 2, ...layout.slots.map(slot => slot.dx - ringSize / 2));
+    const top = Math.min(-SIZE / 2, ...layout.slots.map(slot => slot.dy - ringSize / 2));
+    const right = Math.max(SIZE / 2, ...layout.slots.map(slot => slot.dx + ringSize / 2));
+    const bottom = Math.max(SIZE / 2, ...layout.slots.map(slot => slot.dy + ringSize / 2));
+    return { left: left + SIZE / 2, top: top + SIZE / 2, width: right - left, height: bottom - top };
+  });
 
   // The panel opens toward the middle of the screen, so it never runs off the edge the puck is
   // parked against: to the left of the ring when the puck is on the right half, and growing upward
@@ -126,7 +131,7 @@
   // gone, so the hover state has to be reset by hand or the ring is open again when the editor
   // closes, with the pointer nowhere near it.
   $effect(() => {
-    if (extensionState.isEditorOpen) closeAll();
+    if (extensionState.isEditorOpen || extensionState.floatingButtonHidden) closeAll();
   });
 
   function cancelClose() {
@@ -167,8 +172,14 @@
   }
 
   function onActionClick(action: QuickAction) {
-    if (!action.panel) {
-      openAt(action.id === "sync" ? Tab.Import : Tab.Settings);
+    if (action.id === "novel") {
+      $settings.visualNovelMode = true;
+      closeAll();
+      return;
+    }
+    if (action.id === "hide") {
+      closeAll();
+      extensionState.floatingButtonHidden = true;
       return;
     }
     if (panel === action.id && pinned) {
@@ -256,7 +267,7 @@
 />
 
 <!-- Hidden while the editor is open: it would only sit dimmed under the modal's backdrop. -->
-{#if $settings.floatingButton && !extensionState.isEditorOpen}
+{#if !extensionState.floatingButtonHidden && !extensionState.isEditorOpen}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     bind:this={group}
@@ -272,8 +283,10 @@
       <!-- Invisible disc under the ring, so the pointer crossing from the puck to a button never
            leaves the group. Only exists while the ring is up. -->
       <div
-        style="width: {reach * 2}px; height: {reach * 2}px; left: {SIZE / 2 - reach}px; top: {SIZE / 2 - reach}px;"
-        class="absolute rounded-full"
+        style={$settings.floatingButtonCompactLayout
+          ? `width: ${hoverBounds.width}px; height: ${hoverBounds.height}px; left: ${hoverBounds.left}px; top: ${hoverBounds.top}px;`
+          : `width: ${reach * 2}px; height: ${reach * 2}px; left: ${SIZE / 2 - reach}px; top: ${SIZE / 2 - reach}px;`}
+        class="absolute" class:rounded-full={!$settings.floatingButtonCompactLayout}
       ></div>
 
       {#each placed as { action, slot } (action.id)}
@@ -314,22 +327,6 @@
             <SetSwitcher onsync={() => openAt(Tab.Import)} />
           {:else if panel === "stamp"}
             <StampBinding standalone />
-          {:else if panel === "novel"}
-            <div class="flex flex-col gap-2">
-              <button aria-pressed={$settings.visualNovelMode}
-                onclick={() => { $settings.visualNovelMode = !$settings.visualNovelMode; closeAll(); }}
-                class="flex items-center gap-2 rounded-lg p-3 bg-theme-neutral-100 hover:bg-theme-neutral-300">
-                <span aria-hidden="true" class="font-symbol">theater_comedy</span>
-                {$settings.visualNovelMode ? "Exit Visual Novel Mode" : "Enable Visual Novel Mode"}
-              </button>
-              <TtsSettings />
-              <div class="flex flex-col gap-2 px-2 pb-2">
-                <span class="text-xs text-theme-neutral-800">Voice</span>
-                <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
-                  bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
-                  items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
-              </div>
-            </div>
           {/if}
         </div>
       {/if}
@@ -345,7 +342,8 @@
       title="Dungeon Extension , click to open, drag to move"
       style="cursor: {drag ? 'grabbing' : 'grab'}; border-radius: {Math.max(4, Math.round(SIZE / 4))}px;"
       class="relative block size-full overflow-hidden touch-none select-none shadow-lg
-             {ringOpen ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-opacity"
+             {ringOpen ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-opacity
+             ring-2 ring-transparent hover:ring-pretty-theme focus-visible:ring-pretty-theme"
     >
       <img src={iconUrl} alt="" draggable="false" class="block size-full pointer-events-none" />
     </button>

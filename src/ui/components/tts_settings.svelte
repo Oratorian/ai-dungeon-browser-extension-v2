@@ -1,7 +1,7 @@
 <script lang="ts">
   import { settings } from "@/storage";
   import { configureTts, initializeTts, ttsState } from "@/tts/service";
-  let { grid = false }: { grid?: boolean } = $props();
+  let { grid = false, disableInitializeWhenOff = false }: { grid?: boolean; disableInitializeWhenOff?: boolean } = $props();
   $effect(() => configureTts($settings.novelTtsEnabled));
   const ready = $derived($ttsState.phase === "ready");
   const busy = $derived($ttsState.phase === "loading" || $ttsState.phase === "checking");
@@ -17,7 +17,7 @@
     <span>Enable TTS</span>
     <span class:ready class:pending={$settings.novelTtsEnabled && !ready} class="state">{label}</span>
   </button>
-  <button onclick={initialize} disabled={busy || ready}
+  <button onclick={initialize} disabled={busy || ready || (disableInitializeWhenOff && !$settings.novelTtsEnabled)}
     class="rounded-lg p-2 bg-theme-neutral-100 hover:bg-theme-neutral-300 disabled:opacity-50 disabled:cursor-default">
     {busy ? "Initializing TTS..." : ready ? "TTS initialized" : "Initialize TTS"}
   </button>

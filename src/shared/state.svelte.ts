@@ -5,6 +5,8 @@ export type SettingsSection = "extension" | "cards";
 
 export const extensionState = $state({
   isEditorOpen: false,
+  // Page-session only. Refreshing always restores access to the floating menu.
+  floatingButtonHidden: false,
   editorTab: Tab.Adventure,
   focusCardId: null as string | null,
   // Held here rather than inside the Settings component, which unmounts whenever you switch tabs and

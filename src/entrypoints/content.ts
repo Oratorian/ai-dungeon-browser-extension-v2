@@ -100,7 +100,7 @@ export default defineContentScript({
         if (!matchesHotkey(e, hotkey)) return;
         e.preventDefault();
         e.stopPropagation();
-        Storage.settings.update((s) => ({ ...s, floatingButton: !s.floatingButton }));
+        extensionState.floatingButtonHidden = !extensionState.floatingButtonHidden;
       },
       { capture: true }
     );

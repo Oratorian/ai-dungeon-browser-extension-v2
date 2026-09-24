@@ -70,6 +70,29 @@ export type RingLayout = {
   slots: RingSlot[];
 };
 
+/** Two vertical and two horizontal actions form an inward-facing L at a corner. */
+export function compactLayout(input: RingLayoutInput & { puckSize: number }): RingLayout {
+  const { cx, cy, buttonSize, gap, margin, vw, vh, count, puckSize } = input;
+  if (count !== 4) return ringLayout(input);
+  const near = puckSize / 2 + gap + buttonSize / 2;
+  const far = near + buttonSize + gap;
+  function axis(center: number, length: number) {
+    const sign = center > length / 2 ? -1 : 1;
+    const fits = (offset: number) => center + offset - buttonSize / 2 >= margin && center + offset + buttonSize / 2 <= length - margin;
+    // Away from a corner, use the opposite side if the second button cannot fit.
+    return [sign * near, fits(sign * far) ? sign * far : -sign * near];
+  }
+  const [xNear, xFar] = axis(cx, vw);
+  const [yNear, yFar] = axis(cy, vh);
+  const slots = [[0, yFar!], [0, yNear!], [xNear!, 0], [xFar!, 0]].map(([dx = 0, dy = 0]) => {
+    // At minimum puck size the action circles are slightly larger than the fox.
+    dx = Math.max(margin + buttonSize / 2, Math.min(vw - margin - buttonSize / 2, cx + dx)) - cx;
+    dy = Math.max(margin + buttonSize / 2, Math.min(vh - margin - buttonSize / 2, cy + dy)) - cy;
+    return { dx, dy, angle: (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360 };
+  });
+  return { radius: Math.max(...slots.map(slot => Math.hypot(slot.dx, slot.dy))), slots };
+}
+
 type Arc = { full: true } | { full: false; start: number; span: number };
 
 /** The longest unbroken run of usable samples, treated as a circle. */

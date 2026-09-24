@@ -54,11 +54,11 @@ const defaultSettings = {
   // AI Dungeon's top menu. It lives in our own shadow root rather than AID's action bar, which
   // other extensions also inject into. The position is the viewport coordinate of its top-left
   // corner; -1 means "never moved", so it parks itself in the bottom-right corner.
-  floatingButton: true,
   floatingButtonX: -1,
   floatingButtonY: -1,
   // Hovering the button fans out one shortcut per editor tab.
   floatingButtonQuickActions: true,
+  floatingButtonCompactLayout: false,
   // Key combination that shows/hides the button while playing (see shared/hotkey.ts); "" = none.
   floatingButtonHotkey: "Ctrl+Shift+F",
   // Drawn size in px, within FLOATING_BUTTON_MIN_SIZE..MAX_SIZE.

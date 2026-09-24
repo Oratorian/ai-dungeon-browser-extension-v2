@@ -1,4 +1,5 @@
 import { get } from "svelte/store";
+import { extensionState } from "@/shared/state.svelte";
 import { Config } from "@/shared/config";
 import { DOM } from "@/rendering/dom";
 import { Storage, settings } from "@/storage";
@@ -295,7 +296,7 @@ export async function collectDiagnostics(): Promise<string> {
   detail.push(
     row(
       "floating button",
-      (cfg.floatingButton ? "on" : "off") +
+      (extensionState.floatingButtonHidden ? "hidden for this session" : "on") +
         (cfg.floatingButtonQuickActions ? ", ring on" : ", ring off") +
         (cfg.floatingButtonHotkey ? ", toggle " + cfg.floatingButtonHotkey : ", no toggle shortcut")
     )
@@ -403,12 +404,12 @@ export async function collectDiagnostics(): Promise<string> {
     });
   }
 
-  if (!cfg.floatingButton) {
+  if (extensionState.floatingButtonHidden) {
     findings.push({
       level: "warn",
       text:
-        "The floating button is off, so the editor only opens with the keyboard shortcut (Ctrl+Shift+L unless rebound)" +
-        (cfg.floatingButtonHotkey ? ", and " + cfg.floatingButtonHotkey + " brings the button back." : "."),
+        "The floating button is hidden for this session. Refresh the page to restore it" +
+        (cfg.floatingButtonHotkey ? ", or press " + cfg.floatingButtonHotkey + "." : "."),
     });
   }
 
