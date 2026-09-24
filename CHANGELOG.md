@@ -9,81 +9,81 @@ it, and keep the newest version at the top.
 
 ## v3.0.0
 
-### Story text fixes
-
-- Opening **Actions** no longer replays the current narration when AI Dungeon remounts unchanged
-  story text. **Read line** still explicitly replays its cached audio.
-- VN resumes after Send even when AI Dungeon removes older loaded passages or reformats them.
-  Story-card @mentions also work in the VN action box, using the same card types and keyboard
-  controls as the native textbox.
-- Sending Do, Say, or Story in Visual Novel Mode preserves the reading position until new text
-  arrives. Player action rows are included in reading and narration, including standalone styled
-  text, labelled rows without animation wrappers, and text split across inline elements.
-- Visual Novel Mode keeps quoted speech and its attribution together, including questions and
-  exclamations. Narration follows sentence boundaries without cutting long sentences at a word limit.
-- Character highlighting now matches visible text nodes instead of serialized HTML. Characters
-  named Aria, Span, or Mark cannot split accessibility attributes or formatting tags into the story.
-  Inline formatting and escaped text remain intact.
-
 ### 🎭 Visual Novel Mode
 
-Read your adventure as a visual novel with character portraits and a dialogue panel. Enable it
-under **Settings > Extension > Visual Novel Mode**, or toggle it directly from the floating
-button's quick actions. The quick-action icon highlights while the mode is enabled.
+Read your adventure with character portraits, location backgrounds, and a dialogue overlay.
+The floating **VN** quick action enters the reader directly. The heading shows the scenario
+and adventure names when available.
 
-- The floating **Visual Novel Mode** action opens a panel, like Sets and Stamp. Hover to open
-  or click to pin it, then enable/exit the reader or **Initialize TTS** without opening Settings.
+- Characters use your extension cards and their aliases. Structured dialogue such as
+  `Sage: "Hello"` brings the speaker in front and dims the other portraits. Names mentioned
+  only inside dialogue do not introduce absent characters. Player aliases such as `you`
+  also identify the speaker; narration without an identified speaker dims the cast.
+- Portraits overlap instead of clipping at each other's edges. Character outlines, shadows,
+  and background blur improve separation. **Blur** and **Glow** can be disabled in VN Settings.
+- Location cards supply backgrounds. Automatic tracking follows scene changes, with a manual
+  override in the expanding **Location** control at the top right.
+- **Back**, **Next**, and Space move through the story. Click the page counter to jump to a
+  loaded page. Reading positions are saved per adventure; the separate Last Passage control
+  has been removed.
+- **Exit VN** leaves the mode. Right-click it to temporarily view the normal story, then use
+  **Return to VN** to resume. There is no separate minimize button in the header.
+- Audio and action panels fade out until hovered, with small hints showing where to find them.
+  Narration settings are in the top **Settings** button, keeping the audio panel compact.
+- The action panel supports AI Dungeon's **Do**, **Say**, **Story**, and **Guide** modes, with
+  Story Card `@mentions`. Drafts are shared with the game and preserved during generation.
+- **Retry**, its instruction pen, and the response-history count form one control. Retry with
+  changes sends your instruction through AI Dungeon; selecting an older response resets the
+  reader and narration queue to that response.
+- Optional **Story-card instructions** creates or updates a `VN Mode` card of type `Settings`,
+  requesting named, structured dialogue for every manner of speech and separate narration.
+  Its trigger is `.` while active and `vnoff` after exit or a fresh page load. Turn this option
+  off for a lighter mode without adding instructions; existing managed cards are deactivated.
+- Manual **Assign Character** and its card-editing controls have been removed from VN.
 
-- Optional **Browser narration** runs Supertonic locally with **M5** or **F5** and **5-10 steps**.
-  **Enable TTS** shows Off, On with models needed, or On and fully available. **Initialize TTS**
-  downloads and loads both voices through the background helper. Cached models load automatically
-  when enabled again. Narration uses one CPU thread; story text stays in the browser.
-- **That's how it sounds like** generates a short narration preview using your selected voice,
-  steps, and pitch. Pitch ranges from **-3 to +3 semitones**, with **0** as the original voice,
-  and preserves the reading speed. Preview controls let you replay or stop the sample.
-- Narration prepares the current line and **1-20 upcoming lines**, with three ahead by default.
-  The TTS settings use a two-column grid with voice, steps, pitch, queue size, and a full-width preview.
-  **X/Y upcoming lines ready**
-  shows how many available upcoming lines have cached audio. Navigation stops the previous line; **Read line** retries or replays it,
-  and **Mute** silences playback while upcoming lines continue preparing.
-- **Continue** keeps your current position until the first new line arrives instead of rewinding
-  the old response. Narrated passages use short sentence chunks, preparing complete sentences
-  while later text streams. Text waits for its audio, with **Read now** available to skip buffering.
+### 🔊 Local narration and optional acceleration
 
-- **Back**, **Next**, and keyboard navigation move through narration and dialogue. **Latest
-  passage** jumps to the newest loaded passage.
-- Each paragraph sets the cast using names and triggers from your selected extension character
-  cards. Up to four portraits appear, two on each side, with stable positions and short fades.
-- Characters remain through the paragraph's narration and quotes. A single named character can
-  carry into one following paragraph that continues with third-person pronouns, within the same
-  response. Otherwise, the next paragraph updates the cast. Reduced-motion preferences disable fades.
-- VN uses automatic character portraits. Manual character assignment and its card creation/editing
-  controls have been removed from the reader.
-- Location cards supply VN backgrounds using their selected artwork. Local text tracking carries
-  the setting forward and changes it on explicit player movement or scene-setting narration.
-  The **Scene location** selector can pin a location, hide backgrounds, or resume automatic tracking.
-  Back/Next and replacement responses reconstruct the setting; no story cards are modified.
-- **Actions** includes AI Dungeon's native **Do**, **Say**, **Story**, and **Guide** modes.
-  Your draft is shared with the game; Enter adds a line and **Send** submits the action.
-- **Actions** sits beside **Continue** in the bottom controls. The action box opens only
-  when clicked, and stays closed when reaching the end of a passage.
-- **Continue** uses AI Dungeon's native command. An unfinished draft is kept in memory and restored
-  when you next open Actions, without reopening the textbox during generation.
-- **Retry** regenerates AI Dungeon's latest response. It stops narration, clears the upcoming
-  audio queue, waits for replacement text, and starts reading at the replacement's first line.
-  Your unfinished action draft is preserved.
-- The pen between **Retry** and the history count opens **Retry with changes**. Enter an instruction
-  and submit it through AI Dungeon's native retry controls; opening or cancelling the form does
-  not generate a response.
-- The number beside **Retry** opens AI Dungeon's native retry-history picker. Browse and select
-  an existing response, then return automatically to VN at that version's first line with fresh
-  narration. Dismissing the picker keeps your current response.
-- **Return to game** reveals the normal interface; **Resume visual novel** reopens the reader.
-  **Exit mode** switches it off.
+Supertonic generates English narration on your computer. Story text is not sent to a remote
+speech service. Model downloads go through the extension's background helper and are cached.
 
-This mode reads the story already loaded in the browser, without additional AI requests. It does
-not infer speakers or generate portraits for unknown NPCs. Native action controls recover when
-AI Dungeon temporarily collapses or replaces them, and draft text is preserved during recovery.
+- Choose **Male** or **Female**, **5-10 generation steps**, and pitch from **-3 to +3 semitones**
+  in **0.5** increments. Pitch changes preserve reading speed. **That's how it sounds like**
+  generates a short preview using your settings.
+- **Enable TTS** distinguishes Off, On with models needed, and On fully available.
+  **Initialize TTS** downloads and loads the voices; cached models are reused.
+- A configurable queue prepares **1-20 upcoming lines**, with **3** ahead by default.
+  The **X/Y upcoming lines ready** badge shows progress. Text waits for its audio, with
+  **Read now** available to skip buffering. **Read line** replays or retries narration;
+  **Mute** silences playback while the queue continues preparing.
+- Dialogue labels and the native `You say` prefix are omitted from spoken audio. Em and en
+  dashes become pauses, and dialogue stays with its attribution for more natural delivery.
+- Optional **Accelerated TTS** offers **2, 4, or 6 threads**, defaulting to **2**. Standard
+  single-thread narration remains available without additional setup.
+- Chrome acceleration uses a bundled offscreen engine. Firefox acceleration uses the optional
+  **Windows x64 TTS Helper** and a separate engine tab, grouped with the story when supported.
+  Firefox starts the helper automatically and stops it after the last reader disconnects.
+- Download the helper from **Firefox setup** in either VN or extension settings. Its Windows
+  setup wizard needs no administrator rights, Node, or separate .NET installation. Uninstall
+  through Windows **Installed apps**. Both stable and beta extension IDs are supported.
+- Diagnostics now include TTS readiness, engine, effective threads, isolation, and queue state.
+
+### 🦊 Simpler floating controls
+
+- Four quick actions: **Sets**, **Stamp**, **VN**, and **Hide**. Redundant AID Sync and Settings
+  shortcuts have been removed; the main fox button still opens the editor.
+- Choose the ring layout or a compact corner layout. Hovering the fox shows a clickable border.
+- Hiding the button lasts for the session; refresh to bring it back. The toggle shortcut also
+  works inside VN. The persistent **Show Floating Button** setting has been removed.
+
+### 🩹 Story text and navigation fixes
+
+- Continue and Do/Say/Story submissions keep the reading position until new text arrives.
+  VN includes player actions and resumes even when AI Dungeon replaces or unloads older text.
+- Opening Actions no longer replays unchanged narration. Drafts survive native-control remounts.
+- Quoted dialogue stays with its speech attribution, including questions and exclamations.
+  Long sentences are no longer cut at an arbitrary word limit.
+- Highlighting operates on visible text nodes, preserving inline formatting and accessibility
+  attributes. Character names such as Aria, Span, and Mark no longer mangle HTML.
 
 ### ✨ Story Card names at your fingertips
 
@@ -128,7 +128,22 @@ JSON and remembered for your next export.
 Deleting an image makes it selectable again in the Trinetra picker immediately, even while the
 picker stays open. Images still in your library remain disabled to prevent duplicates.
 
-🔓 No new permissions.
+### 🔒 Security and permissions
+
+- Updated DOMPurify to **3.4.16**, devalue to **5.9.4**, PostCSS to **8.5.28**, and nanoid to
+  **3.3.19** to resolve the reported dependency vulnerabilities.
+- Firefox adds **nativeMessaging** for the optional local TTS helper and **tabGroups** to keep
+  engine tabs with their stories. Chrome adds **offscreen** for its accelerated engine.
+- Model-host access supports the initial voice downloads. Speech generation remains local.
+
+### 🛠️ Build and repository cleanup
+
+- Added `npm run build:firefox:beta` with a separate beta name and Firefox extension ID.
+- Added `npm run build:tts-helper` for the Windows installer. Compiler discovery supports
+  portable Inno Setup and standard installations.
+- Removed the obsolete script installers, benchmark tools, and prototype server. The active
+  engine now lives with the native helper. Native build intermediates stay under `.output`
+  so switching branches does not leave generated files in the source directories.
 
 ## v2.3.2
 
