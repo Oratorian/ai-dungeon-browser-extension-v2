@@ -485,6 +485,8 @@
           </form>
         {/if}
         {#if actionError}<p role="alert" class="action-error">{actionError}</p>{/if}
+
+      </div>
         <footer>
           <div class="reading-controls" role="group" aria-label="Reading position">
             <span>{frames.length ? `${index + 1} / ${frames.length}` : "No passage loaded"}</span>
@@ -503,7 +505,6 @@
 
           </div>
         </footer>
-      </div>
         <!-- The hover region also needs a keyboard entry point before its composer mounts. -->
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <aside class="action-panel" aria-label="Story actions" aria-describedby="novel-actions-hint" tabindex="0"
@@ -561,14 +562,14 @@
   .action-menu { flex: 1; min-height: 0; overflow: auto; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
   .action-panel:hover .action-menu, .action-panel:has(:focus-visible) .action-menu { opacity: 1; pointer-events: auto; }
   @media (prefers-reduced-motion: reduce) { .action-menu { transition: none; } }
-  .dialogue { grid-column: 2; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: transparent; padding: clamp(14px, 3vw, 28px); }
+  .dialogue { grid-column: 2; grid-row: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: transparent; padding: clamp(14px, 3vw, 28px) clamp(14px, 3vw, 28px) 0; }
   .prose { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 3em; font: clamp(18px, 2vw, 25px)/1.6 Georgia, serif; margin: 0; }
   .prose { flex: 1; }
   .dialogue { overflow: auto; }
   .action-error { color: #ffadb2; margin: 0; font-size: 13px; }
   .narration-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: #b9c2c8; }
   .queue-badge { padding: 3px 8px; border: 1px solid #59636b; border-radius: 999px; background: #20272c; color: #e2e8ec; font-variant-numeric: tabular-nums; }
-  footer { flex-wrap: wrap; flex-shrink: 0; }
+  footer { grid-column: 2; grid-row: 2; padding-inline: clamp(14px, 3vw, 28px); flex-wrap: wrap; flex-shrink: 0; }
   .retry-control { display: inline-flex; flex-shrink: 0; }
   .retry-control button { border-radius: 0; }
   .retry-control button:first-child { border-radius: 8px 0 0 8px; }
@@ -586,7 +587,7 @@
   @media (max-width: 900px) {
     .portrait { left: -17.5%; transform: none; width: 135%; max-width: none; }
     .reader-panels { grid-template-columns: minmax(0, 1fr); max-height: 65%; }
-    .dialogue { grid-column: 1; }
+    .dialogue, footer { grid-column: 1; }
     .voice-panel, .action-panel { bottom: calc(100% + 12px); width: calc(50% - 8px); max-height: 30vh; }
     .action-panel { height: 30vh; }
   }
