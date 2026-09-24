@@ -558,8 +558,8 @@
   .voice-panel .audio-menu { min-height: 0; overflow: auto; display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
   .voice-panel:hover .audio-menu, .voice-panel:has(:focus-visible) .audio-menu { opacity: 1; pointer-events: auto; }
   @media (prefers-reduced-motion: reduce) { .voice-panel .audio-menu { transition: none; } }
-  .action-panel { position: absolute; bottom: 0; right: 0; z-index: 1; min-width: 0; width: min(320px, 30vw); height: min(360px, 40vh); overflow: auto; }
-  .action-menu { flex: 1; min-height: 0; overflow: auto; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
+  .action-panel { position: absolute; bottom: 0; right: 0; z-index: 1; min-width: 0; width: min(320px, 30vw); max-height: 40vh; overflow: auto; }
+  .action-menu { flex: 0 1 auto; min-height: 0; overflow: auto; padding: 14px; background: #141e27f5; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
   .action-panel:hover .action-menu, .action-panel:has(:focus-visible) .action-menu { opacity: 1; pointer-events: auto; }
   @media (prefers-reduced-motion: reduce) { .action-menu { transition: none; } }
   .dialogue { grid-column: 2; grid-row: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: transparent; padding: clamp(14px, 3vw, 28px) clamp(14px, 3vw, 28px) 0; }
@@ -589,7 +589,6 @@
     .reader-panels { grid-template-columns: minmax(0, 1fr); max-height: 65%; }
     .dialogue, footer { grid-column: 1; }
     .voice-panel, .action-panel { bottom: calc(100% + 12px); width: calc(50% - 8px); max-height: 30vh; }
-    .action-panel { height: 30vh; }
   }
   @media (max-width: 500px) { .novel { --scene-gap: 10px; } .tools { gap: 6px; } button { padding: 7px 10px; font-size: 13px; } .dialogue { gap: 10px; } .stage-caption { font-size: 13px; } }
 </style>
