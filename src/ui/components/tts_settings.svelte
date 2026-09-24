@@ -52,6 +52,8 @@
       {#if $settings.novelTtsAccelerated && import.meta.env.BROWSER === "firefox"}
         <details class="text-xs text-theme-neutral-800">
           <summary>Firefox setup</summary>
+          <p><a href="https://github.com/Oratorian/dexv2res-repo/releases/download/Repository/DungeonExtension-TTS-Helper-Setup-windows-x64.exe"
+            target="_blank" rel="noopener noreferrer" class="text-pretty-theme hover:underline">Download Windows TTS Helper</a></p>
           <p>Run the Windows TTS Helper setup wizard once. Firefox then starts and stops it automatically; no Node or terminal needed. Close the story or turn TTS off to release its engine. Initialization may be needed after switching engines.</p>
         </details>
       {/if}
