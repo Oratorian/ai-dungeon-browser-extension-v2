@@ -7,7 +7,7 @@ vi.mock("@/tts/client", () => ({ LocalNarrator: class {
   dispose = mock.dispose;
   generate = mock.generate;
 } }));
-import { configureTts, initializeTts, ttsState } from "@/tts/service";
+import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
 const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 
 beforeEach(() => {
@@ -19,6 +19,22 @@ beforeEach(() => {
 afterEach(() => configureTts(false));
 
 describe("TTS availability", () => {
+  it.each(['"Hello!"', '\u201cHello!\u201d'])("generates player dialogue separately with a half-second pause: %s", async dialogue => {
+    await initializeTts();
+    mock.generate.mockResolvedValueOnce({ samples: new Float32Array([1, 2]), sampleRate: 10 });
+    mock.generate.mockResolvedValueOnce({ samples: new Float32Array([3, 4]), sampleRate: 10 });
+    const options = { voice: "M5" as const, steps: 5 };
+    const audio = await generateNarration(`You say, ${dialogue}`, options);
+    expect(mock.generate.mock.calls).toEqual([["You say.", options], [dialogue, options]]);
+    expect(Array.from(audio.samples)).toEqual([1, 2, 0, 0, 0, 0, 0, 3, 4]);
+    expect(audio.sampleRate).toBe(10);
+  });
+  it("keeps ordinary narration in a single generation", async () => {
+    await initializeTts();
+    const options = { voice: "F5" as const, steps: 5 };
+    await generateNarration("You say, then leave.", options);
+    expect(mock.generate.mock.calls).toEqual([["You say, then leave.", options]]);
+  });
   it("enables without downloading when models are missing", async () => {
     configureTts(true);
     await flush();

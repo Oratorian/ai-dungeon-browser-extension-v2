@@ -62,7 +62,20 @@ export function initializeTts(): Promise<void> {
   return task;
 }
 
-export function generateNarration(text: string, options: NarrationOptions) {
-  if (!narrator || get(ttsState).phase !== "ready") return Promise.reject(new Error("Initialize TTS before reading aloud."));
-  return narrator.generate(text, options);
+export async function generateNarration(text: string, options: NarrationOptions) {
+  if (!narrator || get(ttsState).phase !== "ready") throw new Error("Initialize TTS before reading aloud.");
+  const client = narrator;
+  const speech = text.match(/^\s*(You say),\s*(["\u201c][\s\S]+)$/i);
+  if (!speech?.[2]) return client.generate(text, options);
+
+  // Generate dialogue independently so the action label cannot affect its delivery.
+  // Keep both parts in one ready queue entry so playback never waits between them.
+  const introduction = await client.generate(`${speech[1]}.`, options);
+  const dialogue = await client.generate(speech[2], options);
+  if (introduction.sampleRate !== dialogue.sampleRate) throw new Error("Narration sample rates do not match.");
+  const pause = Math.round(introduction.sampleRate * 0.5);
+  const samples = new Float32Array(introduction.samples.length + pause + dialogue.samples.length);
+  samples.set(introduction.samples);
+  samples.set(dialogue.samples, introduction.samples.length + pause);
+  return { samples, sampleRate: introduction.sampleRate };
 }
