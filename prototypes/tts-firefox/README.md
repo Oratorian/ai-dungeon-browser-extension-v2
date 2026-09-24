@@ -8,7 +8,7 @@ switch. When enabled, a **Threads** selector appears with 2 (default), 4 and 6 a
 Changing mode or thread count restarts the engine. Chrome uses its embedded engine by default;
 its optional acceleration uses a built-in offscreen document without a server or extra tab.
 
-1. Install the Windows [TTS Helper package](../../native/tts-helper/README.md) once using `Install.cmd`.
+1. Install the Windows [TTS Helper](../../native/tts-helper/README.md) once using its setup wizard.
 2. Build with `npm run build:firefox`, reload that extension, and refresh AI Dungeon.
 3. Enable TTS and Accelerated TTS in either settings menu. The extension starts the native server and opens an engine tab in the background automatically.
    Keep it open. Existing cached prototype models are reused; otherwise click Initialize TTS.

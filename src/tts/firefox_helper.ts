@@ -1,7 +1,7 @@
 import { browser } from "wxt/browser";
 
 export const FIREFOX_ENGINE_URL = "http://localhost:4177/engine.html";
-export const FIREFOX_HELPER_INSTALL = "Firefox TTS helper unavailable. Install the TTS Helper package (Install.cmd), then retry Initialize TTS. Or turn acceleration off.";
+export const FIREFOX_HELPER_INSTALL = "Firefox TTS helper unavailable. Install the TTS Helper using its Windows setup wizard, then retry Initialize TTS. Or turn acceleration off.";
 type Port = ReturnType<typeof browser.runtime.connectNative>;
 type Connection = {
   port: Port; ready: Promise<void>; resolve: () => void; reject: (error: Error) => void;

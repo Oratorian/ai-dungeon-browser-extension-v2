@@ -1,3 +1,4 @@
+param([switch]$Installer, [string]$IsccPath = $env:ISCC_PATH)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
@@ -40,4 +41,7 @@ try {
     $zip = Join-Path $repo '.output\DungeonExtension-TTS-Helper-windows-x64.zip'
     Compress-Archive -Path (Join-Path $package '*') -DestinationPath $zip -Force
     Write-Host "Package: $zip"
+    if ($Installer) {
+        & (Join-Path $PSScriptRoot 'build-tts-helper-installer.ps1') -IsccPath $IsccPath
+    }
 } finally { Pop-Location }

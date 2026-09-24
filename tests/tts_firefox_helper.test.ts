@@ -28,7 +28,7 @@ it("reports installation failure when Firefox cannot find the native application
   const port = nativePort(); mock.connect.mockReturnValue(port);
   const failed = vi.fn(); const helper = new FirefoxTtsHelper(failed);
   const pending = expect(helper.start()).rejects.toThrow('Install');
-  port.disconnect(); await pending; expect(failed).toHaveBeenCalledWith(expect.stringContaining('Install.cmd'));
+  port.disconnect(); await pending; expect(failed).toHaveBeenCalledWith(expect.stringContaining('setup wizard'));
 });
 it("rejects incompatible origins and protocol versions", async () => {
   for (const response of [{ type: 'ready', protocol: 2, engineUrl: FIREFOX_ENGINE_URL }, { type: 'ready', protocol: 1, engineUrl: 'https://example.com/engine.html' }]) {

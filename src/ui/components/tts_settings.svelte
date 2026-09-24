@@ -52,7 +52,7 @@
       {#if $settings.novelTtsAccelerated && import.meta.env.BROWSER === "firefox"}
         <details class="text-xs text-theme-neutral-800">
           <summary>Firefox setup</summary>
-          <p>Install the Windows TTS Helper once: extract its ZIP and run Install.cmd. Firefox then starts and stops it automatically; no Node or terminal needed. Close the story or turn TTS off to release its engine. Initialization may be needed after switching engines.</p>
+          <p>Run the Windows TTS Helper setup wizard once. Firefox then starts and stops it automatically; no Node or terminal needed. Close the story or turn TTS off to release its engine. Initialization may be needed after switching engines.</p>
         </details>
       {/if}
     </div>

@@ -3,9 +3,9 @@
 Windows x64 package. No Node, .NET installation, administrator account, or source
 checkout is needed to use the built package.
 
-1. Extract the entire ZIP to a folder.
-2. Double-click **Install.cmd**. It copies the helper into your local application
-   data folder and registers it for your Windows account in Firefox.
+1. Download **DungeonExtension-TTS-Helper-Setup-windows-x64.exe**.
+2. Run the setup wizard. It installs into your local application data folder and
+   registers the helper for your Windows account in Firefox.
 3. Reload the matching extension version, refresh AI Dungeon, and enable
    **Accelerated TTS**. The extension starts the helper automatically.
 
@@ -25,20 +25,33 @@ Firefox profile's helper and retry. This release supports one helper server per
 computer at a time. Chrome does not need this helper. Without the helper,
 Firefox's single-thread narration still works with acceleration off.
 
-To uninstall, turn TTS off/close its tabs and double-click **Uninstall.cmd** from
-the extracted package. This removes the per-user registration and helper files,
-including old installed versions, but leaves browser model caches alone.
+To uninstall, turn TTS off/close its tabs and remove **Dungeon Extension TTS Helper**
+from Windows Settings > Apps > Installed apps. The uninstaller removes the files it
+installed and its Firefox registration, but leaves browser model caches alone.
 
-Updates: extract a new package and run Install.cmd again. Content-versioned install
+Updates: run the new setup executable. Content-versioned install
 folders let an existing helper finish without being overwritten. Turn TTS off/on
 to launch the new installation. The installed helper and extension must use the
 same native protocol and compatible engine assets. This initial build is unsigned.
 
-For maintainers: run `powershell -NoProfile -File scripts/build-tts-helper.ps1`
-from the repository after `npm ci`, with a .NET SDK supporting .NET 8 installed.
-The ZIP is written to `.output/DungeonExtension-TTS-Helper-windows-x64.zip`.
+For maintainers: run `npm run build:tts-helper` after `npm ci`, with a .NET SDK
+supporting .NET 8 and Inno Setup 6.7 or newer installed. Set `ISCC_PATH` to the
+compiler executable if it is not on PATH or in the default Inno Setup 6 folder.
+The installer is written to `.output/DungeonExtension-TTS-Helper-Setup-windows-x64.exe`.
+The original script-based ZIP is also built for legacy/manual installations.
+To build only that ZIP, run `powershell -NoProfile -File scripts/build-tts-helper.ps1`.
+
+The wizard uses a separate managed installation directory and takes over Firefox's
+helper registration from an earlier script-based installation. Old script-installed
+files are left untouched. Turn TTS off/on after upgrading; do not run the old script
+installer again unless you deliberately want to switch back. Its uninstaller refuses
+to remove the wizard's registration. The setup executable is not code-signed yet.
+
+Installer regression check (uses a separate test registration and workspace folder):
+`powershell -NoProfile -File scripts/check-tts-helper-installer.ps1 -IsccPath "path/to/ISCC.exe"`.
+
 Firefox allows the stable ID `dungeon-extension-v2@oratorian` and the beta ID
-`dungeon-extension-betas@oratorian`. Run Install.cmd from the updated package to
+`dungeon-extension-betas@oratorian`. Run the updated setup wizard to
 enable beta access if you installed an earlier helper.
 
 Build the Firefox beta extension with `npm run build:firefox:beta`. Its Manifest V2
