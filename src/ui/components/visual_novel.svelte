@@ -462,7 +462,7 @@
           <div class="stage-slot" data-edge={stageCharacters.filter(Boolean).length <= 2 ? (slot === 0 ? "left" : "right") : slot === 2 ? "left" : slot === 3 ? "right" : "middle"} style:grid-column={stageCharacters.filter(Boolean).length <= 2 ? ["1 / 3", "3 / 5", "1", "4"][slot] : String([2, 3, 1, 4][slot])}>
             {#if character}
               {#key character.id}
-                <div class="stage-character" class:dimmed={!!speaker && character.id !== speaker} transition:portraitFade>
+                <div class="stage-character" class:dimmed={character.id !== speaker} transition:portraitFade>
                   {#if character.portrait}
                     <img src={character.portrait} alt={character.name} class="portrait" />
                   {:else}
