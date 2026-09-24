@@ -76,7 +76,6 @@
   {#if error || connectionError}<p class="error" role="alert">{error || connectionError}</p>{/if}
   <div class="controls">
     <span>Enter adds a new line.</span>
-    <button onclick={onclose} disabled={busy || blocked}>Read story</button>
     <button class="send" onclick={send} disabled={busy || blocked || !mode || !draft.trim() || (!ready && !localOnly)}>Send {mode ?? "action"}</button>
   </div>
 </div>
