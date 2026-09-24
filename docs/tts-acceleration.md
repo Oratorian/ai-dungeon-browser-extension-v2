@@ -25,6 +25,11 @@ MV3 relay available during long synthesis operations.
 
 Acceleration uses the separate isolated local page. Start
 `node scripts/tts-firefox-prototype.mjs` and keep the automatically opened engine tab alive.
+The engine opens beside its owning story in the same window. Firefox versions with tab-group
+support put both tabs in an **AI Dungeon + TTS** group, or reuse the story's existing group.
+Closing the group tears down its engines. Closing just the story also closes its engine tab.
+Grouping failure does not prevent narration or ownership cleanup. The local Node file server
+continues running until stopped separately; it does not run the TTS model.
 The standalone benchmark and accelerated engine share their model cache. See
 [`prototypes/tts-firefox/README.md`](../prototypes/tts-firefox/README.md).
 
