@@ -1,5 +1,0 @@
-@echo off
-echo Close Firefox TTS engine tabs before uninstalling.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Uninstall.ps1"
-if errorlevel 1 echo Uninstall failed. See the message above.
-pause

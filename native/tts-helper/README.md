@@ -38,14 +38,14 @@ For maintainers: run `npm run build:tts-helper` after `npm ci`, with a .NET SDK
 supporting .NET 8 and Inno Setup 6.7 or newer installed. Set `ISCC_PATH` to the
 compiler executable if it is not on PATH or in the default Inno Setup 6 folder.
 The installer is written to `.output/DungeonExtension-TTS-Helper-Setup-windows-x64.exe`.
-The original script-based ZIP is also built for legacy/manual installations.
-To build only that ZIP, run `powershell -NoProfile -File scripts/build-tts-helper.ps1`.
+To build only the executable and engine files for testing, run
+`powershell -NoProfile -File scripts/build-tts-helper.ps1`.
+These are staged in `.output/tts-helper/windows-x64`; distribute the setup executable.
 
 The wizard uses a separate managed installation directory and takes over Firefox's
 helper registration from an earlier script-based installation. Old script-installed
-files are left untouched. Turn TTS off/on after upgrading; do not run the old script
-installer again unless you deliberately want to switch back. Its uninstaller refuses
-to remove the wizard's registration. The setup executable is not code-signed yet.
+files are left untouched. Turn TTS off/on after upgrading. Use the setup wizard for
+future updates; the legacy installation scripts are no longer distributed.
 
 Installer regression check (uses a separate test registration and workspace folder):
 `powershell -NoProfile -File scripts/check-tts-helper-installer.ps1 -IsccPath "path/to/ISCC.exe"`.

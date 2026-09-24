@@ -35,12 +35,8 @@ try {
     if (!$runtimePackage) { throw 'Bundled .NET runtime license files were not found.' }
     Copy-Item -LiteralPath (Join-Path $runtimePackage 'LICENSE.TXT') -Destination (Join-Path $licenses 'DOTNET-LICENSE.txt') -Force
     Copy-Item -LiteralPath (Join-Path $runtimePackage 'THIRD-PARTY-NOTICES.TXT') -Destination (Join-Path $licenses 'DOTNET-THIRD-PARTY-NOTICES.txt') -Force
-    foreach ($file in @('Install.ps1', 'Install.cmd', 'Uninstall.ps1', 'Uninstall.cmd', 'README.md')) {
-        Copy-Item -LiteralPath (Join-Path $repo "native\tts-helper\$file") -Destination $package -Force
-    }
-    $zip = Join-Path $repo '.output\DungeonExtension-TTS-Helper-windows-x64.zip'
-    Compress-Archive -Path (Join-Path $package '*') -DestinationPath $zip -Force
-    Write-Host "Package: $zip"
+    Copy-Item -LiteralPath (Join-Path $repo 'native\tts-helper\README.md') -Destination $package -Force
+    Write-Host "Helper files: $package"
     if ($Installer) {
         & (Join-Path $PSScriptRoot 'build-tts-helper-installer.ps1') -IsccPath $IsccPath
     }
