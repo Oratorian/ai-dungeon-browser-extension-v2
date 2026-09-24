@@ -65,6 +65,9 @@ export function initializeTts(): Promise<void> {
 export async function generateNarration(text: string, options: NarrationOptions) {
   if (!narrator || get(ttsState).phase !== "ready") throw new Error("Initialize TTS before reading aloud.");
   const client = narrator;
+  // Speaker labels are visual cues, not spoken dialogue. Keep the quote itself
+  // intact, including names the character actually says inside it.
+  text = text.replace(/^\s*[\p{L}\p{N}][\p{L}\p{N}\s.'’\-]*:\s*(?=["“«])/u, "");
   const speech = text.match(/^\s*(You say),\s*(["\u201c][\s\S]+)$/i);
   if (!speech?.[2]) return client.generate(text, options);
 

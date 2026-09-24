@@ -19,6 +19,20 @@ beforeEach(() => {
 afterEach(() => configureTts(false));
 
 describe("TTS availability", () => {
+  it.each(['"Careful, Elarion."', '“Careful, Elarion.”', '«Careful, Elarion.»'])("omits speaker labels but preserves spoken names: %s", async dialogue => {
+    await initializeTts();
+    const options = { voice: "F5" as const, steps: 5 };
+    await generateNarration(`Sage Harrow: ${dialogue}`, options);
+    expect(mock.generate.mock.calls).toEqual([[dialogue, options]]);
+  });
+  it("preserves unlabeled narration and labels mentioned inside dialogue", async () => {
+    await initializeTts();
+    const options = { voice: "F5" as const, steps: 5 };
+    for (const text of ['Sage looks up.', '"Sage: that is what the note said."', 'Sage: looks up.']) {
+      await generateNarration(text, options);
+      expect(mock.generate).toHaveBeenLastCalledWith(text, options);
+    }
+  });
   it.each(['"Hello!"', '\u201cHello!\u201d'])("generates player dialogue separately with a half-second pause: %s", async dialogue => {
     await initializeTts();
     mock.generate.mockResolvedValueOnce({ samples: new Float32Array([1, 2]), sampleRate: 10 });
