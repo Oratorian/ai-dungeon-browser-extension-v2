@@ -62,9 +62,21 @@ describe("paragraph-based visual novel scenes", () => {
     expect(tracker(parseNovel("Coral"))).toEqual([["coral", null, null, null]]);
     expect(tracker([])).toEqual([]);
   });
-  it("updates the entire paragraph cast as streamed text adds a mention", () => {
+  it("ignores dialogue mentions throughout streaming but includes subsequent narration", () => {
     expect(track('Nyx says, "Hello')).toEqual([["nyx", null, null, null]]);
-    expect(track('Nyx says, "Hello Coral."')).toEqual([["nyx", "coral", null, null]]);
+    expect(track('Nyx says, "Hello Coral')).toEqual([["nyx", null, null, null]]);
+    expect(track('Nyx says, "Hello Coral."')).toEqual([["nyx", null, null, null]]);
+    expect(track('Nyx says, "Hello Coral." Coral waves.'))
+      .toEqual([["nyx", "coral", null, null], ["nyx", "coral", null, null]]);
+  });
+  it.each(['"Coral is annoying."', '“Coral is annoying.”', '«Coral is annoying.»'])("adds the labeled speaker, not the subject of dialogue: %s", quote => {
+    expect(track(`Sage: ${quote}`)).toEqual([["sage", null, null, null]]);
+  });
+  it("keeps multiple labeled speakers and narration-based presence", () => {
+    expect(track('Sage: "Coral is annoying." Nyx: "I agree."'))
+      .toEqual([["sage", "nyx", null, null], ["sage", "nyx", null, null]]);
+    expect(track('Coral waits. Sage: "Coral is annoying."'))
+      .toEqual([["coral", "sage", null, null], ["coral", "sage", null, null]]);
   });
   it("matches full aliases and ignores ambiguous shared triggers", () => {
     expect(track("The kitchen is empty.\nNyxie's chair is empty.\nNYX waves."))

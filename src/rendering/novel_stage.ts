@@ -39,7 +39,10 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
       let mentioned = paragraphCast.get(frame.paragraph);
       if (!mentioned) {
         const triggered = new Set<string>();
-        for (const match of pattern ? frame.paragraph.matchAll(pattern) : []) {
+        // Dialogue can discuss absent characters. Only narration and speaker labels
+        // establish presence; unfinished streaming quotes are excluded as well.
+        const sceneText = frame.paragraph.replace(/"[^"\n]*(?:"|$)|“[^”\n]*(?:”|$)|«[^»\n]*(?:»|$)/gu, " ");
+        for (const match of pattern ? sceneText.matchAll(pattern) : []) {
           const owners = aliases.get(match[0].toLowerCase())!;
           if (owners.size !== 1) continue;
           triggered.add([...owners][0]!);
