@@ -134,9 +134,13 @@
 
       <Field
         label="Quick Actions"
-        info="Hovering the button brings up <b>Sets</b>, <b>Stamp</b>, <b>AID Sync</b>, <b>Visual Novel Mode</b>, <b>Settings</b>, and <b>Hide until refresh</b>. Sets and Stamp open right there; click one to pin it open.<br><em>Off: the button only opens the editor where you last left it.</em>"
+        info="Hovering the button brings up four actions: <b>Sets</b>, <b>Stamp</b>, <b>Visual Novel Mode</b>, and <b>Hide until refresh</b>. Click the fox itself to open the editor.<br><em>Off: the button only opens the editor where you last left it.</em>"
       >
         <Switch bind:checked={$settings.floatingButtonQuickActions} />
+      </Field>
+
+      <Field label="Compact Corner Layout" info="Arrange two quick actions vertically and two horizontally beside the fox in an L shape, facing into the screen. Off uses the curved ring layout.">
+        <Switch bind:checked={$settings.floatingButtonCompactLayout} />
       </Field>
 
       <Field label="Size" info="How large the button is drawn, in pixels. The shortcuts scale with it.">

@@ -58,6 +58,7 @@ const defaultSettings = {
   floatingButtonY: -1,
   // Hovering the button fans out one shortcut per editor tab.
   floatingButtonQuickActions: true,
+  floatingButtonCompactLayout: false,
   // Key combination that shows/hides the button while playing (see shared/hotkey.ts); "" = none.
   floatingButtonHotkey: "Ctrl+Shift+F",
   // Drawn size in px, within FLOATING_BUTTON_MIN_SIZE..MAX_SIZE.

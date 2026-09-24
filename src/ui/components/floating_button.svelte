@@ -6,7 +6,7 @@
   import { extensionState } from "@/shared/state.svelte";
   import { Tab } from "@/shared/types";
   import { fade, scale } from "svelte/transition";
-  import { FLOATING_BUTTON_ICON, floatingButtonSize, ringLayout } from "@/shared/floating_button";
+  import { FLOATING_BUTTON_ICON, floatingButtonSize, ringLayout, compactLayout } from "@/shared/floating_button";
   import SetSwitcher from "./set_switcher.svelte";
   import StampBinding from "./stamp_binding.svelte";
   import TtsSettings from "./tts_settings.svelte";
@@ -20,7 +20,7 @@
   // Hovering it (or tabbing onto it) brings up a ring of quick actions around it. Three of them open a
   // second level in place: Sets switches, creates or imports a card set, Stamp binds the set to the
   // story being played. Both are things people do every time they start or duplicate an adventure,
-  // and the editor was a detour for them. Sync and Settings open editor tabs; Visual Novel Mode
+  // and the editor was a detour for them. Hide dismisses the menu until refresh; Visual Novel Mode
   // opens reader and TTS controls. A plain click
   // on the puck still opens the editor where it was last left.
   //
@@ -33,16 +33,14 @@
   const DRAG_THRESHOLD = 4; // px of travel before a press counts as a drag instead of a click
   const CLOSE_GRACE = 250; // ms the ring survives the pointer crossing a gap between its parts
 
-  type ActionId = "sets" | "stamp" | "sync" | "novel" | "settings" | "hide";
+  type ActionId = "sets" | "stamp" | "novel" | "hide";
   type QuickAction = { id: ActionId; icon: string; label: string; panel: boolean };
 
   // Clockwise order around the ring, always this sequence however much of the ring fits.
   const actions: QuickAction[] = [
     { id: "sets", icon: "swap_horiz", label: "Sets", panel: true },
     { id: "stamp", icon: "approval", label: "Stamp", panel: true },
-    { id: "sync", icon: "sync", label: "AID Sync", panel: false },
     { id: "novel", icon: "theater_comedy", label: "Visual Novel Mode", panel: true },
-    { id: "settings", icon: "settings", label: "Settings", panel: false },
     { id: "hide", icon: "visibility_off", label: "Hide until refresh", panel: false },
   ];
 
@@ -98,7 +96,8 @@
   const ringOpen = $derived($settings.floatingButtonQuickActions && (hovered || focused || pinned) && !drag);
 
   const layout = $derived(
-    ringLayout({
+    ($settings.floatingButtonCompactLayout ? compactLayout : ringLayout)({
+      puckSize: SIZE,
       cx: pos.x + SIZE / 2,
       cy: pos.y + SIZE / 2,
       radius: baseRadius,
@@ -113,6 +112,13 @@
   const placed = $derived(layout.slots.map((slot, i) => ({ action: actions[i]!, slot })));
   // How far the whole ring reaches from the puck's centre; the panel sits just outside it.
   const reach = $derived(layout.radius + ringSize / 2);
+  const hoverBounds = $derived.by(() => {
+    const left = Math.min(-SIZE / 2, ...layout.slots.map(slot => slot.dx - ringSize / 2));
+    const top = Math.min(-SIZE / 2, ...layout.slots.map(slot => slot.dy - ringSize / 2));
+    const right = Math.max(SIZE / 2, ...layout.slots.map(slot => slot.dx + ringSize / 2));
+    const bottom = Math.max(SIZE / 2, ...layout.slots.map(slot => slot.dy + ringSize / 2));
+    return { left: left + SIZE / 2, top: top + SIZE / 2, width: right - left, height: bottom - top };
+  });
 
   // The panel opens toward the middle of the screen, so it never runs off the edge the puck is
   // parked against: to the left of the ring when the puck is on the right half, and growing upward
@@ -171,10 +177,6 @@
     if (action.id === "hide") {
       closeAll();
       extensionState.floatingButtonHidden = true;
-      return;
-    }
-    if (!action.panel) {
-      openAt(action.id === "sync" ? Tab.Import : Tab.Settings);
       return;
     }
     if (panel === action.id && pinned) {
@@ -278,8 +280,10 @@
       <!-- Invisible disc under the ring, so the pointer crossing from the puck to a button never
            leaves the group. Only exists while the ring is up. -->
       <div
-        style="width: {reach * 2}px; height: {reach * 2}px; left: {SIZE / 2 - reach}px; top: {SIZE / 2 - reach}px;"
-        class="absolute rounded-full"
+        style={$settings.floatingButtonCompactLayout
+          ? `width: ${hoverBounds.width}px; height: ${hoverBounds.height}px; left: ${hoverBounds.left}px; top: ${hoverBounds.top}px;`
+          : `width: ${reach * 2}px; height: ${reach * 2}px; left: ${SIZE / 2 - reach}px; top: ${SIZE / 2 - reach}px;`}
+        class="absolute" class:rounded-full={!$settings.floatingButtonCompactLayout}
       ></div>
 
       {#each placed as { action, slot } (action.id)}
@@ -351,7 +355,8 @@
       title="Dungeon Extension , click to open, drag to move"
       style="cursor: {drag ? 'grabbing' : 'grab'}; border-radius: {Math.max(4, Math.round(SIZE / 4))}px;"
       class="relative block size-full overflow-hidden touch-none select-none shadow-lg
-             {ringOpen ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-opacity"
+             {ringOpen ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-opacity
+             ring-2 ring-transparent hover:ring-pretty-theme focus-visible:ring-pretty-theme"
     >
       <img src={iconUrl} alt="" draggable="false" class="block size-full pointer-events-none" />
     </button>

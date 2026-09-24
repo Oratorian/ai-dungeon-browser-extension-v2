@@ -1,10 +1,38 @@
 import { describe, it, expect } from "vitest";
-import { ringLayout, floatingButtonSize, FLOATING_BUTTON_DEFAULT_SIZE, type RingLayoutInput } from "@/shared/floating_button";
+import { ringLayout, compactLayout, floatingButtonSize, FLOATING_BUTTON_DEFAULT_SIZE, type RingLayoutInput } from "@/shared/floating_button";
 
 // A 1000x800 viewport, ring radius 60, buttons 36 wide with a 6px gap, 16px edge margin, four
 // actions.
 const base: Omit<RingLayoutInput, "cx" | "cy"> = { radius: 60, buttonSize: 36, gap: 6, vw: 1000, vh: 800, margin: 16, count: 4 };
 const angles = (layout: { slots: { angle: number }[] }) => layout.slots.map((s) => s.angle);
+
+describe("compact quick actions", () => {
+  it("forms an L above and beside a fox in the bottom-left corner", () => {
+    const layout = compactLayout({ ...base, cx: 38.5, cy: 761.5, puckSize: 45 });
+    expect(layout.slots.slice(0, 2).every(slot => slot.dx === 0 && slot.dy < 0)).toBe(true);
+    expect(layout.slots.slice(2).every(slot => slot.dx > 0 && slot.dy === 0)).toBe(true);
+  });
+  it.each([24, 45, 128])("keeps all four controls usable at puck size %s", puckSize => {
+    const buttonSize = Math.min(56, Math.max(30, Math.round(puckSize * 0.8)));
+    const gap = Math.max(6, Math.round(buttonSize / 5));
+    for (const [vw, vh] of [[320, 640], [1920, 1080]]) {
+      for (const cx of [16 + puckSize / 2, vw! / 2, vw! - 16 - puckSize / 2]) {
+        for (const cy of [16 + puckSize / 2, vh! / 2, vh! - 16 - puckSize / 2]) {
+          const input = { ...base, vw: vw!, vh: vh!, cx, cy, buttonSize, gap, puckSize };
+          const layout = compactLayout(input);
+          expect(layout.slots).toHaveLength(4);
+          expect(allFit(input, layout)).toBe(true);
+          for (const [index, slot] of layout.slots.entries()) {
+            expect(Math.abs(slot.dx) >= (puckSize + buttonSize) / 2 + gap || Math.abs(slot.dy) >= (puckSize + buttonSize) / 2 + gap).toBe(true);
+            for (const other of layout.slots.slice(index + 1)) {
+              expect(Math.hypot(slot.dx - other.dx, slot.dy - other.dy)).toBeGreaterThanOrEqual(buttonSize + gap);
+            }
+          }
+        }
+      }
+    }
+  });
+});
 
 /** Every button inside the viewport, with the margin. */
 function allFit(input: RingLayoutInput, layout: ReturnType<typeof ringLayout>) {
