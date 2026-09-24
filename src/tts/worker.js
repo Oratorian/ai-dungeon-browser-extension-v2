@@ -1,5 +1,6 @@
 import * as ort from 'onnxruntime-web/wasm';
 import { TextToSpeech, UnicodeProcessor, Style } from './supertonic.js';
+import { threadingCapabilities, requestedThreadCount } from './capabilities';
 
 ort.env.wasm.wasmPaths = new URL('/runtime/', self.location.origin).href;
 let engine;
@@ -17,8 +18,8 @@ async function asset(path) {
   return new Response(bytes);
 }
 
-async function initialize() {
-  ort.env.wasm.numThreads = 1;
+async function initialize(threads) {
+  ort.env.wasm.numThreads = requestedThreadCount(threads, threadingCapabilities());
   const cfg = await (await asset('onnx/tts.json')).json();
   const indexer = await (await asset('onnx/unicode_indexer.json')).json();
   const sessions = [];
@@ -48,6 +49,10 @@ async function voiceStyle(name) {
 }
 
 self.onmessage = async ({ data }) => {
+  if (data.type === 'capabilities') {
+    self.postMessage({ type: 'capabilities', ...threadingCapabilities() });
+    return;
+  }
   if (data.type === 'asset') {
     const pending = pendingAssets.get(data.id);
     pendingAssets.delete(data.id);
@@ -59,10 +64,10 @@ self.onmessage = async ({ data }) => {
   busy = true;
   try {
     if (data.type === 'load') {
-      if (!engine) await initialize();
+      if (!engine) await initialize(data.threads);
       await voiceStyle('M5');
       await voiceStyle('F5');
-      self.postMessage({ type: 'ready', threads: ort.env.wasm.numThreads });
+      self.postMessage({ type: 'ready', threads: ort.env.wasm.numThreads, capabilities: threadingCapabilities() });
     } else if (data.type === 'speak') {
       if (!engine) throw new Error('Load the model first.');
       if (typeof data.text !== 'string' || !data.text.trim() || data.text.length > 20000) throw new Error('Enter 1-20,000 characters.');
