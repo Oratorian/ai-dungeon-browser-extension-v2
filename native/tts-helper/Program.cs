@@ -36,7 +36,7 @@ internal static class Program
                 if (server == null)
                 {
                     server = new EngineServer(Path.Combine(AppContext.BaseDirectory, "web"));
-                    server.Start(shutdown.Token);
+                    await server.Start(shutdown.Token);
                 }
                 await Send(output, new { type = "ready", protocol = 1, version = "1.0.0", engineUrl = "http://localhost:4177/engine.html" });
             }
@@ -85,10 +85,24 @@ internal sealed class EngineServer : IDisposable
         }
         if (!files.ContainsKey("/engine.html")) throw new FileNotFoundException();
     }
-    public void Start(CancellationToken token)
+    public async Task Start(CancellationToken token)
     {
-        listener.Server.ExclusiveAddressUse = true;
-        listener.Start();
+        // A thread-count change can start a replacement while Firefox is still
+        // terminating the previous native process. Allow that short handover.
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                listener.Server.ExclusiveAddressUse = true;
+                listener.Start();
+                break;
+            }
+            catch (SocketException error) when (error.SocketErrorCode == SocketError.AddressAlreadyInUse && attempt < 20)
+            {
+                listener.Stop();
+                await Task.Delay(100, token);
+            }
+        }
         _ = Accept(token);
     }
     private async Task Accept(CancellationToken token)

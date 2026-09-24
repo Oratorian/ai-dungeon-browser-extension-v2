@@ -20,6 +20,20 @@ try {
         Remove-Item -LiteralPath $resolved -Recurse -Force
     }
     Copy-Item -LiteralPath (Join-Path $repo '.output\tts-firefox-prototype') -Destination $web -Recurse
+    $licenses = Join-Path $package 'licenses'
+    New-Item -ItemType Directory -Path $licenses -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repo 'LICENSE') -Destination (Join-Path $licenses 'DUNGEON-EXTENSION-LICENSE.txt') -Force
+    Get-ChildItem -LiteralPath (Join-Path $repo 'public\licenses') -File | Copy-Item -Destination $licenses -Force
+    Get-ChildItem -LiteralPath (Join-Path $repo 'native\tts-helper\licenses') -File | Copy-Item -Destination $licenses -Force
+    [xml]$project = Get-Content -LiteralPath (Join-Path $repo 'native\tts-helper\DungeonTtsHelper.csproj')
+    $runtimeVersion = $project.Project.PropertyGroup.RuntimeFrameworkVersion
+    $assets = Get-Content -LiteralPath (Join-Path $repo 'native\tts-helper\obj\project.assets.json') -Raw | ConvertFrom-Json
+    $runtimePackage = $assets.packageFolders.PSObject.Properties.Name | ForEach-Object {
+        Join-Path $_ "microsoft.netcore.app.runtime.win-x64\$runtimeVersion"
+    } | Where-Object { Test-Path -LiteralPath (Join-Path $_ 'LICENSE.TXT') } | Select-Object -First 1
+    if (!$runtimePackage) { throw 'Bundled .NET runtime license files were not found.' }
+    Copy-Item -LiteralPath (Join-Path $runtimePackage 'LICENSE.TXT') -Destination (Join-Path $licenses 'DOTNET-LICENSE.txt') -Force
+    Copy-Item -LiteralPath (Join-Path $runtimePackage 'THIRD-PARTY-NOTICES.TXT') -Destination (Join-Path $licenses 'DOTNET-THIRD-PARTY-NOTICES.txt') -Force
     foreach ($file in @('Install.ps1', 'Install.cmd', 'Uninstall.ps1', 'Uninstall.cmd', 'README.md')) {
         Copy-Item -LiteralPath (Join-Path $repo "native\tts-helper\$file") -Destination $package -Force
     }

@@ -17,6 +17,7 @@ if (!(Test-Path -LiteralPath (Join-Path $destination 'installed.json'))) {
     New-Item -ItemType Directory -Path $destination -Force | Out-Null
     Copy-Item -LiteralPath $exe -Destination (Join-Path $destination 'DungeonTtsHelper.exe') -Force
     Copy-Item -LiteralPath (Join-Path $packageRoot 'web') -Destination $destination -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $packageRoot 'licenses') -Destination $destination -Recurse -Force
     $manifest = @{
         name = 'dungeon_extension.tts_helper'
         description = 'Dungeon Extension Firefox TTS Helper'
