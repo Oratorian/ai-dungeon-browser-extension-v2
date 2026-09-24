@@ -3,14 +3,14 @@
 ## Use with VN narration
 
 Firefox uses the original embedded single-threaded engine by default, with no server or extra tab.
-Both VN Settings and Extension Settings > Visual Novel Mode have an **Accelerated Firefox TTS**
+Both VN Settings and Extension Settings > Visual Novel Mode have an **Accelerated TTS**
 switch. When enabled, a **Threads** selector appears with 2 (default), 4 and 6 as the only choices.
 Changing mode or thread count restarts the engine. Chrome uses its embedded engine by default;
 its optional acceleration uses a built-in offscreen document without a server or extra tab.
 
-1. Start `node scripts/tts-firefox-prototype.mjs` from the repository root and keep it running.
+1. Install the Windows [TTS Helper package](../../native/tts-helper/README.md) once using `Install.cmd`.
 2. Build with `npm run build:firefox`, reload that extension, and refresh AI Dungeon.
-3. Enable TTS and Accelerated Firefox TTS in either settings menu. The extension opens an engine tab in the background automatically.
+3. Enable TTS and Accelerated TTS in either settings menu. The extension starts the native server and opens an engine tab in the background automatically.
    Keep it open. Existing cached prototype models are reused; otherwise click Initialize TTS.
 4. Use VN normally. Voice, steps, pitch, preview and the narration queue keep their existing controls.
 
@@ -20,9 +20,10 @@ the extension disconnects and closes that engine tab. Turning acceleration off c
 returns to the embedded engine. Each adventure tab gets a separate engine,
 so multiple simultaneous adventures use additional model memory.
 
-If the server is unavailable or the engine tab is closed, the TTS status reports the problem.
-Start the server again and click Initialize TTS to reconnect. The extension does not start Node
-itself and does not silently fall back to single-threaded narration. No remote hosting is configured.
+If the helper is missing or the engine tab is closed, the TTS status reports the problem.
+Install the helper if needed and click Initialize TTS to reconnect. After the last reader closes,
+the helper stops automatically. No remote hosting is configured. The standalone developer
+benchmark below still uses Node; stop that server before enabling native-helper acceleration.
 
 Diagnostics report the engine context, actual initialized thread count and isolation state.
 The background relay accepts only AI Dungeon client tabs and the specific engine tab it opened.

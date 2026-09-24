@@ -84,4 +84,4 @@ window.addEventListener('message', async ({ source, origin, data }) => {
 });
 window.addEventListener('pagehide', () => worker?.terminate());
 if (crossOriginIsolated) window.postMessage({ type: 'de-tts-host-ready' }, location.origin);
-else status.textContent = 'This page is not isolated. Start the supplied local server and retry Initialize TTS.';
+else status.textContent = 'This page is not isolated. Reinstall the TTS Helper and retry Initialize TTS.';

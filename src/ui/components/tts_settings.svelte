@@ -47,12 +47,12 @@
       {/if}
       </div>
       <p class="text-xs text-theme-neutral-800">{import.meta.env.BROWSER === "firefox"
-        ? "On requires the local server and engine tab. Off uses one thread."
+        ? "On uses the installed TTS Helper and a grouped engine tab. Off uses one thread."
         : "On runs inside the extension; no extra tab. Off uses one thread."}</p>
       {#if $settings.novelTtsAccelerated && import.meta.env.BROWSER === "firefox"}
         <details class="text-xs text-theme-neutral-800">
           <summary>Firefox setup</summary>
-          <p>Start the server from the extension folder:<br /><code>node scripts/tts-firefox-prototype.mjs</code><br />Each engine uses its own model cache; initialization may be needed after switching.</p>
+          <p>Install the Windows TTS Helper once: extract its ZIP and run Install.cmd. Firefox then starts and stops it automatically; no Node or terminal needed. Close the story or turn TTS off to release its engine. Initialization may be needed after switching engines.</p>
         </details>
       {/if}
     </div>
@@ -69,7 +69,6 @@
   .acceleration-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
   .acceleration-field button { min-height: 44px; }
   summary { cursor: pointer; }
-  code { overflow-wrap: anywhere; }
   .state { color: #b9c2c8; }
   .state.pending { color: #f8ae2c; }
   .state.ready { color: #77d69b; }

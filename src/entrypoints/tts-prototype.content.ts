@@ -1,7 +1,7 @@
 import { bgFetchBytes } from "@/media/bg_fetch";
 import { browser } from "wxt/browser";
 
-// Experimental loopback benchmark only. Never accept arbitrary download URLs.
+// Native-helper engine and developer benchmark. Never accept arbitrary download URLs.
 const origin = "http://localhost:4177";
 const base = "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46/";
 const allowed = /^(onnx\/(tts\.json|unicode_indexer\.json|duration_predictor\.onnx|text_encoder\.onnx|vector_estimator\.onnx|vocoder\.onnx)|voice_styles\/[MF]5\.json)$/;
