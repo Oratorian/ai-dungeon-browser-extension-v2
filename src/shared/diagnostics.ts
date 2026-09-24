@@ -351,7 +351,7 @@ export async function collectDiagnostics(): Promise<string> {
   detail.push("", "[TTS]");
   detail.push(row("VN / TTS enabled", (cfg.visualNovelMode ? "on" : "off") + " / " + (cfg.novelTtsEnabled ? "on" : "off")));
   detail.push(row("engine", "Supertonic, WASM CPU"));
-  if (import.meta.env.BROWSER === "firefox") detail.push(row("accelerated TTS", cfg.novelTtsAccelerated ? "on" : "off (default)"));
+  detail.push(row("accelerated TTS", cfg.novelTtsAccelerated ? "on" : "off (default)"));
   detail.push(row("engine context", tts.runtime?.context ?? "not connected"));
   detail.push(row("engine threads", tts.runtime?.threads == null ? "not initialized" : String(tts.runtime.threads)));
   detail.push(row("engine isolated", tts.runtime?.isolated == null ? "not reported" : tts.runtime.isolated ? "yes" : "no"));

@@ -5,7 +5,8 @@
 Firefox uses the original embedded single-threaded engine by default, with no server or extra tab.
 Both VN Settings and Extension Settings > Visual Novel Mode have an **Accelerated Firefox TTS**
 switch. When enabled, a **Threads** selector appears with 2 (default), 4 and 6 as the only choices.
-Changing mode or thread count restarts the engine. Chrome keeps its existing embedded engine.
+Changing mode or thread count restarts the engine. Chrome uses its embedded engine by default;
+its optional acceleration uses a built-in offscreen document without a server or extra tab.
 
 1. Start `node scripts/tts-firefox-prototype.mjs` from the repository root and keep it running.
 2. Build with `npm run build:firefox`, reload that extension, and refresh AI Dungeon.

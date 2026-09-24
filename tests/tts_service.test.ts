@@ -29,8 +29,8 @@ beforeEach(() => {
 afterEach(() => { configureTts(false, false, 2); vi.unstubAllEnvs(); });
 
 describe("TTS availability", () => {
-  it("defaults Firefox to the embedded engine and replaces the engine when opting in or changing threads", async () => {
-    vi.stubEnv("BROWSER", "firefox");
+  it.each(["firefox", "chrome"])("defaults %s to the embedded engine and replaces the engine when opting in or changing threads", async browser => {
+    vi.stubEnv("BROWSER", browser);
     configureTts(true); await flush();
     expect(mock.cached).toHaveBeenCalledTimes(1);
     expect(remote.created).not.toHaveBeenCalled();
@@ -46,14 +46,14 @@ describe("TTS availability", () => {
     expect(remote.dispose).toHaveBeenCalledTimes(2);
     expect(mock.cached).toHaveBeenCalledTimes(2);
   });
-  it("does not open an accelerated engine while TTS is off or on other browsers", async () => {
+  it("does not open an accelerated engine while TTS is off", async () => {
     vi.stubEnv("BROWSER", "firefox");
     configureTts(false, true, 6);
     expect(remote.created).not.toHaveBeenCalled();
     vi.stubEnv("BROWSER", "chrome");
     configureTts(true, true, 6); await flush();
-    expect(remote.created).not.toHaveBeenCalled();
-    expect(mock.cached).toHaveBeenCalledTimes(1);
+    expect(remote.created).toHaveBeenCalledTimes(1);
+    expect(mock.cached).not.toHaveBeenCalled();
   });
   it("reports pending work and sanitized failures without starting extra synthesis", async () => {
     await initializeTts();

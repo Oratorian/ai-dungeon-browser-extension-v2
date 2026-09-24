@@ -6,11 +6,22 @@ vi.mock("wxt/browser", () => ({ browser: { runtime: { connect: () => ({
   postMessage: mock.send, disconnect: mock.disconnect,
 }) } } }));
 import { RemoteNarrator } from "@/tts/remote";
+import { audioMessages } from "@/tts/audio_wire";
 const reply = (data: any) => mock.messages.forEach(fn => fn(data));
 const flush = async () => { for (let i = 0; i < 6; i++) await Promise.resolve(); };
-beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); mock.messages.length = 0; mock.disconnects.length = 0; });
-afterEach(() => vi.useRealTimers());
+beforeEach(() => { vi.stubEnv("BROWSER", "firefox"); vi.useFakeTimers(); vi.clearAllMocks(); mock.messages.length = 0; mock.disconnects.length = 0; });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 describe("Firefox isolated narrator", () => {
+  it("reassembles Chrome's JSON audio chunks into a playable typed array", async () => {
+    vi.stubEnv("BROWSER", "chrome");
+    const client = new RemoteNarrator(vi.fn()); reply({ type: 'connected' });
+    const generated = client.generate('hello', { voice: 'M5', steps: 5 }); await flush();
+    const audio = { samples: new Float32Array([0, -0.25, 0.75]), sampleRate: 44100 };
+    for (const message of audioMessages(audio, 1)) reply(JSON.parse(JSON.stringify(message)));
+    expect(await generated).toEqual(audio);
+    expect(client.diagnostics().context).toBe('Chrome offscreen page');
+    client.dispose();
+  });
   it.each([2, 4, 6])("requests the selected %i threads and rejects a runtime fallback", async threads => {
     const client = new RemoteNarrator(vi.fn(), undefined, threads);
     reply({ type: 'connected' });

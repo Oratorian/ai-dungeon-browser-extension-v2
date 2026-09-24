@@ -1,6 +1,7 @@
 import { browser } from "wxt/browser";
 import type { NarrationAudio, NarrationOptions } from "./queue";
 import { narrationThreadCount } from "./capabilities";
+import { AudioReceiver } from "./audio_wire";
 
 export class RemoteNarrator {
   private port = browser.runtime.connect({ name: "de-tts-client" });
@@ -11,10 +12,14 @@ export class RemoteNarrator {
   private disposed = false;
   private threads: number | null = null;
   private isolated: boolean | null = null;
+  private audio = new Map<number, AudioReceiver>();
+  private firefox = import.meta.env.BROWSER === "firefox";
   constructor(progress: (message: string) => void, private failure?: (message: string) => void, private requestedThreads = 2) {
     this.requestedThreads = narrationThreadCount(requestedThreads);
     this.ready = new Promise((resolve, reject) => {
-      const timer = setTimeout(() => this.fail("Firefox TTS engine unavailable. Start node scripts/tts-firefox-prototype.mjs, then retry Initialize TTS.", this.failure), 20000);
+      const timer = setTimeout(() => this.fail(this.firefox
+        ? "Firefox TTS engine unavailable. Start node scripts/tts-firefox-prototype.mjs, then retry Initialize TTS."
+        : "Chrome TTS engine unavailable. Retry Initialize TTS or turn acceleration off.", this.failure), 20000);
       this.pending.set(0, { resolve, reject, timer });
     });
     void this.ready.catch(() => {});
@@ -24,12 +29,22 @@ export class RemoteNarrator {
       const id = data.type === "connected" ? 0 : data.id;
       const pending = this.pending.get(id);
       if (!pending) return;
+      if (["audio-start", "audio-chunk", "audio-end"].includes(data.type)) {
+        try {
+          let receiver = this.audio.get(id);
+          if (!receiver) { receiver = new AudioReceiver(); this.audio.set(id, receiver); }
+          const result = receiver.receive(data);
+          if (!result) return;
+          data = result;
+        } catch (error) { data = { type: "error", message: error instanceof Error ? error.message : String(error) }; }
+        this.audio.delete(id);
+      }
       clearTimeout(pending.timer); this.pending.delete(id);
       if (data.type === "error") pending.reject(new Error(data.message));
       else pending.resolve(data);
     });
     this.port.onDisconnect.addListener(() => {
-      if (!this.disposed) this.fail("Firefox TTS engine disconnected. Keep its tab open and retry Initialize TTS.", failure);
+      if (!this.disposed) this.fail("TTS engine disconnected. Retry Initialize TTS.", failure);
     });
   }
   private fail(message: string, failure?: (message: string) => void) {
@@ -47,7 +62,7 @@ export class RemoteNarrator {
       }, 15 * 60 * 1000);
       this.pending.set(id, { resolve, reject, timer });
       try { this.port.postMessage({ ...message, id }); }
-      catch { this.fail("Firefox TTS engine disconnected. Retry Initialize TTS.", this.failure); }
+      catch { this.fail("TTS engine disconnected. Retry Initialize TTS.", this.failure); }
     });
   }
   async cached() { return (await this.request({ type: "status" })).complete === true; }
@@ -55,9 +70,9 @@ export class RemoteNarrator {
     const result = await this.request({ type: "load", download, threads: this.requestedThreads });
     this.threads = result.threads;
     this.isolated = result.capabilities?.isolated === true;
-    if (this.threads !== this.requestedThreads || !this.isolated) throw new Error(`Firefox TTS engine could not enable ${this.requestedThreads} threads. Keep the isolated engine tab open.`);
+    if (this.threads !== this.requestedThreads || !this.isolated) throw new Error(`TTS engine could not enable ${this.requestedThreads} threads. Retry Initialize TTS or turn acceleration off.`);
   }
-  diagnostics() { return { context: "Firefox isolated page", threads: this.threads, isolated: this.isolated }; }
+  diagnostics() { return { context: this.firefox ? "Firefox isolated page" : "Chrome offscreen page", threads: this.threads, isolated: this.isolated }; }
   generate(text: string, options: NarrationOptions): Promise<NarrationAudio> {
     const task = this.serial.then(() => this.request({ type: "speak", text, ...options }));
     this.serial = task.catch(() => {});
@@ -66,7 +81,7 @@ export class RemoteNarrator {
   private disposeWithError(error: Error) {
     this.disposed = true;
     for (const pending of this.pending.values()) { clearTimeout(pending.timer); pending.reject(error); }
-    this.pending.clear(); this.port.disconnect();
+    this.pending.clear(); this.audio.clear(); this.port.disconnect();
   }
   dispose() { if (!this.disposed) this.disposeWithError(new Error("Narration stopped.")); }
 }

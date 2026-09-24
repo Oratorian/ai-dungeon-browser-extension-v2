@@ -60,7 +60,7 @@ async function load(client: Narrator, download: boolean) {
 
 /** Enablement checks real extension cache contents, never a persisted 'downloaded' flag. */
 export function configureTts(value: boolean, acceleratedMode = accelerated, threads = threadCount) {
-  const useAccelerated = import.meta.env.BROWSER === "firefox" && acceleratedMode === true;
+  const useAccelerated = acceleratedMode === true;
   const nextThreads = narrationThreadCount(threads);
   const unchanged = enabled === value && accelerated === useAccelerated && (!useAccelerated || threadCount === nextThreads);
   threadCount = nextThreads;
