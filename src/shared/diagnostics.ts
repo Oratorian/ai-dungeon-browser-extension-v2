@@ -9,6 +9,9 @@ import { capturedErrors } from "@/shared/errors";
 import { versionInfo } from "@/shared/version";
 import { parseResponse } from "@/rendering/parser";
 import { adventureKey, LEGACY_ADVENTURES_KEY } from "@/storage/persist";
+import { ttsDiagnostics } from "@/tts/service";
+import { narrationDiagnostics } from "@/tts/diagnostics";
+import { narrationQueueSize } from "@/tts/queue";
 
 // Builds the report behind Settings > Support > Diagnostics.
 //
@@ -342,6 +345,33 @@ export async function collectDiagnostics(): Promise<string> {
     detail.push(row("storage layout", usage.layout));
   }
   if (version.latest) detail.push(row("latest release", version.latest + (version.updateAvailable ? " (UPDATE AVAILABLE)" : "")));
+
+  const tts = ttsDiagnostics();
+  const narration = narrationDiagnostics();
+  detail.push("", "[TTS]");
+  detail.push(row("VN / TTS enabled", (cfg.visualNovelMode ? "on" : "off") + " / " + (cfg.novelTtsEnabled ? "on" : "off")));
+  detail.push(row("engine", "Supertonic, WASM CPU, 1 thread"));
+  detail.push(row("readiness", tts.phase + (tts.initializing ? " (initializing)" : "")));
+  detail.push(row("engine present", tts.enginePresent ? "yes" : "no"));
+  detail.push(row("last cache check", tts.cacheComplete === null ? "not checked this session" : tts.cacheComplete ? "complete" : "incomplete (may since have downloaded)"));
+  detail.push(row("voice / steps", `${cfg.novelTtsVoice === "F5" ? "Female (F5)" : "Male (M5)"} / ${cfg.novelTtsSteps}`));
+  detail.push(row("pitch / volume", `${cfg.novelTtsPitch} semitones / ${cfg.volume}%`));
+  detail.push(row("queue lookahead", narrationQueueSize(cfg.novelTtsQueue) + " lines"));
+  detail.push(row("reader queue", narration ? `${narration.ready}/${narration.total} ready, ${narration.failed} failed (unique texts)` : "inactive"));
+  if (narration) {
+    detail.push(row("upcoming lines", `${narration.upcomingReady}/${narration.upcomingTotal} ready`));
+    detail.push(row("queue generating", narration.generating ? "yes" : "no"));
+    detail.push(row("playback", narration.muted ? "muted" : narration.playing ? "playing" : narration.buffering ? "waiting for audio" : "idle"));
+  }
+  detail.push(row("speech requests", `${tts.pending} pending, ${tts.completed} completed, ${tts.failed} failed (session)`));
+  if (tts.pending) detail.push(row("oldest request", tts.pendingMs + "ms (includes engine wait)"));
+  detail.push(row("last synthesis", tts.lastGenerationMs === null ? "none completed" : tts.lastGenerationMs + "ms (includes engine wait)"));
+  detail.push(row("last TTS failure", tts.lastFailure));
+  if (cfg.novelTtsEnabled && tts.phase === "missing") findings.push({ level: "warn", text: "TTS models are missing. Open VN Settings and select Initialize TTS." });
+  if (cfg.novelTtsEnabled && tts.phase === "error") findings.push({ level: "error", text: "TTS initialization failed. See the TTS failure category and retry Initialize TTS in VN Settings." });
+  if (cfg.novelTtsEnabled && cfg.volume === 0) findings.push({ level: "warn", text: "TTS volume is 0, so narration is inaudible." });
+  if (narration?.muted) findings.push({ level: "ok", text: "VN narration is muted. Use Unmute in the audio panel to hear it." });
+  if (narration?.failed) findings.push({ level: "warn", text: "Some queued narration failed. See the TTS failure category; Read line retries the current line." });
 
   if (errors.length > 0) {
     detail.push("", "[Errors]");

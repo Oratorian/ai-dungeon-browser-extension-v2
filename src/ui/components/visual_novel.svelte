@@ -19,6 +19,7 @@
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
   import { NarrationQueue, StableNarrationWindow, narrationQueueSize } from "@/tts/queue";
+  import { registerNarrationDiagnostics } from "@/tts/diagnostics";
   import { createNovelBookmark, readNovelBookmark, restoreNovelBookmark, type NovelBookmark } from "@/rendering/novel_bookmark";
   import { firstContinuationFrame, retainedNovelIndex, splitNarratedFrames, trackRetriedPassage } from "@/rendering/novel_narration";
 
@@ -122,7 +123,13 @@
     narrationQueue = queue;
     const scheduler = new StableNarrationWindow(texts => queue.setWindow(texts));
     narrationScheduler = scheduler;
+    const unregister = registerNarrationDiagnostics(() => ({ ...queue.diagnostics(),
+      upcomingReady: upcomingNarration.ready, upcomingTotal: upcomingNarration.total,
+      muted: narrationMuted, buffering: bufferingNarration,
+      playing: !!narrationAudio && !narrationAudio.paused && !narrationAudio.ended,
+    }));
     return () => {
+      unregister();
       alive = false; stopNarration(); scheduler.dispose(); queue.dispose();
       narrationQueue = undefined; narrationScheduler = undefined;
     };

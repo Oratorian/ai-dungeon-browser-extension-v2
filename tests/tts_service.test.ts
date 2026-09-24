@@ -7,7 +7,7 @@ vi.mock("@/tts/client", () => ({ LocalNarrator: class {
   dispose = mock.dispose;
   generate = mock.generate;
 } }));
-import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
+import { configureTts, generateNarration, initializeTts, ttsState, ttsDiagnostics } from "@/tts/service";
 const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 
 beforeEach(() => {
@@ -19,6 +19,22 @@ beforeEach(() => {
 afterEach(() => configureTts(false));
 
 describe("TTS availability", () => {
+  it("reports pending work and sanitized failures without starting extra synthesis", async () => {
+    await initializeTts();
+    const before = ttsDiagnostics();
+    let reject!: (error: Error) => void;
+    mock.generate.mockImplementationOnce(() => new Promise((_, fail) => reject = fail));
+    const work = generateNarration("Private story sentence", { voice: "M5", steps: 5 });
+    expect(ttsDiagnostics().pending).toBe(1);
+    expect(mock.generate).toHaveBeenCalledTimes(1);
+    reject(new Error("Private story sentence failed"));
+    await expect(work).rejects.toThrow("Private story sentence failed");
+    const after = ttsDiagnostics();
+    expect(after.pending).toBe(0);
+    expect(after.failed).toBe(before.failed + 1);
+    expect(JSON.stringify(after)).not.toContain("Private story");
+    expect(after.lastFailure).toBe("synthesis: engine error (details omitted for privacy)");
+  });
   it.each(['"Careful, Elarion."', '“Careful, Elarion.”', '«Careful, Elarion.»'])("omits speaker labels but preserves spoken names: %s", async dialogue => {
     await initializeTts();
     const options = { voice: "F5" as const, steps: 5 };

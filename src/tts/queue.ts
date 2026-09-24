@@ -52,6 +52,9 @@ export class NarrationQueue {
   }
   get(text: string) { return this.cache.get(text); }
   hasFailed(text: string) { return this.failed.has(text); }
+  diagnostics() {
+    return { ready: this.cache.size, total: this.wanted.length, failed: this.failed.size, generating: this.running };
+  }
   retry(text: string) { this.failed.delete(text); void this.pump(); }
   dispose() { this.disposed = true; this.wanted = []; this.cache.clear(); this.failed.clear(); }
 
