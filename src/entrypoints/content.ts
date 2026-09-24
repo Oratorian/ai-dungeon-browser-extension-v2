@@ -82,14 +82,15 @@ export default defineContentScript({
     // The floating button's show/hide shortcut is our own, matched here on the page rather than
     // through the browser's commands API, so it is set inside the extension's Settings and works
     // for a temporary add-on too. Capture phase, so AI Dungeon's own handlers do not see it first.
-    // Events from inside our shadow root are skipped: the recorder in Settings must be able to
-    // record the same combination without toggling the button as it does.
+    // Skip events inside the editor so Settings can record the same combination without
+    // toggling the button. VN and the floating controls share its shadow root, but must
+    // still allow the toggle shortcut while playing.
     ctx.addEventListener(
       window,
       "keydown",
       (e: KeyboardEvent) => {
         if (e.repeat) return;
-        if (e.composedPath().some((n) => (n as Element).tagName?.toLowerCase() === "de-editor-anchor")) return;
+        if (extensionState.isEditorOpen && e.composedPath().some((n) => (n as Element).tagName?.toLowerCase() === "de-editor-anchor")) return;
         const hotkey = get(Storage.settings).floatingButtonHotkey;
         if (!matchesHotkey(e, hotkey)) return;
         e.preventDefault();
