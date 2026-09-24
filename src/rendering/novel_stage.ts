@@ -1,4 +1,5 @@
 import type { NovelCharacter, NovelFrame } from "./novel";
+import { novelSpeakers } from "./novel_speaker";
 
 // Fill alternating sides: inner left, inner right, outer left, outer right.
 export type NovelStage = [string | null, string | null, string | null, string | null];
@@ -31,6 +32,8 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
 
   return (frames: NovelFrame[]): NovelStage[] => {
     const slots: NovelStage = [null, null, null, null];
+    const speakers = novelSpeakers(frames, cast);
+    const dialogueParagraphs = new Set(frames.filter((_, index) => speakers[index]).map(frame => frame.paragraph));
     const paragraphCast = new Map<string, string[]>();
     let previousNamedCharacter: string | null = null;
     let currentCast: string[] = [];
@@ -51,7 +54,11 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
         paragraphCast.set(frame.paragraph, mentioned);
       }
       if (frame.startsParagraph) {
-        currentCast = mentioned.length ? mentioned : previousNamedCharacter && continuesCharacter(frame.paragraph) ? [previousNamedCharacter] : [];
+        // A labeled turn changes who is speaking, not who is still in the room.
+        // Prioritize explicit presence when all four slots are already occupied.
+        currentCast = dialogueParagraphs.has(frame.paragraph)
+          ? [...new Set([...mentioned, ...slots.filter((id): id is string => id !== null)])].slice(0, 4)
+          : mentioned.length ? mentioned : previousNamedCharacter && continuesCharacter(frame.paragraph) ? [previousNamedCharacter] : [];
         // Only bridge one paragraph. A new explicit mention is needed before another carry.
         previousNamedCharacter = mentioned.length === 1 ? mentioned[0]! : null;
       }

@@ -12,6 +12,15 @@ const cast: NovelCharacter[] = [
 const track = (text: string) => createNovelStageTracker(cast)(parseNovel(text));
 
 describe("paragraph-based visual novel scenes", () => {
+  it("retains listeners across labeled turns without adding people mentioned in dialogue", () => {
+    expect(track('Nyx and Sage wait.\nSage: "Coral is annoying."\nNyx: "I agree."\nThe room is empty.'))
+      .toEqual([["nyx", "sage", null, null], ["nyx", "sage", null, null],
+        ["nyx", "sage", null, null], [null, null, null, null]]);
+  });
+  it("adds a new labeled speaker while keeping existing listeners", () => {
+    expect(track('Sage waits.\nNyx: "Hello."'))
+      .toEqual([["sage", null, null, null], ["sage", "nyx", null, null]]);
+  });
   it("keeps Sage through the pronoun-led continuation from the browser passage", () => {
     const text = `Sage's lips press into a thin line, her attention focused on the parchment. Her scarred eye narrows slightly, the only betrayal of the wariness creeping into her usually composed demeanor. After a long moment, she lowers the note with a slow, deliberate motion, her fingers brushing against the edge of the paper as if assessing its weight.
 
