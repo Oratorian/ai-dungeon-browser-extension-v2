@@ -14,7 +14,8 @@ it("waits for a complete capture, creates once, toggles in order and rejects sta
       ...input, id: input.id, title: "VN Mode", type: "Settings", value: VN_CARD_ENTRY,
     } } } }) } as Response;
   });
-  const writer = installVnCardWriter(fetchNative, () => route);
+  const refresh = vi.fn(async () => {});
+  const writer = installVnCardWriter(fetchNative, () => route, refresh);
   writer.observe("https://api.aidungeon.com/graphql", { headers: { authorization: "test-only" } });
   async function send(enabled: boolean) {
     const id = crypto.randomUUID();
@@ -38,6 +39,7 @@ it("waits for a complete capture, creates once, toggles in order and rejects sta
   expect(requests).toHaveLength(1);
   expect((await send(false)).error).toBeUndefined();
   expect(requests[1].variables.input.keys).toBe("vnoff");
+  expect(refresh).toHaveBeenLastCalledWith("story");
   expect(requests[1].variables.input.value).toBe(VN_CARD_ENTRY);
   expect(requests[1].variables.input.id).toBe(requests[0].variables.input.id);
   route = "different-story";

@@ -1,4 +1,5 @@
 import type { AidCard } from "./protocol";
+import { refreshVnCardView } from "./vn_card_view";
 
 export const VN_CARD_MESSAGE = "de-vn-story-card";
 export const VN_CARD_ENTRY = `IMPORTANT:
@@ -38,7 +39,7 @@ export function planVnCard(cards: VnCard[], shortId: string, enabled: boolean) {
 }
 
 /** Page-world only. Credentials stay in this closure, never in messages or storage. */
-export function installVnCardWriter(fetchNative: typeof fetch, currentShortId: () => string | null) {
+export function installVnCardWriter(fetchNative: typeof fetch, currentShortId: () => string | null, refreshView = refreshVnCardView) {
   let transport: { url: string; headers: Headers; credentials: RequestCredentials } | undefined;
   let snapshot: { shortId: string; cards: VnCard[] } | undefined;
   let serial = Promise.resolve();
@@ -79,6 +80,9 @@ export function installVnCardWriter(fetchNative: typeof fetch, currentShortId: (
             ...snapshot.cards.filter(value => value.id !== String(card.id)),
             { ...card, id: String(card.id), name: card.title, type: card.type, triggers: card.keys },
           ];
+        }
+        if (currentShortId() === message.shortId && snapshot?.cards.some(card => card.name === "VN Mode")) {
+          await refreshView(message.shortId);
         }
       } catch (cause) { error = cause instanceof Error ? cause.message : String(cause); }
       window.postMessage({ source: VN_CARD_MESSAGE, kind: "result", id: message.id, error, waiting }, location.origin);

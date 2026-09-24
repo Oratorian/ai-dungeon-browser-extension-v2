@@ -23,5 +23,23 @@ it("disables a saved VN session and its stale card before accepting explicit ena
   settings.update(value => ({ ...value, visualNovelMode: true }));
   syncVnCard();
   expect(post.mock.calls[1]![0]).toMatchObject({ enabled: true, shortId: "story" });
+  function finish(index: number, error?: string) {
+    window.dispatchEvent(new MessageEvent("message", { source: window, origin: location.origin,
+      data: { source: VN_CARD_MESSAGE, kind: "result", id: post.mock.calls[index]![0].id, error } }));
+  }
+  // Exit while enabling is still saving must follow immediately, without polling.
+  settings.update(value => ({ ...value, visualNovelMode: false }));
+  syncVnCard();
+  finish(1);
+  expect(post.mock.calls[2]![0]).toMatchObject({ enabled: false });
+  // A failed exit must not poison future exits after a successful re-entry.
+  finish(2, "Temporary save failure");
+  settings.update(value => ({ ...value, visualNovelMode: true }));
+  syncVnCard();
+  finish(3);
+  settings.update(value => ({ ...value, visualNovelMode: false }));
+  syncVnCard();
+  expect(post.mock.calls[4]![0]).toMatchObject({ enabled: false });
+  finish(4);
   post.mockRestore();
 });

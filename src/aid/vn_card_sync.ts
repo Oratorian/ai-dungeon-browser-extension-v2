@@ -9,6 +9,8 @@ let completed = "";
 let pending: { id: string; key: string; deadline: number } | undefined;
 let failed = "";
 let connected = false;
+let desired = "";
+const managed = new Set<string>();
 
 /** A saved preference is not consent to resume VN in a newly opened page. */
 export function startVnCardSession() {
@@ -28,8 +30,10 @@ export function syncVnCard(retry = false) {
         failed = result.waiting ? "" : pending.key;
         vnCardError.set(String(result.error));
       } else { completed = pending.key; vnCardError.set(""); }
+      const finishedKey = pending.key;
       pending = undefined;
-      // The user may have toggled again while a save was pending.
+      // Send a queued exit immediately after an in-flight enable completes.
+      if (finishedKey !== `${playedShortId()}:${get(settings).visualNovelMode}`) syncVnCard();
     });
   }
   if (retry) { failed = ""; completed = ""; }
@@ -38,12 +42,18 @@ export function syncVnCard(retry = false) {
     vnCardError.set("VN Mode card save timed out. Refresh the page and retry.");
   }
   const shortId = playedShortId();
-  if (!shortId || pending) return;
+  if (!shortId) return;
   const enabled = get(settings).visualNovelMode;
   const detected = get(aidDetected);
-  if (!enabled && !completed.startsWith(`${shortId}:`) &&
-    (detected.shortId !== shortId || !detected.cards.some(card => card.name === "VN Mode"))) return;
+  if (enabled || detected.shortId === shortId && detected.cards.some(card => card.name === "VN Mode")) managed.add(shortId);
+  if (!enabled && !managed.has(shortId)) return;
   const key = `${shortId}:${enabled}`;
+  // Results from a previous visit to this mode must not suppress a fresh toggle.
+  // An unsuccessful save may also have reached the server before its response failed.
+  if (key !== desired) {
+    desired = key; completed = ""; failed = ""; vnCardError.set("");
+  }
+  if (pending) return;
   if (key === completed || key === failed) return;
   const id = crypto.randomUUID();
   pending = { id, key, deadline: Date.now() + 25000 };
