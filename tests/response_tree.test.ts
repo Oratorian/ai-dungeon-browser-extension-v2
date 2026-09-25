@@ -18,6 +18,16 @@ const matches = (nodes: ResponseNode[]) => chunks(nodes).filter(node => node.chu
 beforeEach(() => settings.update(value => ({ ...value, highlightMarkdown: true })));
 
 describe("response text-node matching", () => {
+  it.each([
+    ["Say", 'You say, "All good, accidents happen."'],
+    ["Do", "You sigh."],
+    ["Story", "You watch the sun rise."],
+    ["Guide", "You meet the visitor in the next scene."],
+  ])("does not render a hidden replay label as a duplicate %s action", (_mode, prose) => {
+    const result = parseResponseHtml(`<span id="replay" hidden data-gameplay-replay-label="true">Action ${prose} </span><span aria-labelledby="replay" role="heading" aria-level="3"><span id="action-text">${prose} </span></span>`, cards("You"));
+    expect(text(result)).toBe(prose + " ");
+    expect(matches(result)).toEqual(["You"]);
+  });
   it("never treats aria-label or aria-level as the character Aria", () => {
     const prose = 'You were mesmerized. "I-..." you could not finish the sentence.';
     const html = `<span role="heading" aria-label="Action ${prose.replaceAll('"', '&quot;')}" aria-level="3">${prose}</span>`;

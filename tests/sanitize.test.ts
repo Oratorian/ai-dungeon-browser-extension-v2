@@ -8,6 +8,10 @@ import { parseResponse } from "@/rendering/parser";
 // pin the two markups AI Dungeon has actually served that did exactly that.
 
 describe("sanitizeResponseHtml", () => {
+  it("removes hidden replay text before dropping presentation attributes", () => {
+    const html = '<span hidden data-gameplay-replay-label="true">Action You say, "Hello."</span><span aria-labelledby="replay"><em>You</em> say, "Hello."</span>';
+    expect(sanitizeResponseHtml(html)).toBe('<span><em>You</em> say, "Hello."</span>');
+  });
   it("strips the aria-label AI Dungeon puts on a player action, which repeats the action text", () => {
     // Served on 2026-09-13, after a live AID patch: the action text once in aria-label (with its own
     // quotes escaped) and once as the content. The stray `"` inside the label is what showed up on

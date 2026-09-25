@@ -21,9 +21,18 @@ export const RESPONSE_SANITIZE_CONFIG = {
 
 /** AI Dungeon's response markup reduced to what the parser may see. */
 export function sanitizeResponseHtml(html: string): string {
-  return DOMPurify.sanitize(html, RESPONSE_SANITIZE_CONFIG);
+  const container = document.createElement("div");
+  container.append(sanitizeResponseFragment(html));
+  return container.innerHTML;
 }
 
 export function sanitizeResponseFragment(html: string): DocumentFragment {
-  return DOMPurify.sanitize(html, { ...RESPONSE_SANITIZE_CONFIG, RETURN_DOM_FRAGMENT: true });
+  // AID repeats actions in hidden replay labels referenced by aria-labelledby.
+  // Keep the hidden marker until we can remove the whole subtree, otherwise
+  // stripping attributes turns the accessibility copy into visible story text.
+  const fragment = DOMPurify.sanitize(html, {
+    ...RESPONSE_SANITIZE_CONFIG, ADD_ATTR: ["hidden"], RETURN_DOM_FRAGMENT: true,
+  });
+  fragment.querySelectorAll("[hidden]").forEach(node => node.remove());
+  return fragment;
 }

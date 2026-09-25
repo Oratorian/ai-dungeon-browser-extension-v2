@@ -6,7 +6,7 @@ export function preserveTypography(original: HTMLElement, host: HTMLElement): vo
     const text = walker.currentNode.textContent?.trim();
     if (!text || /^w_[\w-]+$/.test(text)) continue;
     const parent = walker.currentNode.parentElement;
-    if (!parent || parent.closest('[aria-hidden="true"]')) continue;
+    if (!parent || parent.closest('[hidden], [aria-hidden="true"]')) continue;
     source = parent;
     break;
   }

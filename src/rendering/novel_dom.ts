@@ -4,9 +4,17 @@ export function rememberNovelSource(container: HTMLElement, source: HTMLElement)
   originals.set(container, source);
 }
 
+/** Labels classify response rows, but are never used as narration text. */
+export function responseAccessibilityLabel(element: HTMLElement): string {
+  return element.getAttribute("aria-label") || (element.getAttribute("aria-labelledby") ?? "")
+    .split(/\s+/).filter(Boolean)
+    .map(id => element.ownerDocument.getElementById(id)?.textContent ?? "").join(" ").trim();
+}
+
 export function storyText(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
   if (!(node instanceof HTMLElement)) return "";
+  if (node.hasAttribute("hidden")) return "";
   if (["SCRIPT", "STYLE", "BUTTON"].includes(node.tagName)) return "";
   if (node.getAttribute("aria-hidden") === "true" || /^w_[\w-]+$/.test(node.textContent?.trim() ?? "")) return "";
   if (node.tagName === "BR") return "\n";
