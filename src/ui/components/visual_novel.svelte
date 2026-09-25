@@ -190,7 +190,7 @@
   const trackStage = $derived(createNovelStageTracker(characters));
   const stages = $derived(trackStage(frames));
   const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => characters.find(c => c.id === id)));
-  const speakers = $derived(novelSpeakers(frames, characters));
+  const speakers = $derived($settings.novelStoryCardInstructions !== false ? novelSpeakers(frames, characters) : []);
   const speaker = $derived(stageCharacters.some(character => character?.id === speakers[index]) ? speakers[index] : null);
   const locations: NovelLocation[] = $derived(($selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [])
     .filter(card => card.type.trim().toLowerCase() === "location")
@@ -561,7 +561,7 @@
           <div class="stage-slot" class:speaking={!!speaker && character?.id === speaker} data-edge={stageCharacters.filter(Boolean).length <= 2 ? (slot === 0 ? "left" : "right") : slot === 2 ? "left" : slot === 3 ? "right" : "middle"} style:grid-column={stageCharacters.filter(Boolean).length <= 2 ? ["1 / 3", "3 / 5", "1", "4"][slot] : String([2, 3, 1, 4][slot])}>
             {#if character}
               {#key character.id}
-                <div class="stage-character" class:dimmed={character.id !== speaker && (!!speaker || $settings.novelStoryCardInstructions !== false)} transition:portraitFade>
+                <div class="stage-character" class:dimmed={$settings.novelStoryCardInstructions !== false && character.id !== speaker} transition:portraitFade>
                   {#if character.portrait}
                     <img src={character.portrait} alt={character.name} class="portrait" />
                   {:else}
