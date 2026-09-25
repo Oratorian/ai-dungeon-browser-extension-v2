@@ -682,14 +682,15 @@
   button:disabled { opacity: .4; cursor: default; }
   .accent { background: #f8ae2c; color: #191c22; border-color: #f8ae2c; }
   .accent:hover:enabled { background: #ffc761; }
-  .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, 1440px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: visible; pointer-events: none; }
+  /* Grow spacing with portrait height above 1080p instead of crowding tall sprites into 1440px. */
+  .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, max(1440px, 133.333dvh)); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: visible; pointer-events: none; }
   .stage-slot { position: relative; grid-row: 1; min-width: 0; min-height: 0; }
   /* Keep portrait ordering below the reading shade and controls. */
   .stage { z-index: 0; }
   .stage-slot { z-index: 0; }
   .stage-slot.speaking { z-index: 1; }
   .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
-  .portrait { position: absolute; left: 50%; transform: translateX(-50%); width: auto; max-width: min(100vw, 1440px); height: 100%; object-fit: contain; object-position: center top; filter: url("#novel-portrait-depth"); mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
+  .portrait { position: absolute; left: 50%; transform: translateX(-50%); width: auto; max-width: min(100vw, max(1440px, 133.333dvh)); height: 100%; object-fit: contain; object-position: center top; filter: url("#novel-portrait-depth"); mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
   .stage-slot[data-edge="left"] .portrait { left: 0; transform: none; object-position: left top; }
   .stage-slot[data-edge="right"] .portrait { left: auto; right: 0; transform: none; object-position: right top; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
