@@ -190,7 +190,7 @@
   const trackStage = $derived(createNovelStageTracker(characters));
   const stages = $derived(trackStage(frames));
   const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => characters.find(c => c.id === id)));
-  const speakers = $derived(novelSpeakers(frames, characters));
+  const speakers = $derived($settings.novelStoryCardInstructions !== false ? novelSpeakers(frames, characters) : []);
   const speaker = $derived(stageCharacters.some(character => character?.id === speakers[index]) ? speakers[index] : null);
   const locations: NovelLocation[] = $derived(($selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [])
     .filter(card => card.type.trim().toLowerCase() === "location")
@@ -513,29 +513,29 @@
               <section id="novel-settings-panel" class="vn-settings-panel" aria-label="Visual novel settings">
                 <div class="settings-heading"><strong>VN settings</strong><button onclick={closeSettings} aria-label="Close VN settings">Close</button></div>
                 <div class="visual-options" role="group" aria-label="Visual effects">
-                  <button role="switch" aria-checked={$settings.novelBlur} aria-label="Background blur" onclick={() => $settings.novelBlur = !$settings.novelBlur} title="Soften the location background">Blur: {$settings.novelBlur ? "On" : "Off"}</button>
-                  <button role="switch" aria-checked={$settings.novelGlow} aria-label="Character glow" onclick={() => $settings.novelGlow = !$settings.novelGlow} title="Light outline around characters">Glow: {$settings.novelGlow ? "On" : "Off"}</button>
+                  <button role="switch" aria-checked={$settings.novelBlur} aria-label="Background blur" onclick={() => $settings.novelBlur = !$settings.novelBlur} title="Blur the background to make characters stand out. Turn off for a sharper background.">Blur: {$settings.novelBlur ? "On" : "Off"}</button>
+                  <button role="switch" aria-checked={$settings.novelGlow} aria-label="Character glow" onclick={() => $settings.novelGlow = !$settings.novelGlow} title="Add a light outline around characters so they are easier to see.">Glow: {$settings.novelGlow ? "On" : "Off"}</button>
                 </div>
                 <div class="instruction-options">
-                  <button role="switch" aria-checked={$settings.novelStoryCardInstructions} aria-label="Story-card instructions" onclick={() => $settings.novelStoryCardInstructions = !$settings.novelStoryCardInstructions}>Story-card instructions: {$settings.novelStoryCardInstructions ? "On" : "Off"}</button>
-                  <small>Off keeps VN running without activating its formatting instructions. Turn Blur and Glow off too for a lite setup.</small>
+                  <button role="switch" aria-checked={$settings.novelStoryCardInstructions} aria-label="Track Speakers" onclick={() => $settings.novelStoryCardInstructions = !$settings.novelStoryCardInstructions}>Track Speakers: {$settings.novelStoryCardInstructions ? "On" : "Off"}</button>
+                  <small>Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.</small>
                 </div>
                 <TtsSettings grid disableInitializeWhenOff />
                 <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
-                  <div class="voice-option">
+                  <div class="voice-option" title="Choose the voice that reads the story aloud.">
                     <span>Voice</span>
                     <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
                       bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
                       items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
                   </div>
-                  <div class="voice-option">
+                  <div class="voice-option" title="Lower values prepare speech faster. Higher values spend more time refining how it sounds.">
                     <span>Generation steps</span>
                     <Select ariaLabel="Generation steps" allowDeselect={false} portal={false}
                       bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
                       items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
                   </div>
-                  <div class="voice-option"><span>Pitch</span><Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} /></div>
-                  <div class="voice-option"><span>Queue</span><Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} /></div>
+                  <div class="voice-option" title="Make the voice lower or higher without changing reading speed. Zero keeps the original voice."><span>Pitch</span><Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} /></div>
+                  <div class="voice-option" title="How many upcoming lines to prepare in advance. A larger queue can reduce waiting as you read, but uses more memory and work up front."><span>Queue</span><Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} /></div>
                   <div class="voice-preview"><TtsPreview /></div>
                 </fieldset>
               </section>
@@ -561,7 +561,7 @@
           <div class="stage-slot" class:speaking={!!speaker && character?.id === speaker} data-edge={stageCharacters.filter(Boolean).length <= 2 ? (slot === 0 ? "left" : "right") : slot === 2 ? "left" : slot === 3 ? "right" : "middle"} style:grid-column={stageCharacters.filter(Boolean).length <= 2 ? ["1 / 3", "3 / 5", "1", "4"][slot] : String([2, 3, 1, 4][slot])}>
             {#if character}
               {#key character.id}
-                <div class="stage-character" class:dimmed={character.id !== speaker} transition:portraitFade>
+                <div class="stage-character" class:dimmed={$settings.novelStoryCardInstructions !== false && character.id !== speaker} transition:portraitFade>
                   {#if character.portrait}
                     <img src={character.portrait} alt={character.name} class="portrait" />
                   {:else}

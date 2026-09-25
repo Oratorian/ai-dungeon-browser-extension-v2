@@ -4,6 +4,27 @@ import { readNovelPassages, rememberNovelSource } from "@/rendering/novel_dom";
 
 describe("visual novel story source", () => {
   it.each([
+    ["Say", "w_comment", 'You say, "All good, accidents happen."'],
+    ["Do", "w_run", "You sigh."],
+    ["Story", "w_book", "The sun rises."],
+    ["Guide", "w_compass", "Introduce the visitor."],
+  ])("reads %s actions once when AID provides a hidden replay label", (_mode, icon, prose) => {
+    const output = document.createElement("div");
+    output.innerHTML = `<div id="transition-opacity"><div></div><span id="action-icon" aria-hidden="true">${icon}</span><div><span id="replay" hidden data-gameplay-replay-label="true">Action ${prose} </span><span aria-labelledby="replay" role="heading"><span id="action-text">${prose} </span></span></div></div>`;
+    const row = output.firstElementChild as HTMLElement;
+    const source = row.lastElementChild as HTMLElement;
+    expect(readNovelPassages(output).map(p => p.text)).toEqual([prose]);
+    rememberNovelSource(row, source);
+    source.style.display = "none";
+    row.prepend(document.createTextNode("Extension-rendered copy"));
+    expect(readNovelPassages(output).map(p => p.text)).toEqual([prose]);
+  });
+  it("excludes replay labels surrounding regular and latest story sections", () => {
+    const output = document.createElement("div");
+    output.innerHTML = '<div><span id="section" hidden data-gameplay-replay-label="true">Story section: Dawn arrives.</span><span aria-labelledby="section"><span id="transition-opacity"><span>Dawn arrives.</span></span></span></div><div><span id="latest" hidden data-gameplay-replay-label="true">Last action: A visitor appears.</span><span id="transition-opacity" aria-labelledby="latest"><span>A visitor appears.</span></span></div>';
+    expect(readNovelPassages(output).map(p => p.text)).toEqual(["Dawn arrives.", "A visitor appears."]);
+  });
+  it.each([
     ["w_run", "You look at her."],
     ["w_comment", 'You say, "What if ... I am not?"'],
   ])("reads the live alpha action row once, excluding %s", (icon, text) => {

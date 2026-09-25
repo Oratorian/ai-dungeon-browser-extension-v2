@@ -3,7 +3,7 @@ import { Config } from "@/shared/config";
 import Response from "@/ui/components/response.svelte";
 import { ResponseType } from "@/shared/types";
 import { preserveTypography } from "./typography";
-import { rememberNovelSource } from "./novel_dom";
+import { rememberNovelSource, responseAccessibilityLabel, storyText } from "./novel_dom";
 
 export class DOM {
   private static mountedComponents = new Map<HTMLElement, ReturnType<typeof mount>>();
@@ -32,7 +32,7 @@ export class DOM {
   static pickTextHost(container: HTMLElement): HTMLElement | null {
     const first = container.firstElementChild as HTMLElement | null;
     // Common case (story text, last action): the first child already holds the text.
-    if (first?.textContent?.trim()) return first;
+    if (first && storyText(first).trim()) return first;
 
     // Player-action shape: skip the empty leading span and zero-size layout spacers (no text), and
     // the single icon ligature (AID renders icons as "w_*" tokens, e.g. "w_run"), then take the
@@ -40,7 +40,7 @@ export class DOM {
     let best: HTMLElement | null = null;
     let bestLen = 0;
     for (const child of Array.from(container.children) as HTMLElement[]) {
-      const text = (child.textContent ?? "").trim();
+      const text = storyText(child).trim();
       if (!text || /^w_[\w-]+$/.test(text)) continue;
       if (text.length > bestLen) {
         best = child;
@@ -141,7 +141,7 @@ export class DOM {
       // Must have an element first child; that inner span is what mountResponseOn hides & renders.
       if (!container.firstElementChild) return;
 
-      const ariaLabel = container.getAttribute("aria-label") ?? "";
+      const ariaLabel = responseAccessibilityLabel(container);
 
       // The newest response is the "Last action:" one. It needs the LastAction type so the <Focus>
       // component renders above it. Everything else (older story paragraphs and player actions)
