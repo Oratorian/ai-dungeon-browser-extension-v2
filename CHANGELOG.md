@@ -7,6 +7,25 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
+## v3.0.1
+
+### 🩹 AI Dungeon action compatibility
+
+- Fixed duplicated action text such as `Action You say ... You say ...` caused by AI Dungeon's
+  new hidden accessibility labels, confirmed on Alpha. These labels are now excluded from
+  rendered story text and VN narration. Actions were not being submitted twice.
+- Restored latest-response detection for the updated markup and kept hidden labels from
+  affecting text styling. Regression checks cover **Say**, **Do**, **Story**, and **Guide**.
+
+### 🎭 Clearer VN settings and speaker controls
+
+- Renamed **Story-card instructions** to **Track Speakers**. Its help now explains that changes
+  to the AI's writing may take **2 or 3 turns** to take effect.
+- Turning **Track Speakers** off immediately disables speaker highlighting, foreground emphasis,
+  and character dimming, even when existing dialogue still contains speaker labels.
+- Simplified VN settings help and narration status messages. Accelerated TTS help now explains
+  the Firefox-only Windows helper and extra-tab requirements without misleading Chrome users.
+
 ## v3.0.0
 
 ### 🎭 Visual Novel Mode
