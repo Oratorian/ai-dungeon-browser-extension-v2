@@ -517,8 +517,8 @@
                   <button role="switch" aria-checked={$settings.novelGlow} aria-label="Character glow" onclick={() => $settings.novelGlow = !$settings.novelGlow} title="Add a light outline around characters so they are easier to see.">Glow: {$settings.novelGlow ? "On" : "Off"}</button>
                 </div>
                 <div class="instruction-options">
-                  <button role="switch" aria-checked={$settings.novelStoryCardInstructions} aria-label="Story-card instructions" onclick={() => $settings.novelStoryCardInstructions = !$settings.novelStoryCardInstructions}>Story-card instructions: {$settings.novelStoryCardInstructions ? "On" : "Off"}</button>
-                  <small>On adds a Story Card asking the AI to put names before dialogue, so VN can highlight the speaker. Off lets you use VN without those extra writing instructions.</small>
+                  <button role="switch" aria-checked={$settings.novelStoryCardInstructions} aria-label="Track Speakers" onclick={() => $settings.novelStoryCardInstructions = !$settings.novelStoryCardInstructions}>Track Speakers: {$settings.novelStoryCardInstructions ? "On" : "Off"}</button>
+                  <small>Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.</small>
                 </div>
                 <TtsSettings grid disableInitializeWhenOff />
                 <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
