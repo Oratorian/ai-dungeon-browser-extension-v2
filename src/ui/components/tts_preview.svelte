@@ -47,7 +47,7 @@
 </script>
 
 <div class="flex flex-col gap-2 p-2">
-  <div class="flex gap-2">
+  <div class="flex gap-2" title="Hear a short sample using your chosen voice, generation steps, and pitch.">
     <button onclick={preview} disabled={!ready || generating}
       class="flex-1 rounded-lg p-2 bg-theme-neutral-100 hover:bg-theme-neutral-300 disabled:opacity-50 disabled:cursor-default">That's how it sounds like</button>
     {#if generating || previewUrl}
@@ -55,7 +55,7 @@
     {/if}
   </div>
   <p class="text-xs text-theme-neutral-800">{example}</p>
-  {#if !ready}<p class="text-xs text-theme-neutral-800">Initialize TTS to try the selected voice, steps, and pitch.</p>{/if}
+  {#if !ready}<p class="text-xs text-theme-neutral-800">{$settings.novelTtsEnabled ? "Click Initialize TTS to prepare the voice, then try a sample." : "Turn on Enable TTS to try a voice sample."}</p>{/if}
   {#if previewUrl}<audio aria-label="Narration preview" controls src={previewUrl} bind:this={player} class="w-full"></audio>{/if}
   {#if message}<p role="status" class="text-xs text-theme-neutral-800">{message}</p>{/if}
 </div>
