@@ -589,10 +589,10 @@
             {#if settingsOpen}
               <section id="novel-settings-panel" class="vn-settings-panel" aria-label="Visual novel settings">
                 <div class="settings-heading"><strong>VN settings</strong><button onclick={closeSettings} aria-label="Close VN settings">Close</button></div>
-                <Tabs.Root value="engine">
+                <Tabs.Root value="voices">
                   <Tabs.List class="settings-tabs" aria-label="VN settings categories">
-                    <Tabs.Trigger value="engine" class="settings-tab">TTS Engine</Tabs.Trigger>
                     <Tabs.Trigger value="voices" class="settings-tab">Narration &amp; Voices</Tabs.Trigger>
+                    <Tabs.Trigger value="engine" class="settings-tab">TTS Engine</Tabs.Trigger>
                   </Tabs.List>
                   <Tabs.Content value="engine" class="settings-tab-content">
                     <TtsSettings grid disableInitializeWhenOff />
@@ -735,9 +735,11 @@
 {/if}
 
 <style>
-  :global(.settings-tabs) { display: flex; gap: 8px; margin-bottom: 12px; }
-  :global(.settings-tab) { flex: 1; }
-  :global(.settings-tab[data-state="active"]) { border-color: #f8ae2c; color: #f8ae2c; }
+  .vn-settings-panel :global(.settings-tabs) { display: flex; gap: 4px; margin-bottom: 12px; padding: 4px; border: 1px solid #59636b; border-radius: 10px; background: #10171d; }
+  .vn-settings-panel :global(.settings-tab) { flex: 1; min-height: 42px; padding: 10px 12px; border: 1px solid transparent; border-radius: 7px; background: #202b34; color: #b9c2c8; font-weight: 600; cursor: pointer; }
+  .vn-settings-panel :global(.settings-tab:hover) { background: #34434f; color: #fff; }
+  .vn-settings-panel :global(.settings-tab[data-state="active"]) { border-color: #f8ae2c; background: #f8ae2c; color: #10171d; box-shadow: 0 2px 6px #0004; }
+  .vn-settings-panel :global(.settings-tab:focus-visible) { outline: 2px solid #fff; outline-offset: 2px; }
   :global(.settings-tab-content) { display: flex; flex-direction: column; gap: 12px; }
   :global(.settings-tab-content[hidden]) { display: none; }
   .engine-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border: 0; padding: 8px; }
