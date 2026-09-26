@@ -1,6 +1,8 @@
 <script lang="ts">
   import Card from "@/ui/components/card.svelte";
-  import Grid from "@/ui/components/grid.svelte";
+  import SettingsCard from "@/ui/components/settings_card.svelte";
+  import { setContext } from "svelte";
+  setContext("settings-inline-help", true);
   import AdventurePicker from "@/ui/components/adventure_picker.svelte";
   import StoryCardEditor from "@/ui/components/story_card_editor.svelte";
   import { Storage } from "@/storage";
@@ -110,13 +112,22 @@
 
 </script>
 
-<div class="flex flex-col gap-4">
-  <Field label="Adventure Picker">
+<header class="page-heading"><span class="text-pretty-theme text-xs font-bold uppercase tracking-widest">Your collection</span><h1>Story cards</h1><p class="text-theme-neutral-800">Bring your cast and places to life with pictures, highlights and sounds.</p></header>
+<div class="cards-workspace">
+  <aside class="collection-sidebar">
+  <SettingsCard icon="collections_bookmark" label="Card set" description="Choose the collection you want to work on. Each set keeps its own cards and pictures.">
+  <Field label="Selected set">
     <AdventurePicker />
   </Field>
 
+  </SettingsCard>
   {#if selectedAdventure}
-    <StampBinding />
+    <SettingsCard icon="approval" label="Use in your story" description="Link this set to your adventure so the right cards are ready when you play."><StampBinding /></SettingsCard>
+  {/if}
+  <p class="text-sm text-theme-neutral-800 leading-relaxed">New here? Open Card sync to bring in names from AI Dungeon, then open a card to add its pictures and sounds.</p>
+  </aside>
+  <section class="collection-content" aria-label="Story card collection">
+  {#if selectedAdventure}
 
     <!-- Search + add -->
     <div class="flex items-center gap-2">
@@ -129,7 +140,8 @@
         <input
           type="text"
           bind:value={query}
-          placeholder="Search name or triggers"
+          aria-label="Search story cards"
+          placeholder="Search names or matching words"
           class="bg-theme-neutral-100 w-full min-h-11 pl-10 pr-9 py-3 outline-0 rounded-xl text-sm"
         />
         {#if query}
@@ -149,7 +161,7 @@
         class="flex items-center gap-1 px-3 min-h-11 bg-pretty-theme text-theme-neutral-0 rounded-xl hover:opacity-90 transition-all text-sm font-bold shrink-0"
       >
         <span class="font-symbol text-lg">add</span>
-        Card
+        Add card
       </button>
     </div>
 
@@ -159,6 +171,7 @@
         {#each typeCounts as entry (entry.type)}
           {@const on = activeTypes.has(entry.type)}
           <button
+            aria-pressed={on}
             onclick={() => toggleType(entry.type)}
             class="flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 rounded-lg text-xs transition-colors {on
               ? 'bg-pretty-theme/20 text-pretty-theme'
@@ -206,7 +219,7 @@
         </span>
         <span class="text-xs text-center max-w-xs">
           {storyCards.length === 0
-            ? "Add a card, or bring your existing ones over from the Import tab."
+            ? "Add a card, or bring your existing ones over from Card sync."
             : "Try a different search, or clear the type filters."}
         </span>
       </div>
@@ -216,6 +229,7 @@
           {@const open = isOpen(group.type)}
           <div class="flex flex-col bg-theme-neutral-200 rounded-xl overflow-hidden">
             <button
+              aria-expanded={open}
               onclick={() => toggleGroup(group.type)}
               class="flex items-center gap-2 p-3 w-full hover:bg-theme-neutral-300 transition-colors"
             >
@@ -233,19 +247,32 @@
 
             {#if open}
               <div transition:slide={{ duration: 200 }} class="p-2 pt-0">
-                <Grid>
+                <div class="card-grid">
                   {#each group.cards as card (card.id)}
                     <Card storyCard={card} adventureId={selectedAdventure.id} />
                   {/each}
-                </Grid>
+                </div>
               </div>
             {/if}
           </div>
         {/each}
       </div>
     {/if}
+  {:else}
+    <SettingsCard icon="style" label="Start your collection" description="Choose or create a card set on the left. You can also bring in cards from your open AI Dungeon story using Card sync."><p class="text-sm text-theme-neutral-800">Your card pictures and sounds stay in the extension, ready to use while you play.</p></SettingsCard>
   {/if}
+  </section>
 </div>
 
 <!-- Story Card Editor Dialog -->
 <StoryCardEditor />
+
+<style>
+  .page-heading { padding:8px 8px 24px; }
+  h1 { font-size:30px; font-weight:700; margin:6px 0; }
+  .page-heading p { font-size:14px; line-height:1.6; }
+  .cards-workspace { display:grid; grid-template-columns:300px minmax(0,1fr); gap:24px; align-items:start; }
+  .collection-sidebar,.collection-content { display:flex; flex-direction:column; gap:20px; min-width:0; }
+  .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
+  @media(max-width:800px) { .cards-workspace { grid-template-columns:1fr; } }
+</style>

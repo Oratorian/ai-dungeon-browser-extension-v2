@@ -5,14 +5,15 @@
   import { AudioManager } from "@/audio/manager";
   import type { Adventure, StoryCard } from "@/shared/types";
   import Field from "./field.svelte";
-  import Item from "./item.svelte";
+  import SettingsCard from "./settings_card.svelte";
   import Row from "./row.svelte";
   import ImageLibrary from "./image_library.svelte";
   import Switch from "./switch.svelte";
   import Select from "./select.svelte";
   import Color from "./color.svelte";
   import AudioSelect from "./audio_select.svelte";
-  import { onDestroy } from "svelte";
+  import { onDestroy, setContext } from "svelte";
+  setContext("settings-inline-help", true);
 
   let isOpen = $state(false);
   let adventureId = $state<string | null>(null);
@@ -145,10 +146,10 @@
     />
     <Dialog.Content
       trapFocus={false}
-      class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[85vh] overflow-y-auto bg-theme-neutral-200 rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-bottom-4"
+      class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-[1160px] h-[90vh] flex flex-col overflow-hidden bg-theme-neutral-200 rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-bottom-4"
     >
       <div
-        class="relative h-32 bg-cover bg-center rounded-t-2xl overflow-hidden"
+        class="relative h-32 shrink-0 bg-cover bg-center rounded-t-2xl overflow-hidden"
         style={previewGraphic ? `background-image: url(${previewGraphic})` : ""}
       >
         {#if !previewGraphic}
@@ -163,7 +164,7 @@
               >delete
             </span>
           </button>
-          <button onclick={handleClose} class="p-2 rounded-lg transition-colors">
+          <button aria-label="Close card editor" onclick={handleClose} class="p-2 rounded-lg transition-colors">
             <span class="font-symbol text-2xl transition text-shadow-lg opacity-50 hover:opacity-100">close</span>
           </button>
         </div>
@@ -174,19 +175,14 @@
           </div>
           <div class="flex flex-col">
             <span class="text-xs text-theme-neutral-900 uppercase">{type}</span>
-            <span class="text-lg font-bold truncate max-w-48">{name || "Untitled Card"}</span>
+            <Dialog.Title class="text-xl font-bold truncate max-w-[65vw]">{name || "Untitled Card"}</Dialog.Title>
           </div>
         </div>
       </div>
 
-      <div class="flex flex-col gap-4 p-6">
-        <Item foldout icon="cadence" label="SFX">
-          <Field label="Audio Clips" info="Sound effects that play when this card is focused.">
-            <AudioSelect selectedIds={audioClips} onchange={handleAudioChange} maxSelections={4} />
-          </Field>
-        </Item>
-
-        <Item foldout expanded icon="edit" label="Basics">
+      <Dialog.Description class="px-6 py-3 text-sm text-theme-neutral-800 shrink-0">Choose how this card looks and sounds in your story. Click Save Changes when you are done.</Dialog.Description>
+      <div class="card-edit-grid">
+        <SettingsCard icon="edit" label="Basics" description="The name and words that connect this card to your story.">
           <Field label="Name">
             <input
               type="text"
@@ -196,7 +192,7 @@
             />
           </Field>
 
-          <Field label="Triggers">
+          <Field label="Matching words" info="Separate names or nicknames with commas. When these words appear in your story, the extension can highlight them using this card.">
             <input
               type="text"
               bind:value={triggers}
@@ -205,7 +201,7 @@
             />
           </Field>
 
-          <Field label="Gender">
+          <Field label="Gender" info="In Visual Novel Mode, this chooses the male or female character voice when Track Speakers is on. None uses the narrator instead.">
             <Select ariaLabel="Gender" allowDeselect={false} bind:value={gender}
               items={[{ value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "none", label: "None" }]} />
           </Field>
@@ -225,9 +221,17 @@
               {/each}
             </div>
           </Field>
-        </Item>
+        </SettingsCard>
+<SettingsCard icon="image" label="Media" description="Choose the pictures readers will see.">
+          <Field label="Icons" info="Small images shown inline in the story text.">
+            <ImageLibrary images={icons} onchange={handleIconsChange} label="Icon" maxImages={6} />
+          </Field>
 
-        <Item foldout icon="text_fields" label="Text">
+          <Field label="Graphics" info="Pictures used when you focus this card and in Visual Novel Mode. For location cards, these can become the scene background.">
+            <ImageLibrary images={graphics} onchange={handleGraphicsChange} label="Graphic" maxImages={4} />
+          </Field>
+        </SettingsCard>
+<SettingsCard icon="text_fields" label="Text" description="Decide where this card highlights text and which color it uses.">
           <Row>
             <Field label="Limit To">
               <Select
@@ -259,19 +263,16 @@
               <Color bind:value={color} />
             </Field>
           {/if}
-        </Item>
-
-        <Item foldout icon="image" label="Media">
-          <Field label="Icons" info="Small images shown inline in the story text.">
-            <ImageLibrary images={icons} onchange={handleIconsChange} label="Icon" maxImages={6} />
+        </SettingsCard>
+<SettingsCard icon="cadence" label="Sounds" description="Add sounds to play when you focus this card.">
+          <Field label="Audio Clips" info="Sound effects that play when this card is focused.">
+            <AudioSelect selectedIds={audioClips} onchange={handleAudioChange} maxSelections={4} />
           </Field>
+        </SettingsCard>
 
-          <Field label="Graphics" info="Large images shown in the focus view.">
-            <ImageLibrary images={graphics} onchange={handleGraphicsChange} label="Graphic" maxImages={4} />
-          </Field>
-        </Item>
 
-        <div class="flex gap-2 justify-end pt-2">
+      </div>
+        <div class="flex gap-2 justify-end p-4 border-t border-theme-neutral-300 shrink-0">
           <button onclick={handleClose} class="px-4 py-2 rounded-lg hover:bg-theme-neutral-300 transition-colors">
             Cancel
           </button>
@@ -282,7 +283,11 @@
             Save Changes
           </button>
         </div>
-      </div>
     </Dialog.Content>
   </Dialog.Portal>
 </Dialog.Root>
+
+<style>
+  .card-edit-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; padding:8px 24px 24px; overflow-y:auto; min-height:0; flex:1; align-items:start; }
+  @media(max-width:800px) { .card-edit-grid { grid-template-columns:1fr; padding:8px 16px 16px; } }
+</style>

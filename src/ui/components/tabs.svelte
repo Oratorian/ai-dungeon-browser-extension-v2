@@ -12,12 +12,12 @@
   const tabBtns: TabButton[] = [
     {
       icon: "style",
-      label: "Adventure",
+      label: "Story cards",
       tab: Tab.Adventure,
     },
     {
       icon: "sync",
-      label: "Import",
+      label: "Card sync",
       tab: Tab.Import,
     },
     {
@@ -28,7 +28,7 @@
   ];
 </script>
 
-<div class="flex w-full h-15 border-b border-theme-neutral-100">
+<div class="flex w-full h-15 shrink-0 border-b border-theme-neutral-100">
   {#each tabBtns as btn}
     {@const isActive = extensionState.editorTab === btn.tab}
     <button
@@ -40,14 +40,12 @@
         : 'hover:border-theme-neutral-200 hover:bg-theme-neutral-100'}"
     >
       <span class="font-symbol text-xl text-theme-neutral-800">{btn.icon}</span>
-      {#if isActive}
         <span
           in:fly={{ duration: 200, y: 8 }}
           class="font-bold {isActive ? 'text-shadow-theme-neutral-900' : 'text-theme-neutral-800 '}"
         >
           {btn.label}
         </span>
-      {/if}
     </button>
   {/each}
   <button

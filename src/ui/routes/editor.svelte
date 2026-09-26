@@ -57,7 +57,7 @@
   >
     <div
       transition:fly={{ duration: 200, y: 32 }}
-      style:max-width={extensionState.editorTab === Tab.Settings ? "1160px" : "640px"}
+      style:max-width="1160px"
       class="flex flex-col fixed w-[95vw] h-[95vh] bg-theme-neutral-0 rounded-2xl border border-theme-neutral-100 overflow-hidden"
     >
       <Tabs />

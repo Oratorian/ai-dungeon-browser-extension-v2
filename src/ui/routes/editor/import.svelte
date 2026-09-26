@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Field from "@/ui/components/field.svelte";
+  import SettingsCard from "@/ui/components/settings_card.svelte";
   import { aidDetected } from "@/aid/bridge";
   import { playedAdventureId, playedScenarioId, playedShortId } from "@/aid/adventure";
   import { Storage } from "@/storage";
@@ -142,11 +142,15 @@
   }
 </script>
 
-<div class="flex flex-col gap-4">
-  <Field
-    label="Import from AI Dungeon"
-    info="Reads the story cards from the adventure you have open in AI Dungeon and adds them to the selected adventure (a new one is created if none is selected). Only name, type, and triggers are imported. Cards you already have are updated in place rather than duplicated, so importing again keeps their triggers current while your icons, portraits and audio stay as they are."
-  >
+<header class="page-heading"><span class="text-pretty-theme text-xs font-bold uppercase tracking-widest">Connect your story</span><h1>Card sync</h1><p class="text-theme-neutral-800">Bring your AI Dungeon cards into the extension, ready for pictures and sounds.</p></header>
+<div class="sync-workspace">
+  <aside class="sync-guide">
+    <SettingsCard icon="help" label="How it works" description="A few quick steps to get your cards ready.">
+      <ol class="steps text-theme-neutral-800"><li><b>Open your story</b><p>Open the story cards in AI Dungeon, or refresh your adventure so the extension can find them.</p></li><li><b>Choose what to bring over</b><p>Pick the card types you want and check which set they will go into.</p></li><li><b>Make them yours</b><p>Click Import, then head to Story cards to add portraits, icons and sounds.</p></li></ol>
+    </SettingsCard>
+    <SettingsCard icon="verified_user" label="Your pictures stay put" description="Importing again updates existing cards instead of making extra copies."><p class="text-sm text-theme-neutral-800 leading-relaxed">Only names, types and matching words are brought over. Your existing icons, portraits and sounds stay as they are. This does not change the cards in AI Dungeon.</p></SettingsCard>
+  </aside>
+  <SettingsCard icon="sync" label="Import from AI Dungeon" description="Check the source and destination before importing. Nothing is copied until you click Import.">
     <div class="flex flex-col gap-3 bg-theme-neutral-100 rounded-xl p-3">
       {#if detected.cards.length === 0 || !detectedMatchesPlayed}
         <div class="flex flex-col items-center justify-center py-10 text-theme-neutral-700 gap-2">
@@ -154,14 +158,13 @@
           {#if !detectedMatchesPlayed}
             <span class="text-sm font-bold">Cards are for a different adventure</span>
             <span class="text-xs text-center max-w-xs">
-              The detected cards belong to another adventure (AI Dungeon likely loaded this one from cache). Reload the
+              The detected cards belong to another adventure (AI Dungeon has not sent the new cards to the extension yet). Reload the
               page to detect the adventure you're playing now.
             </span>
           {:else}
             <span class="text-sm font-bold">No story cards detected</span>
             <span class="text-xs text-center max-w-xs">
-              Cards are read from AI Dungeon's own traffic as it loads them, so open your story cards in AI Dungeon
-              once, or refresh the adventure, and they will show up here ready to import.
+              Open your story cards in AI Dungeon, or refresh the adventure. They will appear here once the extension finds them.
             </span>
           {/if}
         </div>
@@ -185,6 +188,7 @@
 
         <!-- Create-new-adventure toggle: keeps an import from landing in a previously-selected set -->
         <button
+          aria-pressed={createScenario}
           onclick={() => (createScenario = !createScenario)}
           class="flex items-start gap-2 p-2 rounded-lg text-left transition-colors {createScenario
             ? 'bg-theme-neutral-300'
@@ -208,10 +212,11 @@
           </div>
         </div>
 
-        <div class="flex flex-col gap-1.5">
+        <div class="type-grid">
           {#each groups as group (group.type)}
             {@const checked = selectedTypes.has(group.type)}
             <button
+              aria-pressed={checked}
               onclick={() => toggleType(group.type)}
               class="flex items-center gap-2 p-2 rounded-lg text-sm transition-colors {checked
                 ? 'bg-theme-neutral-300'
@@ -236,7 +241,7 @@
         </button>
 
         {#if result}
-          <div class="text-xs text-theme-neutral-800 px-1">
+          <div role="status" class="text-sm text-theme-neutral-800 p-3 bg-pretty-theme/10 rounded-lg">
             Imported <span class="font-bold text-pretty-theme">{result.imported}</span> into
             <span class="font-bold">{result.adventureName}</span>{#if result.updated > 0}, updated
               <span class="font-bold">{result.updated}</span>{/if}{#if result.skipped > 0},
@@ -245,5 +250,17 @@
         {/if}
       {/if}
     </div>
-  </Field>
+  </SettingsCard>
 </div>
+
+<style>
+  .page-heading { padding:8px 8px 24px; }
+  h1 { font-size:30px; font-weight:700; margin:6px 0; }
+  .page-heading p { font-size:14px; line-height:1.6; }
+  .sync-workspace { display:grid; grid-template-columns:320px minmax(0,1fr); gap:24px; align-items:start; }
+  .sync-guide { display:flex; flex-direction:column; gap:20px; }
+  .steps { display:flex; flex-direction:column; gap:22px; list-style:decimal; padding-left:20px; font-size:14px; line-height:1.6; }
+  .steps p { font-size:13px; margin-top:4px; }
+  .type-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  @media(max-width:800px) { .sync-workspace { grid-template-columns:1fr; } }
+</style>
