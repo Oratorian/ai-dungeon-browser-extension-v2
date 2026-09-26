@@ -191,6 +191,7 @@
   </SettingsCard>
     {/if}
     {#if current.id === "speech"}
+    <div class="speech-controls">
 <SettingsCard icon="record_voice_over" label="Speech engine" description="">
     <p class="text-sm text-theme-neutral-800">Turn on TTS to read your story aloud in English. Click Initialize TTS to get the voices ready. The first setup downloads about 380 MB; later visits reuse those files. Your story is not sent to an online voice service.</p>
     <TtsSettings grid />
@@ -213,6 +214,7 @@
     <VnVoiceProfile label="Female characters" bind:voice={$settings.novelTtsFemaleVoice} items={narratorVoices.filter(voice => /^F[1-4]$/.test(voice.value))} />
   </div>
 </SettingsCard>
+    </div>
     {/if}
     {#if current.id === "writing"}
 <SettingsCard icon="alternate_email" label="Story Card Autocomplete" description="Type @ in the action box to look up a name.">
@@ -295,6 +297,19 @@
   header { margin-bottom:4px; }
   h2 { font-size:30px; font-weight:700; margin:6px 0; }
   header p { font-size:14px; line-height:1.6; }
+  .speech-controls { display:flex; flex-direction:column; gap:20px; }
+  .speech-controls :global(button) {
+    border:1px solid #73838e;
+    background:linear-gradient(#35434d, #26323b);
+    box-shadow:0 2px 4px #0005;
+    border-radius:10px;
+    cursor:pointer;
+    transition:background .15s, border-color .15s;
+  }
+  .speech-controls :global(button:hover:not(:disabled)) { background:#405361; border-color:#b0bec8; }
+  .speech-controls :global(button:focus-visible) { outline:2px solid #f8ae2c; outline-offset:3px; }
+  .speech-controls :global(button[aria-checked="true"]) { border-color:#f8ae2c; background:#f8ae2c20; }
+  .speech-controls :global(button:disabled) { cursor:default; box-shadow:none; opacity:.5; }
   .control-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
   @media(max-width:760px) {
     .settings-workspace { grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); }
