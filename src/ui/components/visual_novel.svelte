@@ -48,6 +48,13 @@
   let retryEditing = $state(false);
   let retryInstruction = $state("");
   let locationOverride = $state("__auto");
+  let locationRevision = 0;
+  function chooseLocation(value: string | undefined) {
+    locationOverride = value || "__auto";
+    locationRevision++;
+    const adventure = $playedAdventureId;
+    if (adventure) void chrome.storage.local.set({ [`vn-location:${adventure}`]: locationOverride }).catch(() => {});
+  }
   let locationMenuOpen = $state(false);
   let settingsOpen = $state(false);
   let settingsButton: HTMLButtonElement | undefined = $state();
@@ -300,8 +307,15 @@
         node instanceof HTMLElement && (node.id === "gameplay-output" || node.querySelector("#gameplay-output"))))) schedule();
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    void chrome.storage.local.get(`vn-position:${adventure}`).then(saved => {
-      if (!disposed) pendingBookmark = readNovelBookmark(saved[`vn-position:${adventure}`]);
+    const locationVersion = locationRevision;
+    void chrome.storage.local.get([`vn-position:${adventure}`, `vn-location:${adventure}`]).then(saved => {
+      if (disposed) return;
+      pendingBookmark = readNovelBookmark(saved[`vn-position:${adventure}`]);
+      const location = saved[`vn-location:${adventure}`];
+      if (locationVersion === locationRevision && typeof location === "string"
+          && (location === "__auto" || location === "__none" || locations.some(item => item.id === location))) {
+        locationOverride = location;
+      }
     }).catch(() => {}).finally(() => {
       if (disposed) return;
       loaded = true; refresh();
@@ -580,7 +594,7 @@
             onfocusout={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) locationMenuOpen = false; }}>
             <button aria-expanded={locationMenuOpen} aria-controls="novel-location-panel" onclick={() => locationMenuOpen = true}>Location</button>
             <div id="novel-location-panel" class="location-panel" hidden={!locationMenuOpen}>
-              <Select ariaLabel="Scene location" portal={false} allowDeselect={false} bind:value={locationOverride}
+              <Select ariaLabel="Scene location" portal={false} allowDeselect={false} bind:value={() => locationOverride, chooseLocation}
                 items={[{ value: "__auto", label: `Automatic: ${automaticLocation?.name ?? "Unknown location"}` }, { value: "__none", label: "No background" }, ...locations.map(location => ({ value: location.id, label: location.name }))]} />
               <small>{locationOverride !== "__auto" ? "Manual background; select Automatic to resume tracking." : "Location tracked from story text."}{currentLocation && !background ? " No location artwork available." : ""}</small>
             </div>
