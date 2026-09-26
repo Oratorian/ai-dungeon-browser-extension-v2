@@ -62,3 +62,25 @@
     @apply flex justify-center items-center gap-2 pl-6 pr-6 border-b-4 border-transparent transition;
   }
 }
+
+/* Form surfaces live inside the extension shadow root, never on AI Dungeon's inputs. */
+input:where(:not([type]), [type="text"], [type="search"], [type="url"], [type="email"], [type="password"], [type="number"]),
+textarea {
+  border: 1px solid #68747d;
+  background-color: #111a20;
+  border-radius: 10px;
+  box-shadow: inset 0 2px 4px #0005;
+  caret-color: #f8ae2c;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:where(:not([type]), [type="text"], [type="search"], [type="url"], [type="email"], [type="password"], [type="number"]):hover,
+textarea:hover { border-color: #98a6b0; }
+input:where(:not([type]), [type="text"], [type="search"], [type="url"], [type="email"], [type="password"], [type="number"]):focus,
+textarea:focus {
+  outline: 2px solid #f8ae2c;
+  outline-offset: 2px;
+  border-color: #f8ae2c;
+  box-shadow: inset 0 2px 4px #0004;
+}
+input::placeholder, textarea::placeholder { color: #a3adb5; opacity: 1; }
+input:disabled, textarea:disabled { opacity: .5; cursor: not-allowed; }

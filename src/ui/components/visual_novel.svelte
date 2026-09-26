@@ -736,9 +736,9 @@
 
 <style>
   .vn-settings-panel :global(.settings-tabs) { display: flex; gap: 4px; margin-bottom: 12px; padding: 4px; border: 1px solid #59636b; border-radius: 10px; background: #10171d; }
-  .vn-settings-panel :global(.settings-tab) { flex: 1; min-height: 42px; padding: 10px 12px; border: 1px solid transparent; border-radius: 7px; background: #202b34; color: #b9c2c8; font-weight: 600; cursor: pointer; }
+  .vn-settings-panel :global(.settings-tab) { flex: 1; min-height: 42px; padding: 10px 12px; border: 1px solid #73838e; border-radius: 9px; background: linear-gradient(#344550, #25323c); box-shadow: 0 2px 3px #0005; color: #b9c2c8; font-weight: 600; cursor: pointer; }
   .vn-settings-panel :global(.settings-tab:hover) { background: #34434f; color: #fff; }
-  .vn-settings-panel :global(.settings-tab[data-state="active"]) { border-color: #f8ae2c; background: #f8ae2c; color: #10171d; box-shadow: 0 2px 6px #0004; }
+  .vn-settings-panel :global(.settings-tab[aria-selected="true"]) { border-color: #f8ae2c; background: #f8ae2c; color: #10171d; box-shadow: 0 2px 6px #0004; }
   .vn-settings-panel :global(.settings-tab:focus-visible) { outline: 2px solid #fff; outline-offset: 2px; }
   :global(.settings-tab-content) { display: flex; flex-direction: column; gap: 12px; }
   :global(.settings-tab-content[hidden]) { display: none; }
