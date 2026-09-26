@@ -31,6 +31,7 @@
   let index = $state(0);
   let autoReading = $state(false);
   let autoContinue = $state(false);
+  let autoMenuOpen = $state(false);
   let panelHidden = $state(false);
   let frameAdventure = $state("");
   let pendingBookmark: NovelBookmark | undefined;
@@ -211,7 +212,7 @@
     const text = narrationText;
     const position = index;
     const allowContinue = autoContinue;
-    if (!autoReading || !active || !text || historyOpen || settingsOpen || jumpOpen || locationMenuOpen
+    if (!autoReading || !active || !text || historyOpen || settingsOpen || jumpOpen || locationMenuOpen || autoMenuOpen
       || composing || retryEditing || continuing || continuationSnapshot || retryTracker || actionError) return;
     const due = performance.now() + novelAutoDelay(text);
     const timer = setInterval(() => {
@@ -282,7 +283,7 @@
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
       frameAdventure = adventure ?? ""; pendingBookmark = undefined;
       frames = []; index = 0; composing = false; lastSignature = "";
-      autoReading = false; autoContinue = false; panelHidden = false;
+      autoReading = false; autoContinue = false; autoMenuOpen = false; panelHidden = false;
       retryEditing = false; retryInstruction = ""; settingsOpen = false; jumpOpen = false;
       locationMenuOpen = false; locationOverride = "__auto"; locationSeed = null; failedBackground = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
@@ -422,7 +423,7 @@
     return fade(node, { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180 });
   }
   async function exitNovel() {
-    autoReading = false; panelHidden = false;
+    autoReading = false; autoMenuOpen = false; panelHidden = false;
     extensionState.novelMinimized = false;
     stopNarration();
     narrationScheduler?.dispose();
@@ -433,7 +434,7 @@
   }
   async function minimizeNovel(event: MouseEvent) {
     event.preventDefault();
-    autoReading = false;
+    autoReading = false; autoMenuOpen = false;
     stopNarration();
     settingsOpen = false; locationMenuOpen = false; jumpOpen = false;
     extensionState.novelMinimized = true;
@@ -459,6 +460,9 @@
   }
   function key(event: KeyboardEvent) {
     if (!active || historyOpen) return;
+    if (event.key === "Escape" && autoMenuOpen) {
+      event.preventDefault(); event.stopPropagation(); autoMenuOpen = false; scene?.focus(); return;
+    }
     if (event.key === "Escape" && jumpOpen) {
       event.preventDefault(); event.stopPropagation(); closeJump(); return;
     }
@@ -535,18 +539,26 @@
       {/if}
       <header>
         <span class="title"><span class="scenario-name" title={scenarioName}>{scenarioName}</span>{#if storyMetadata?.scenarioTitle}<small title={adventureName}>{adventureName}</small>{/if}</span>
-        <div class="tools">
-          <button aria-pressed={autoReading} title="Advance automatically based on word count. Waits for narration to finish." onclick={() => autoReading = !autoReading}>Auto{autoReading ? ": On" : ""}</button>
+        <div class="tools top-tools" class:menu-open={settingsOpen || locationMenuOpen || autoMenuOpen}>
+          <div class="auto-control" role="group" aria-label="Automatic reading"
+            onmouseenter={() => autoMenuOpen = true}
+            onmouseleave={(event) => { if (!event.currentTarget.matches(":has(:focus-visible)")) autoMenuOpen = false; }}
+            onfocusin={() => autoMenuOpen = true}
+            onfocusout={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !event.currentTarget.matches(":hover")) autoMenuOpen = false; }}>
+            <button aria-pressed={autoReading} aria-expanded={autoMenuOpen} aria-controls="novel-auto-panel" title="Click to toggle automatic reading. Hover for Auto Continue." onclick={() => autoReading = !autoReading}>Auto{autoReading ? ": On" : ""}</button>
+            <div id="novel-auto-panel" class="auto-panel" hidden={!autoMenuOpen}>
+              <div class="auto-panel-content">
+                <button role="switch" aria-checked={autoContinue} onclick={() => autoContinue = !autoContinue}>Auto Continue: {autoContinue ? "On" : "Off"}</button>
+                <small>While Auto is on, request the next AI response after the last loaded line. Uses your selected AI model and credits. Off by default for each VN session.</small>
+              </div>
+            </div>
+          </div>
           <button aria-pressed={panelHidden} aria-controls="novel-reader-panels" title="Hide the reading panel and shading to see the full portraits." onclick={() => panelHidden = !panelHidden}>{panelHidden ? "Show" : "Hide"}</button>
           <div class="vn-settings-control">
             <button bind:this={settingsButton} aria-expanded={settingsOpen} aria-controls="novel-settings-panel" onclick={() => settingsOpen = !settingsOpen}>Settings</button>
             {#if settingsOpen}
               <section id="novel-settings-panel" class="vn-settings-panel" aria-label="Visual novel settings">
                 <div class="settings-heading"><strong>VN settings</strong><button onclick={closeSettings} aria-label="Close VN settings">Close</button></div>
-                <div class="instruction-options">
-                  <button role="switch" aria-checked={autoContinue} onclick={() => autoContinue = !autoContinue}>Auto Continue: {autoContinue ? "On" : "Off"}</button>
-                  <small>While Auto is on, request the next AI response after the last loaded line. Uses your selected AI model and credits. Off by default for each VN session.</small>
-                </div>
                 <div class="visual-options" role="group" aria-label="Visual effects">
                   <button role="switch" aria-checked={$settings.novelBlur} aria-label="Background blur" onclick={() => $settings.novelBlur = !$settings.novelBlur} title="Blur the background to make characters stand out. Turn off for a sharper background.">Blur: {$settings.novelBlur ? "On" : "Off"}</button>
                   <button role="switch" aria-checked={$settings.novelGlow} aria-label="Character glow" onclick={() => $settings.novelGlow = !$settings.novelGlow} title="Add a light outline around characters so they are easier to see.">Glow: {$settings.novelGlow ? "On" : "Off"}</button>
@@ -687,6 +699,16 @@
   .location-panel { position: absolute; top: 100%; right: 0; z-index: 10; width: min(320px, calc(100vw - 24px)); padding: 12px; display: flex; flex-direction: column; gap: 4px; background: #202b34; border: 1px solid #64727c; border-radius: 8px; box-shadow: 0 8px 24px #0006; }
   .location-panel[hidden] { display: none; }
   .tools { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  .top-tools { position: relative; opacity: .25; transition: opacity 220ms ease 500ms; }
+  .top-tools:hover, .top-tools:has(:focus-visible), .top-tools.menu-open { opacity: 1; transition-delay: 0ms; }
+  .auto-control { position: relative; }
+  .auto-control > button[aria-pressed="true"] { border-color: #f8ae2c; }
+  .auto-panel { position: absolute; top: 100%; left: 0; z-index: 10; width: min(280px, calc(100vw - 64px)); padding-top: 8px; }
+  .auto-panel[hidden] { display: none; }
+  .auto-panel-content { padding: 12px; border: 1px solid #64727c; border-radius: 8px; background: #202b34; box-shadow: 0 8px 24px #0006; }
+  .auto-panel button { width: 100%; }
+  .auto-panel small { font-size: 12px; margin-top: 8px; }
+  @media (prefers-reduced-motion: reduce) { .top-tools { transition: none; } }
   .location-control small { font-size: 11px; }
   header, .tools, footer { display: flex; align-items: center; gap: 12px; }
   header { position: relative; z-index: 3; justify-content: space-between; flex-wrap: wrap; }
@@ -759,6 +781,8 @@
   .jump-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 900px) {
+    .auto-control { position: static; }
+    .auto-panel { left: auto; right: 0; }
     .portrait { left: -17.5%; transform: none; width: 135%; max-width: none; }
     .reader-panels { grid-template-columns: minmax(0, 1fr); max-height: 65%; }
     .dialogue, footer { grid-column: 1; }
