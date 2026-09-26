@@ -3,8 +3,8 @@ import { isNarratorVoice, narratorVoice, narratorVoices, voiceAssets } from "@/t
 
 it("offers ten distinct numbered voices with matching download paths", () => {
   expect(narratorVoices.map(voice => voice.label)).toEqual([
-    "Male 1", "Male 2", "Male 3", "Male 4", "Male 5",
-    "Female 1", "Female 2", "Female 3", "Female 4", "Female 5",
+    "Felix · Male 1", "Magnus · Male 2", "Alistair · Male 3", "Finn · Male 4", "Rowan · Male 5",
+    "Selene · Female 1", "Pippa · Female 2", "Clara · Female 3", "Valeria · Female 4", "Willow · Female 5",
   ]);
   expect(new Set(voiceAssets).size).toBe(10);
   for (const voice of narratorVoices) {
