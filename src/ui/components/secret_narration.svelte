@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onDestroy, untrack } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import { settings } from "@/storage";
   import { playedAdventureId } from "@/aid/adventure";
   import { extensionState } from "@/shared/state.svelte";
-  import { createKonamiCode } from "@/shared/konami";
+  import { installKonamiCode } from "@/shared/konami";
   import { readNovelPassages } from "@/rendering/novel_dom";
   import { parseNovel } from "@/rendering/novel";
   import { NarrationQueue, narrationQueueSize } from "@/tts/queue";
@@ -13,7 +13,8 @@
   import TtsVoiceSettings from "./tts_voice_settings.svelte";
   import Slider from "./slider.svelte";
 
-  const code = createKonamiCode();
+  let notice = $state(false);
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   let unlocked = $state(false);
   let open = $state(false);
   let reading = $state(false);
@@ -27,16 +28,12 @@
   const outside = $derived(!$settings.visualNovelMode);
   const ready = $derived($settings.novelTtsEnabled && $ttsState.phase === "ready");
 
-  function keydown(event: KeyboardEvent) {
-    const editing = event.composedPath().some(node => node instanceof HTMLElement &&
-      (node.isContentEditable || node.matches('input, textarea, select, [role="textbox"]')));
-    if (editing || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) {
-      code("", true); return;
-    }
-    if (event.repeat) return;
-    if (code(event.key)) { unlocked = true; open = true; }
-    if (event.key === "Escape") open = false;
-  }
+  onMount(() => installKonamiCode(window, () => {
+    unlocked = true; open = true; notice = true;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => notice = false, 6000);
+  }));
+  onDestroy(() => clearTimeout(noticeTimer));
 
   function clearAudio() {
     player?.pause();
@@ -98,7 +95,11 @@
   }
 </script>
 
-<svelte:window onkeydown={keydown} />
+<svelte:window onkeydowncapture={(event) => { if (event.key === "Escape") open = false; }} />
+
+{#if notice}
+  <div class="unlock-notice" role="status">Story narration unlocked! {outside ? "Look for the voice button at the bottom left." : "Exit VN to use the voice button at the bottom left."}</div>
+{/if}
 
 {#if unlocked && outside && !extensionState.isEditorOpen}
   <aside class="secret-narration">
@@ -124,6 +125,7 @@
 {/if}
 
 <style>
+  .unlock-notice { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 1100; max-width: calc(100vw - 32px); padding: 12px 20px; border: 1px solid #f8ae2c; border-radius: 12px; background: #202b34; color: #fff; font: 14px 'IBM Plex Sans', sans-serif; pointer-events: none; }
   .secret-narration { position: fixed; left: 16px; bottom: 16px; z-index: 950; font: 14px 'IBM Plex Sans', sans-serif; }
   .narration-puck { width: 48px; height: 48px; border-radius: 50%; background: #202b34; color: #f8ae2c; }
   section { position: absolute; bottom: 60px; left: 0; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 100px); overflow: auto; padding: 16px; border: 1px solid #65717b; border-radius: 12px; box-shadow: 0 12px 32px #0008; }

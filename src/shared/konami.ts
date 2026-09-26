@@ -11,3 +11,18 @@ export function createKonamiCode() {
     return true;
   };
 }
+
+/** Capture before gameplay/VN handlers stop propagation; never consume the user's keys. */
+export function installKonamiCode(target: Window, unlock: () => void) {
+  const code = createKonamiCode();
+  const keydown = (event: KeyboardEvent) => {
+    const editing = event.composedPath().some(node => node instanceof HTMLElement &&
+      (node.isContentEditable || node.matches('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]')));
+    if (editing || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) {
+      code("", true); return;
+    }
+    if (!event.repeat && code(event.key)) unlock();
+  };
+  target.addEventListener("keydown", keydown, { capture: true });
+  return () => target.removeEventListener("keydown", keydown, { capture: true });
+}
