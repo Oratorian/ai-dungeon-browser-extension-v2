@@ -173,14 +173,17 @@
 
 <style>
   .unlock-notice { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 1100; max-width: calc(100vw - 32px); padding: 12px 20px; border: 1px solid #f8ae2c; border-radius: 12px; background: #202b34; color: #fff; font: 14px 'IBM Plex Sans', sans-serif; pointer-events: none; }
-  .secret-narration { position: fixed; left: 16px; bottom: 16px; z-index: 950; font: 14px 'IBM Plex Sans', sans-serif; }
-  .playback-controls { display: flex; align-items: center; gap: 8px; padding: 4px; border-radius: 28px; background: #202b34; color: #eee8de; }
-  .playback-status { max-width: min(400px, calc(100vw - 32px)); margin-top: 6px; padding: 4px 8px; border-radius: 6px; background: #202b34; color: #eee8de; font-size: 12px; }
-  .narration-puck { width: 48px; height: 48px; border-radius: 50%; background: #202b34; color: #f8ae2c; }
+  .secret-narration { position: fixed; left: 16px; bottom: 16px; z-index: 950; width: min(224px, calc(100vw - 32px)); font: 14px/1.4 'IBM Plex Sans', sans-serif; }
+  .playback-controls { box-sizing: border-box; display: grid; grid-template-columns: 40px repeat(2, minmax(0, 1fr)); align-items: center; gap: 6px; padding: 6px; border: 1px solid #465761; border-radius: 14px; background: #202b34; color: #eee8de; box-shadow: 0 4px 16px #0004; }
+  .playback-controls button { display: flex; align-items: center; justify-content: center; height: 40px; min-width: 0; padding: 0 8px; background: #283640; color: #eee8de; }
+  .playback-controls button:hover:enabled { background: #354650; border-color: #a0b1bb; }
+  .playback-controls .narration-puck { padding: 0; color: #f8ae2c; }
+  .narration-puck .font-symbol { display: block; font-size: 24px; line-height: 1; color: inherit; }
+  .playback-status { box-sizing: border-box; width: 100%; margin-top: 6px; padding: 6px 10px; border: 1px solid #465761; border-radius: 8px; background: #202b34; color: #d4dfe5; font-size: 12px; overflow-wrap: anywhere; }
   section { position: absolute; bottom: calc(100% + 12px); left: 0; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 160px); overflow: auto; padding: 16px; border: 1px solid #65717b; border-radius: 12px; box-shadow: 0 12px 32px #0008; }
   header, .controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   p { margin: 12px 0; font-size: 12px; }
-  button { cursor: pointer; border: 1px solid #64727c; border-radius: 8px; padding: 8px 12px; }
+  button { box-sizing: border-box; cursor: pointer; border: 1px solid #64727c; border-radius: 8px; padding: 8px 12px; font: inherit; }
   button:disabled { opacity: .4; cursor: default; }
   button:focus-visible { outline: 2px solid #f8ae2c; outline-offset: 2px; }
   .volume { display: flex; flex-direction: column; gap: 8px; margin: 12px 8px; }
