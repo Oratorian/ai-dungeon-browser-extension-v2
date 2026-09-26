@@ -22,6 +22,7 @@
   let name = $state("");
   let triggers = $state("");
   let type = $state("character");
+  let gender = $state("none");
   let icons = $state<string[]>([]);
   let graphics = $state<string[]>([]);
   let colorSelection = $state<string>("");
@@ -49,6 +50,7 @@
         name = card.name;
         triggers = card.triggers;
         type = card.type || "character";
+        gender = card.gender ?? "none";
         icons = ensureArray(card.icons);
         graphics = ensureArray(card.graphics);
         colorSelection = card.useCustomColor ? "custom" : "global";
@@ -92,6 +94,7 @@
       name: name.trim() || "Untitled Card",
       triggers: triggers || "",
       type,
+      gender: gender === "male" || gender === "female" ? gender : "none",
       icons,
       graphics,
       iconIndex: icons.length > 0 ? Math.min(storyCard?.iconIndex ?? 0, icons.length - 1) : 0,
@@ -200,6 +203,11 @@
               placeholder="Enter some triggers..."
               class="w-full h-11 px-4 bg-theme-neutral-100 rounded-xl outline-none"
             />
+          </Field>
+
+          <Field label="Gender">
+            <Select ariaLabel="Gender" allowDeselect={false} bind:value={gender}
+              items={[{ value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "none", label: "None" }]} />
           </Field>
 
           <Field label="Type">

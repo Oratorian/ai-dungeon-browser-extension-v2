@@ -144,6 +144,7 @@ function normalizeLegacyStoryCard(card: Record<string, unknown>): StoryCard {
     name: typeof card.name === "string" ? card.name : "Untitled Card",
     triggers,
     type: typeof card.category === "string" ? card.category : "character",
+    gender: "none",
     icons,
     iconIndex: 0,
     graphics,
@@ -168,6 +169,7 @@ function normalizeStoryCard(card: unknown): StoryCard | null {
     name: typeof c.name === "string" ? c.name : "Untitled Card",
     triggers: typeof c.triggers === "string" ? c.triggers : "",
     type: typeof c.type === "string" ? c.type : "character",
+    gender: c.gender === "male" || c.gender === "female" ? c.gender : "none",
     icons: ensureArray(c.icons),
     iconIndex: typeof c.iconIndex === "number" ? c.iconIndex : 0,
     graphics: ensureArray(c.graphics),
@@ -507,6 +509,7 @@ export class Storage {
   /** The cosmetic/default field block shared by every newly created or imported story card. */
   private static defaultStoryCardFields(): Omit<StoryCard, "id" | "name" | "type" | "triggers"> {
     return {
+      gender: "none",
       icons: [],
       iconIndex: 0,
       graphics: [],

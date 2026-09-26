@@ -19,6 +19,7 @@ export type StoryCard = {
   name: string;
   triggers: string;
   type: string;
+  gender?: "male" | "female" | "none";
   icons: string[];
   iconIndex: number;
   graphics: string[];
