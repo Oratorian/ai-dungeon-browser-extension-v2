@@ -112,23 +112,9 @@
 
 </script>
 
-<header class="page-heading"><span class="text-pretty-theme text-xs font-bold uppercase tracking-widest">Your collection</span><h1>Story cards</h1><p class="text-theme-neutral-800">Bring your cast and places to life with pictures, highlights and sounds.</p></header>
-<div class="cards-workspace">
-  <aside class="collection-sidebar">
-  <SettingsCard icon="collections_bookmark" label="Card set" description="Choose the collection you want to work on. Each set keeps its own cards and pictures.">
-  <Field label="Selected set">
-    <AdventurePicker />
-  </Field>
-
-  </SettingsCard>
+<header class="page-heading"><div class="heading-copy"><span class="text-pretty-theme text-xs font-bold uppercase tracking-widest">Your collection</span><h1>Story cards</h1><p class="text-theme-neutral-800">Bring your cast and places to life with pictures, highlights and sounds.</p></div>
   {#if selectedAdventure}
-    <SettingsCard icon="approval" label="Use in your story" description="Link this set to your adventure so the right cards are ready when you play."><StampBinding /></SettingsCard>
-  {/if}
-  <p class="text-sm text-theme-neutral-800 leading-relaxed">New here? Open Card sync to bring in names from AI Dungeon, then open a card to add its pictures and sounds.</p>
-  </aside>
-  <section class="collection-content" aria-label="Story card collection">
-  {#if selectedAdventure}
-
+  <div class="heading-controls">
     <!-- Search + add -->
     <div class="flex items-center gap-2">
       <div class="relative flex-1 min-w-0">
@@ -192,6 +178,25 @@
         {/if}
       </div>
     {/if}
+
+  </div>
+  {/if}
+</header>
+<div class="cards-workspace">
+  <aside class="collection-sidebar">
+  <SettingsCard icon="collections_bookmark" label="Card set" description="Choose the collection you want to work on. Each set keeps its own cards and pictures.">
+  <Field label="Selected set">
+    <AdventurePicker />
+  </Field>
+
+  </SettingsCard>
+  {#if selectedAdventure}
+    <SettingsCard icon="approval" label="Use in your story" description="Link this set to your adventure so the right cards are ready when you play."><StampBinding /></SettingsCard>
+  {/if}
+  <p class="text-sm text-theme-neutral-800 leading-relaxed">New here? Open Card sync to bring in names from AI Dungeon, then open a card to add its pictures and sounds.</p>
+  </aside>
+  <section class="collection-content" aria-label="Story card collection">
+  {#if selectedAdventure}
 
     <div class="flex items-center justify-between px-2">
       <span class="text-sm text-theme-neutral-700">
@@ -268,11 +273,13 @@
 <StoryCardEditor />
 
 <style>
-  .page-heading { padding:8px 8px 24px; }
+  .page-heading { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:32px; align-items:center; padding:8px 8px 24px; }
+  .heading-copy { min-width:0; }
+  .heading-controls { display:flex; flex-direction:column; gap:16px; min-width:0; }
   h1 { font-size:30px; font-weight:700; margin:6px 0; }
   .page-heading p { font-size:14px; line-height:1.6; }
   .cards-workspace { display:grid; grid-template-columns:300px minmax(0,1fr); gap:24px; align-items:start; }
   .collection-sidebar,.collection-content { display:flex; flex-direction:column; gap:20px; min-width:0; }
   .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
-  @media(max-width:800px) { .cards-workspace { grid-template-columns:1fr; } }
+  @media(max-width:800px) { .cards-workspace,.page-heading { grid-template-columns:1fr; } .page-heading { gap:20px; } }
 </style>
