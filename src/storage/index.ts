@@ -74,6 +74,8 @@ const defaultSettings = {
   novelTtsAccelerated: false,
   novelTtsThreads: 2,
   novelTtsVoice: "M5" as "M5" | "F5",
+  novelTtsMaleVoice: "M1",
+  novelTtsFemaleVoice: "F1",
   secretTtsVoice: "M5" as NarratorVoice,
   novelTtsSteps: 5,
   novelTtsPitch: 0,

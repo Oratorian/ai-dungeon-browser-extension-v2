@@ -10,11 +10,23 @@
 
 <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
   <div class="voice-option" title="Choose the voice that reads the story aloud.">
-    <span>{hiddenNarrator ? "Secret voice collection" : "Voice"}</span>
+    <span>{hiddenNarrator ? "Secret voice collection" : "Narration"}</span>
     <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
       bind:value={() => voice, value => { if (hiddenNarrator) $settings.secretTtsVoice = narratorVoice(value); else $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"; }}
       items={hiddenNarrator ? narratorVoices : [{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
   </div>
+  {#if !hiddenNarrator}
+    <div class="voice-option" title="Voice used for recognized dialogue from cards with Gender set to Male.">
+      <span>Male dialogue</span>
+      <Select ariaLabel="Male dialogue voice" allowDeselect={false} portal={false} bind:value={$settings.novelTtsMaleVoice}
+        items={narratorVoices.filter(v => /^M[1-4]$/.test(v.value))} />
+    </div>
+    <div class="voice-option" title="Voice used for recognized dialogue from cards with Gender set to Female. Cards set to None use the narration voice.">
+      <span>Female dialogue</span>
+      <Select ariaLabel="Female dialogue voice" allowDeselect={false} portal={false} bind:value={$settings.novelTtsFemaleVoice}
+        items={narratorVoices.filter(v => /^F[1-4]$/.test(v.value))} />
+    </div>
+  {/if}
   <div class="voice-option" title="Lower values prepare speech faster. Higher values spend more time refining how it sounds.">
     <span>Generation steps</span>
     <Select ariaLabel="Generation steps" allowDeselect={false} portal={false}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { novelDialogueVoice, novelSpeechKey, readNovelSpeechKey } from "@/rendering/novel_voice";
   import TtsVoiceSettings from "./tts_voice_settings.svelte";
   import { novelAutoDelay } from "@/rendering/novel_auto";
   import { onDestroy, tick, untrack } from "svelte";
@@ -96,7 +97,7 @@
   onDestroy(() => configureTts(false));
   $effect(() => {
     const message = $ttsState.message;
-    untrack(() => { if (!narrationQueue?.get(frame?.text ?? "")) narrationStatus = message; });
+    untrack(() => { if (!narrationQueue?.get(narrationKey)) narrationStatus = message; });
   });
 
   function stopNarration() {
@@ -109,7 +110,7 @@
 
   function playNarration() {
     stopNarration();
-    const audio = frame && narrationQueue?.get(frame.text);
+    const audio = frame && narrationQueue?.get(narrationKey);
     if (!audio || !active || historyOpen || continuing || continuationSnapshot || retryTracker || narrationMuted) return;
     const token = playbackToken;
     narrationUrl = URL.createObjectURL(narrationWav(audio, $settings.novelTtsPitch));
@@ -123,13 +124,15 @@
   $effect(() => {
     const enabled = novelEnabled && narrationEnabled && ttsReady && !!$playedAdventureId;
     const adventure = $playedAdventureId;
-    const voice = narratorVoice;
     const steps = narratorSteps;
     if (!enabled) return;
     let alive = true;
-    const queue = new NarrationQueue(text => generateNarration(text, { voice, steps }), (text, error) => {
+    const queue = new NarrationQueue(key => {
+      const { text, voice } = readNovelSpeechKey(key);
+      return generateNarration(text, { voice, steps });
+    }, (key, error) => {
       if (!alive) return;
-      if (text === frame?.text) narrationStatus = error ? `Narration failed: ${error}` : "Audio ready";
+      if (key === narrationKey) narrationStatus = error ? `Narration failed: ${error}` : "Audio ready";
       narrationVersion++;
     });
     narrationQueue = queue;
@@ -150,7 +153,7 @@
   // Compare text, not frame objects/paragraph metadata: streaming later text must
   // not keep postponing synthesis of an already-complete sentence.
   const queueSize = $derived(narrationQueueSize($settings.novelTtsQueue));
-  const narrationWindow = $derived(JSON.stringify(retryTracker ? [] : frames.slice(index, index + queueSize + 1).map(f => f.text)));
+  const narrationWindow = $derived.by(() => JSON.stringify(retryTracker ? [] : speechKeys.slice(index, index + queueSize + 1)));
   $effect(() => {
     const scheduler = narrationScheduler;
     const texts: string[] = JSON.parse(narrationWindow);
@@ -160,12 +163,13 @@
 
   $effect(() => {
     const text = narrationText;
+    const key = narrationKey;
     const position = index;
     const visible = active && !continuing && !continuationSnapshot && !retryTracker && !narrationMuted;
     const queue = narrationQueue;
     untrack(stopNarration);
     if (!visible || !text || !queue) return;
-    untrack(() => { narrationStatus = queue.get(text) ? "Audio ready" : "Preparing narration..."; });
+    untrack(() => { narrationStatus = queue.get(key) ? "Audio ready" : "Preparing narration..."; });
     untrack(playNarration);
   });
 
@@ -191,17 +195,23 @@
   const bufferingNarration = $derived.by(() => {
     narrationVersion;
     return !!(ttsReady && $settings.novelTtsEnabled && !narrationMuted && frame && !readWithoutAudio
-      && !narrationQueue?.get(frame.text) && !narrationQueue?.hasFailed(frame.text));
+      && !narrationQueue?.get(narrationKey) && !narrationQueue?.hasFailed(narrationKey));
   });
   const upcomingNarration = $derived.by(() => {
     narrationVersion;
-    const upcoming = frames.slice(index + 1, index + queueSize + 1);
-    return { ready: upcoming.filter(frame => narrationQueue?.get(frame.text)).length, total: upcoming.length };
+    const upcoming = speechKeys.slice(index + 1, index + queueSize + 1);
+    return { ready: upcoming.filter(key => narrationQueue?.get(key)).length, total: upcoming.length };
   });
   const trackStage = $derived(createNovelStageTracker(characters));
   const stages = $derived(trackStage(frames));
   const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => characters.find(c => c.id === id)));
   const speakers = $derived($settings.novelStoryCardInstructions !== false ? novelSpeakers(frames, characters) : []);
+  const speechKeys = $derived(frames.map((frame, position) => {
+    const card = $selected && speakers[position] ? $adventures[$selected]?.storyCards[speakers[position]!] : undefined;
+    const voice = novelDialogueVoice(card?.gender, narratorVoice, $settings.novelTtsMaleVoice, $settings.novelTtsFemaleVoice);
+    return novelSpeechKey(frame.text, voice);
+  }));
+  const narrationKey = $derived(speechKeys[index] ?? "");
   const speaker = $derived(stageCharacters.some(character => character?.id === speakers[index]) ? speakers[index] : null);
   const locations: NovelLocation[] = $derived(($selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [])
     .filter(card => card.type.trim().toLowerCase() === "location")
@@ -217,6 +227,7 @@
 
   $effect(() => {
     const text = narrationText;
+    const key = narrationKey;
     const position = index;
     const allowContinue = autoContinue;
     if (!autoReading || !active || !text || historyOpen || settingsOpen || jumpOpen || locationMenuOpen || autoMenuOpen
@@ -228,7 +239,7 @@
       // a prefetched line finishes. A blocked/paused player must not skip its line.
       if (bufferingNarration) return;
       if (narrationEnabled && ttsReady && !narrationMuted && !readWithoutAudio
-        && !narrationQueue?.hasFailed(text) && !narrationAudio?.ended) return;
+        && !narrationQueue?.hasFailed(narrationKey) && !narrationAudio?.ended) return;
       if (position < frames.length - 1) {
         clearInterval(timer); navigate(position + 1);
       } else if (allowContinue) {
@@ -398,7 +409,7 @@
             index = Math.max(0, frames.findIndex(f => f.source === after[replacement]!.element));
             readWithoutAudio = false;
             // Re-arm even if the selected response starts with the same sentence.
-            narrationScheduler?.setWindow(frames.slice(index, index + queueSize + 1).map(f => f.text));
+            narrationScheduler?.setWindow(speechKeys.slice(index, index + queueSize + 1));
           } else if (resumeAudio && narrationAudio === audio) {
             void audio!.play().catch(() => { narrationStatus = "Audio ready. Click Read line to play."; });
           }
@@ -626,7 +637,7 @@
           <div id="novel-audio-menu" class="narration-controls audio-menu">
             {#if !ttsReady}<button onclick={() => void initializeTts()} disabled={$ttsState.phase === "checking" || $ttsState.phase === "loading"}>Initialize TTS</button>{/if}
             {#if bufferingNarration && !retryTracker}<button onclick={() => readWithoutAudio = true}>Read now</button>{/if}
-            <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(frame.text); playNarration(); }} disabled={!frame || !ttsReady || !!retryTracker}>Read line</button>
+            <button onclick={() => { narrationMuted = false; if (frame) narrationQueue?.retry(narrationKey); playNarration(); }} disabled={!frame || !ttsReady || !!retryTracker}>Read line</button>
             <button aria-pressed={narrationMuted} onclick={() => { narrationMuted = !narrationMuted; if (narrationMuted) stopNarration(); }}>{narrationMuted ? "Unmute" : "Mute"}</button>
             <span role="status">{narrationStatus}</span>
             <span class="queue-badge" role="status" title="Generated audio for the next available lines, excluding the current line">{upcomingNarration.ready}/{upcomingNarration.total} upcoming lines ready</span>
