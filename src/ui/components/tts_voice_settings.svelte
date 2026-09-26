@@ -3,14 +3,17 @@
   import Select from "./select.svelte";
   import Slider from "./slider.svelte";
   import TtsPreview from "./tts_preview.svelte";
+  import { narratorVoice, narratorVoices } from "@/tts/voices";
+  let { hiddenNarrator = false }: { hiddenNarrator?: boolean } = $props();
+  const voice = $derived(hiddenNarrator ? narratorVoice($settings.secretTtsVoice) : $settings.novelTtsVoice);
 </script>
 
 <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
   <div class="voice-option" title="Choose the voice that reads the story aloud.">
-    <span>Voice</span>
+    <span>{hiddenNarrator ? "Secret voice collection" : "Voice"}</span>
     <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
-      bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
-      items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
+      bind:value={() => voice, value => { if (hiddenNarrator) $settings.secretTtsVoice = narratorVoice(value); else $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"; }}
+      items={hiddenNarrator ? narratorVoices : [{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
   </div>
   <div class="voice-option" title="Lower values prepare speech faster. Higher values spend more time refining how it sounds.">
     <span>Generation steps</span>
@@ -20,7 +23,7 @@
   </div>
   <div class="voice-option" title="Make the voice lower or higher without changing reading speed. Zero keeps the original voice."><span>Pitch</span><Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} /></div>
   <div class="voice-option" title="How many upcoming lines to prepare in advance. A larger queue can reduce waiting as you read, but uses more memory and work up front."><span>Queue</span><Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} /></div>
-  <div class="voice-preview"><TtsPreview /></div>
+  <div class="voice-preview"><TtsPreview {voice} /></div>
 </fieldset>
 
 <style>

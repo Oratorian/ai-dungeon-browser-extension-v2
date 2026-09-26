@@ -1,10 +1,11 @@
 import { bgFetchBytes } from "@/media/bg_fetch";
 import TtsWorker from "./worker.js?worker";
+import { voiceAssets } from "./voices";
 
 const base = "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46/";
 const assets = ["onnx/tts.json", "onnx/unicode_indexer.json",
   ...["duration_predictor", "text_encoder", "vector_estimator", "vocoder"].map(name => `onnx/${name}.onnx`),
-  "voice_styles/M5.json", "voice_styles/F5.json"];
+  ...voiceAssets];
 
 /** A worker and request stream per reader, sharing only the extension's model cache. */
 export function createTtsEngine(send: (data: any) => void) {

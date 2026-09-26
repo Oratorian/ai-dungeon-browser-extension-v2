@@ -3,6 +3,9 @@
   import { settings } from "@/storage";
   import { generateNarration, ttsState } from "@/tts/service";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
+  import type { NarratorVoice } from "@/tts/voices";
+  let { voice }: { voice?: NarratorVoice } = $props();
+  const selectedVoice = $derived(voice ?? $settings.novelTtsVoice);
 
   const example = "Moonlight spilled across the ruined gate. Beyond it, a single lantern flickered... and someone whispered your name.";
   let generating = $state(false);
@@ -11,7 +14,7 @@
   let player: HTMLAudioElement | undefined = $state();
   let request = 0;
   const ready = $derived($settings.novelTtsEnabled && $ttsState.phase === "ready");
-  const selection = $derived(JSON.stringify([ready, $settings.novelTtsVoice, $settings.novelTtsSteps, $settings.novelTtsPitch]));
+  const selection = $derived(JSON.stringify([ready, selectedVoice, $settings.novelTtsSteps, $settings.novelTtsPitch]));
 
   function stop() {
     request++;
@@ -26,7 +29,7 @@
     if (!ready || generating) return;
     stop();
     const token = request;
-    const options = { voice: $settings.novelTtsVoice, steps: $settings.novelTtsSteps };
+    const options = { voice: selectedVoice, steps: $settings.novelTtsSteps };
     const pitch = $settings.novelTtsPitch;
     const volume = $settings.volume;
     generating = true; message = "Generating preview...";

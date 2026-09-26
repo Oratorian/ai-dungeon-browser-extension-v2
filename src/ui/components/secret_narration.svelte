@@ -9,6 +9,7 @@
   import { createStoryAutoplay } from "@/rendering/story_autoplay";
   import { NarrationQueue, narrationQueueSize } from "@/tts/queue";
   import { generateNarration, ttsState } from "@/tts/service";
+  import { narratorVoice } from "@/tts/voices";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import TtsSettings from "./tts_settings.svelte";
   import TtsVoiceSettings from "./tts_voice_settings.svelte";
@@ -64,7 +65,7 @@
   }
   // A settings change or adventure switch invalidates queued audio. VN owns playback while enabled.
   const configuration = $derived(JSON.stringify([outside, ready, $playedAdventureId,
-    $settings.novelTtsVoice, $settings.novelTtsSteps, $settings.novelTtsPitch,
+    $settings.secretTtsVoice, $settings.novelTtsSteps, $settings.novelTtsPitch,
     $settings.novelTtsQueue, $settings.novelTtsAccelerated, $settings.novelTtsThreads]));
   $effect(() => { configuration; untrack(stop); });
   $effect(() => { const volume = $settings.volume; if (player) player.volume = Math.max(0, Math.min(1, volume / 100)); });
@@ -129,7 +130,7 @@
     if (!lines.length || !ready || !outside) return;
     reading = true;
     const token = request;
-    const options = { voice: $settings.novelTtsVoice, steps: $settings.novelTtsSteps };
+    const options = { voice: narratorVoice($settings.secretTtsVoice), steps: $settings.novelTtsSteps };
     queue = new NarrationQueue(text => generateNarration(text, options), (text, error) => {
       if (token !== request) return;
       if (error) { stop(); message = `Narration failed: ${error}`; return; }
@@ -150,10 +151,10 @@
     {#if open}
       <section id="secret-narration-settings" aria-label="Story narration settings" class="bg-theme-neutral-0 text-theme-neutral-900">
         <header><strong>Story narration unlocked</strong><button aria-label="Close narration settings" onclick={() => open = false}>Close</button></header>
-        <p>Read without entering VN. Autoplay reads new passages after the text settles. Settings are shared with VN.</p>
+        <p>Read without entering VN. Autoplay reads new passages after the text settles. Voice is saved separately; other settings are shared with VN.</p>
         <button role="switch" aria-checked={autoplay} onclick={() => { autoplay = !autoplay; if (!autoplay) stop(); }}>Autoplay new passages: {autoplay ? "On" : "Off"}</button>
         <TtsSettings grid />
-        <TtsVoiceSettings />
+        <TtsVoiceSettings hiddenNarrator />
         <label class="volume">Volume<Slider ariaLabel="Narration volume" bind:value={$settings.volume} /></label>
         <div class="controls">
           <button disabled={!ready || reading} onclick={readLatest}>Read latest response</button>

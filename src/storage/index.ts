@@ -1,4 +1,5 @@
 import { FLOATING_BUTTON_DEFAULT_SIZE } from "@/shared/floating_button";
+import type { NarratorVoice } from "@/tts/voices";
 import type { Adventure, AudioClip, StoryCard } from "@/shared/types";
 import { get, writable, type Writable } from "svelte/store";
 import { OPENROUTER_DEFAULT_MODEL } from "@/media/openrouter";
@@ -73,6 +74,7 @@ const defaultSettings = {
   novelTtsAccelerated: false,
   novelTtsThreads: 2,
   novelTtsVoice: "M5" as "M5" | "F5",
+  secretTtsVoice: "M5" as NarratorVoice,
   novelTtsSteps: 5,
   novelTtsPitch: 0,
   novelTtsQueue: 3,
