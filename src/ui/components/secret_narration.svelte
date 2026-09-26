@@ -150,9 +150,11 @@
   <aside class="secret-narration">
     {#if open}
       <section id="secret-narration-settings" aria-label="Story narration settings" class="bg-theme-neutral-0 text-theme-neutral-900">
+        <div class="panel-intro">
         <header><strong>Story narration unlocked</strong><button aria-label="Close narration settings" onclick={() => open = false}>Close</button></header>
         <p>Read without entering VN. Autoplay reads new passages after the text settles. Voice is saved separately; other settings are shared with VN.</p>
-        <button role="switch" aria-checked={autoplay} onclick={() => { autoplay = !autoplay; if (!autoplay) stop(); }}>Autoplay new passages: {autoplay ? "On" : "Off"}</button>
+        <button class="autoplay-toggle" role="switch" aria-checked={autoplay} onclick={() => { autoplay = !autoplay; if (!autoplay) stop(); }}><span>Autoplay new passages</span><span>{autoplay ? "On" : "Off"}</span></button>
+        </div>
         <TtsSettings grid />
         <TtsVoiceSettings hiddenNarrator />
         <label class="volume">Volume<Slider ariaLabel="Narration volume" bind:value={$settings.volume} /></label>
@@ -181,7 +183,11 @@
   .playback-controls .narration-puck { padding: 0; color: #f8ae2c; }
   .narration-puck .font-symbol { display: block; font-size: 24px; line-height: 1; color: inherit; }
   .playback-status { box-sizing: border-box; width: 100%; margin-top: 6px; padding: 6px 10px; border: 1px solid #465761; border-radius: 8px; background: #202b34; color: #d4dfe5; font-size: 12px; overflow-wrap: anywhere; }
-  section { position: absolute; bottom: calc(100% + 12px); left: 0; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 160px); overflow: auto; padding: 16px; border: 1px solid #65717b; border-radius: 12px; box-shadow: 0 12px 32px #0008; }
+  section { box-sizing: border-box; position: absolute; bottom: calc(100% + 12px); left: 0; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 160px); overflow: auto; padding: 16px; border: 1px solid #65717b; border-radius: 12px; box-shadow: 0 12px 32px #0008; }
+  .panel-intro { padding: 0 8px 12px; }
+  .autoplay-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; text-align: left; }
+  .controls { padding: 0 8px 8px; }
+  .controls button { width: 100%; }
   header, .controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   p { margin: 12px 0; font-size: 12px; }
   button { box-sizing: border-box; cursor: pointer; border: 1px solid #64727c; border-radius: 8px; padding: 8px 12px; font: inherit; }
