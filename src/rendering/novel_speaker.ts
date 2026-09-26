@@ -1,6 +1,7 @@
 import type { NovelCharacter, NovelFrame } from "./novel";
+import { speechVerb } from "./novel";
 
-/** Resolve dialogue labels and native Say actions, including longer quotations. */
+/** Resolve labels and explicit speech attributions without treating dialogue mentions as speakers. */
 export function novelSpeakers(frames: NovelFrame[], characters: NovelCharacter[]): (string | null)[] {
   const aliases = new Map<string, Set<string>>();
   for (const character of characters) {
@@ -12,6 +13,12 @@ export function novelSpeakers(frames: NovelFrame[], characters: NovelCharacter[]
       aliases.set(alias, owners);
     }
   }
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const names = [...aliases.keys()].sort((a, b) => b.length - a.length).map(escape).join("|") || "(?!)";
+  const boundary = "(?<![\\p{L}\\p{N}_])";
+  const adverbs = "(?:\\s+[\\p{L}]+ly){0,2}";
+  const prefix = new RegExp(`${boundary}(${names})(?:\\s*:\\s*|${adverbs}\\s+${speechVerb}${adverbs}\\s*[,;:]?\\s*)$`, "iu");
+  const suffix = new RegExp(`^\\s*[,;]?\\s*(?:(${names})${adverbs}\\s+${speechVerb}|${speechVerb}${adverbs}\\s+(${names}))(?![\\p{L}\\p{N}_])`, "iu");
   let paragraph = "";
   let offset = 0;
   let spans: { start: number; end: number; speaker: string | null }[] = [];
@@ -20,11 +27,20 @@ export function novelSpeakers(frames: NovelFrame[], characters: NovelCharacter[]
       paragraph = frame.paragraph;
       offset = 0;
       spans = [];
-      // Consume unlabeled quotes too, so names mentioned inside dialogue cannot become labels.
-      const quotes = /(?:([^:\n"“”«».!?]+):\s*|\b(You)\s+say,\s*)?("[^"\n]*(?:"|$)|“[^”\n]*(?:”|$)|«[^»\n]*(?:»|$))/giu;
-      for (const match of paragraph.matchAll(quotes)) {
-        const owners = aliases.get((match[1] ?? match[2] ?? "").trim().toLowerCase());
-        spans.push({ start: match.index, end: match.index + match[0].length,
+      const quotes = [...paragraph.matchAll(/"[^"\n]*(?:"|$)|“[^”\n]*(?:”|$)|«[^»\n]*(?:»|$)/gu)];
+      for (let i = 0; i < quotes.length; i++) {
+        const match = quotes[i]!;
+        const previous = quotes[i - 1];
+        const end = match.index + match[0].length;
+        // Search only narration immediately beside this quote, never inside another quote.
+        const before = paragraph.slice(previous ? previous.index + previous[0].length : 0, match.index);
+        const after = paragraph.slice(end, quotes[i + 1]?.index ?? paragraph.length);
+        const leading = prefix.exec(before);
+        const trailing = suffix.exec(after);
+        // An explicit unknown label should not borrow a known trailing attribution.
+        const name = leading?.[1] ?? (/[:]\s*$/u.test(before) ? "" : trailing?.[1] ?? trailing?.[2] ?? "");
+        const owners = aliases.get(name.toLowerCase());
+        spans.push({ start: match.index, end,
           speaker: owners?.size === 1 ? [...owners][0]! : null });
       }
     }

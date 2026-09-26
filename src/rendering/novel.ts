@@ -5,7 +5,7 @@ const quoted = /"[^"\n]+"|“[^”\n]+”|«[^»\n]+»/u;
 const sentenceSegmenter = new Intl.Segmenter("en", { granularity: "sentence" });
 const title = "(?:Mr|Mrs|Ms|Mx|Dr|Drs|Prof|Rev|Fr|Hon|Pres|Gov|Sen|Rep|Capt|Cmdr|Lt|Col|Gen|Sgt|Cpl|Pvt|Adm|Det|Insp|Supt|Messrs|Mmes|Mme|Mlle)";
 const titlePeriod = new RegExp(`(?<![\\p{L}\\p{N}_])${title}\\.(?=\\s+\\p{L})`, "giu");
-const speechVerb = "(?:says?|said|asks?|asked|repl(?:y|ies|ied)|answers?|answered|whispers?|whispered|murmurs?|murmured|mutters?|muttered|shouts?|shouted|yells?|yelled|calls?|called|adds?|added|warns?|warned|continues?|continued|tells?|told|exclaims?|exclaimed|insists?|insisted|demands?|demanded|stammers?|stammered)";
+export const speechVerb = "(?:says?|said|asks?|asked|repl(?:y|ies|ied)|answers?|answered|whispers?|whispered|murmurs?|murmured|mutters?|muttered|shouts?|shouted|yells?|yelled|calls?|called|adds?|added|warns?|warned|continues?|continued|tells?|told|exclaims?|exclaimed|insists?|insisted|demands?|demanded|stammers?|stammered|hush(?:es|ed)?|hiss(?:es|ed)?|screams?|screamed|growls?|growled)";
 const speechTag = new RegExp(`^(?:(?:${title}\\.\\s+)*(?:[\\p{L}][\\p{L}'’\\-]*\\s+){1,5}${speechVerb}|${speechVerb})\\b`, "iu");
 
 /** Keep a quotation and its speech tag together even after a question or exclamation mark.
@@ -19,7 +19,7 @@ export function splitNovelSentences(paragraph: string): string[] {
   for (const { segment: masked, index } of sentenceSegmenter.segment(segmentedText)) {
     const segment = paragraph.slice(index, index + masked.length);
     const previous = sentences.at(-1);
-    if (previous && /["”»][,;:]?\s*$/u.test(previous) && speechTag.test(segment.trimStart())) {
+    if (previous && /["”»][,;:]?\s*$/u.test(previous) && speechTag.test(segment.trimStart()) && !/["“«]/u.test(segment)) {
       sentences[sentences.length - 1] = previous + segment;
     } else sentences.push(segment);
   }
