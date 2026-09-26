@@ -33,7 +33,8 @@
   const ready = $derived($settings.novelTtsEnabled && $ttsState.phase === "ready");
 
   onMount(() => installKonamiCode(window, () => {
-    unlocked = true; open = true; notice = true;
+    if (outside) { unlocked = true; open = true; }
+    notice = true;
     clearTimeout(noticeTimer);
     noticeTimer = setTimeout(() => notice = false, 6000);
   }));
@@ -51,6 +52,13 @@
     queue?.dispose(); queue = undefined;
     clearAudio(); reading = false; paused = false; message = "";
   }
+  function exitNarrator() {
+    stop();
+    unlocked = false; open = false; notice = false;
+    lines = []; index = 0;
+    clearTimeout(noticeTimer);
+  }
+  $effect(() => { if (!outside) untrack(exitNarrator); });
   function togglePause() {
     if (!reading) return;
     paused = !paused;
@@ -118,6 +126,7 @@
     narrate(latest);
   }
   function narrate(text: string, append = false) {
+    if (!unlocked || !outside) return;
     const next = parseNovel(text).map(frame => frame.text);
     if (append && reading && queue) {
       lines.push(...next);
@@ -143,7 +152,7 @@
 <svelte:window onkeydowncapture={(event) => { if (event.key === "Escape") open = false; }} />
 
 {#if notice}
-  <div class="unlock-notice" role="status">Story narration unlocked! {outside ? "Look for the voice button at the bottom left." : "Exit VN to use the voice button at the bottom left."}</div>
+  <div class="unlock-notice" role="status">{outside ? "Story narration unlocked! Look for the voice button at the bottom left." : "Exit VN, then enter the Konami code to unlock story narration."}</div>
 {/if}
 
 {#if unlocked && outside && !extensionState.isEditorOpen}
@@ -169,6 +178,7 @@
     </button>
     <button disabled={!reading && !ready} aria-label={paused || !reading ? "Play narration" : "Pause narration"} onclick={() => reading ? togglePause() : readLatest()}>{paused || !reading ? "Play" : "Pause"}</button>
     <button disabled={!reading} aria-label="Stop narration" onclick={stop}>Stop</button>
+    <button aria-label="Exit story narration" title="Close the narrator. Enter the Konami code to reopen it." onclick={exitNarrator}>Exit</button>
     </div>
     {#if message}<div class="playback-status" role="status">{message}</div>{/if}
   </aside>
@@ -176,8 +186,8 @@
 
 <style>
   .unlock-notice { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 1100; max-width: calc(100vw - 32px); padding: 12px 20px; border: 1px solid #f8ae2c; border-radius: 12px; background: #202b34; color: #fff; font: 14px 'IBM Plex Sans', sans-serif; pointer-events: none; }
-  .secret-narration { position: fixed; left: 16px; bottom: 16px; z-index: 950; width: min(224px, calc(100vw - 32px)); font: 14px/1.4 'IBM Plex Sans', sans-serif; }
-  .playback-controls { box-sizing: border-box; display: grid; grid-template-columns: 40px repeat(2, minmax(0, 1fr)); align-items: center; gap: 6px; padding: 6px; border: 1px solid #465761; border-radius: 14px; background: #202b34; color: #eee8de; box-shadow: 0 4px 16px #0004; }
+  .secret-narration { position: fixed; left: 16px; bottom: 16px; z-index: 950; width: min(288px, calc(100vw - 32px)); font: 14px/1.4 'IBM Plex Sans', sans-serif; }
+  .playback-controls { box-sizing: border-box; display: grid; grid-template-columns: 40px repeat(3, minmax(0, 1fr)); align-items: center; gap: 6px; padding: 6px; border: 1px solid #465761; border-radius: 14px; background: #202b34; color: #eee8de; box-shadow: 0 4px 16px #0004; }
   .playback-controls button { display: flex; align-items: center; justify-content: center; height: 40px; min-width: 0; padding: 0 8px; background: #283640; color: #eee8de; }
   .playback-controls button:hover:enabled { background: #354650; border-color: #a0b1bb; }
   .playback-controls .narration-puck { padding: 0; color: #f8ae2c; }
