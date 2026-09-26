@@ -76,6 +76,7 @@ const defaultSettings = {
   novelTtsVoice: "M5" as "M5" | "F5",
   novelTtsMaleVoice: "M1",
   novelTtsFemaleVoice: "F1",
+  novelTtsVoiceProfiles: {} as Record<string, { speed: number; pitch: number }>,
   secretTtsVoice: "M5" as NarratorVoice,
   novelTtsSteps: 5,
   novelTtsPitch: 0,

@@ -4,7 +4,8 @@
   import { generateNarration, ttsState } from "@/tts/service";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import type { NarratorVoice } from "@/tts/voices";
-  let { voice }: { voice?: NarratorVoice } = $props();
+  let { voice, pitch, speed = 1 }: { voice?: NarratorVoice; pitch?: number; speed?: number } = $props();
+  const selectedPitch = $derived(pitch ?? $settings.novelTtsPitch);
   const selectedVoice = $derived(voice ?? $settings.novelTtsVoice);
 
   const example = "Moonlight spilled across the ruined gate. Beyond it, a single lantern flickered... and someone whispered your name.";
@@ -14,7 +15,7 @@
   let player: HTMLAudioElement | undefined = $state();
   let request = 0;
   const ready = $derived($settings.novelTtsEnabled && $ttsState.phase === "ready");
-  const selection = $derived(JSON.stringify([ready, selectedVoice, $settings.novelTtsSteps, $settings.novelTtsPitch]));
+  const selection = $derived(JSON.stringify([ready, selectedVoice, $settings.novelTtsSteps, selectedPitch, speed]));
 
   function stop() {
     request++;
@@ -30,7 +31,8 @@
     stop();
     const token = request;
     const options = { voice: selectedVoice, steps: $settings.novelTtsSteps };
-    const pitch = $settings.novelTtsPitch;
+    const pitch = selectedPitch;
+    const playbackSpeed = speed;
     const volume = $settings.volume;
     generating = true; message = "Generating preview...";
     try {
@@ -39,7 +41,7 @@
       previewUrl = URL.createObjectURL(narrationWav(audio, pitch));
       await tick();
       if (token !== request || !player) return;
-      configureNarrationPlayback(player, audio.sampleRate, pitch, volume);
+      configureNarrationPlayback(player, audio.sampleRate, pitch, volume, playbackSpeed);
       message = "Preview ready. Replay it using the audio controls.";
       try { await player.play(); }
       catch { if (token === request) message = "Preview ready. Press Play in the audio controls."; }

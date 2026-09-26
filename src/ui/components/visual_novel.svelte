@@ -1,6 +1,9 @@
 <script lang="ts">
   import { novelDialogueVoice, novelSpeechKey, readNovelSpeechKey } from "@/rendering/novel_voice";
-  import TtsVoiceSettings from "./tts_voice_settings.svelte";
+  import { Tabs } from "bits-ui";
+  import VnVoiceProfile from "./vn_voice_profile.svelte";
+  import Slider from "./slider.svelte";
+  import { narratorVoices } from "@/tts/voices";
   import { novelAutoDelay } from "@/rendering/novel_auto";
   import { onDestroy, tick, untrack } from "svelte";
   import { fade } from "svelte/transition";
@@ -113,9 +116,11 @@
     const audio = frame && narrationQueue?.get(narrationKey);
     if (!audio || !active || historyOpen || continuing || continuationSnapshot || retryTracker || narrationMuted) return;
     const token = playbackToken;
-    narrationUrl = URL.createObjectURL(narrationWav(audio, $settings.novelTtsPitch));
+    const { voice } = readNovelSpeechKey(narrationKey);
+    const profile = $settings.novelTtsVoiceProfiles[voice] ?? { pitch: $settings.novelTtsPitch, speed: 1 };
+    narrationUrl = URL.createObjectURL(narrationWav(audio, profile.pitch));
     narrationAudio = new Audio(narrationUrl);
-    configureNarrationPlayback(narrationAudio, audio.sampleRate, $settings.novelTtsPitch, $settings.volume);
+    configureNarrationPlayback(narrationAudio, audio.sampleRate, profile.pitch, $settings.volume, profile.speed);
     void narrationAudio.play().catch(() => {
       if (token === playbackToken) narrationStatus = "Audio ready. Click Read line to play.";
     });
@@ -584,6 +589,25 @@
             {#if settingsOpen}
               <section id="novel-settings-panel" class="vn-settings-panel" aria-label="Visual novel settings">
                 <div class="settings-heading"><strong>VN settings</strong><button onclick={closeSettings} aria-label="Close VN settings">Close</button></div>
+                <Tabs.Root value="engine">
+                  <Tabs.List class="settings-tabs" aria-label="VN settings categories">
+                    <Tabs.Trigger value="engine" class="settings-tab">TTS Engine</Tabs.Trigger>
+                    <Tabs.Trigger value="voices" class="settings-tab">Narration &amp; Voices</Tabs.Trigger>
+                  </Tabs.List>
+                  <Tabs.Content value="engine" class="settings-tab-content">
+                    <TtsSettings grid disableInitializeWhenOff />
+                    <fieldset class="engine-options" disabled={!$settings.novelTtsEnabled}>
+                      <label>Generation steps
+                        <Select ariaLabel="Generation steps" portal={false} allowDeselect={false}
+                          bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
+                          items={[5, 6, 7, 8, 9, 10].map(n => ({ value: String(n), label: String(n) }))} />
+                      </label>
+                      <label>Queue
+                        <Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} />
+                      </label>
+                    </fieldset>
+                  </Tabs.Content>
+                  <Tabs.Content value="voices" class="settings-tab-content">
                 <div class="visual-options" role="group" aria-label="Visual effects">
                   <button role="switch" aria-checked={$settings.novelBlur} aria-label="Background blur" onclick={() => $settings.novelBlur = !$settings.novelBlur} title="Blur the background to make characters stand out. Turn off for a sharper background.">Blur: {$settings.novelBlur ? "On" : "Off"}</button>
                   <button role="switch" aria-checked={$settings.novelGlow} aria-label="Character glow" onclick={() => $settings.novelGlow = !$settings.novelGlow} title="Add a light outline around characters so they are easier to see.">Glow: {$settings.novelGlow ? "On" : "Off"}</button>
@@ -592,8 +616,13 @@
                   <button role="switch" aria-checked={$settings.novelStoryCardInstructions} aria-label="Track Speakers" onclick={() => $settings.novelStoryCardInstructions = !$settings.novelStoryCardInstructions}>Track Speakers: {$settings.novelStoryCardInstructions ? "On" : "Off"}</button>
                   <small>Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.</small>
                 </div>
-                <TtsSettings grid disableInitializeWhenOff />
-                <TtsVoiceSettings />
+                    <small>Speed and pitch are saved separately for each voice. Cards with no gender use Narration. Dialogue voices require Track Speakers.</small>
+                    <VnVoiceProfile label="Narration" bind:voice={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
+                      items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
+                    <VnVoiceProfile label="Male dialogue" bind:voice={$settings.novelTtsMaleVoice} items={narratorVoices.filter(v => /^M[1-4]$/.test(v.value))} />
+                    <VnVoiceProfile label="Female dialogue" bind:voice={$settings.novelTtsFemaleVoice} items={narratorVoices.filter(v => /^F[1-4]$/.test(v.value))} />
+                  </Tabs.Content>
+                </Tabs.Root>
               </section>
             {/if}
           </div>
@@ -706,6 +735,14 @@
 {/if}
 
 <style>
+  :global(.settings-tabs) { display: flex; gap: 8px; margin-bottom: 12px; }
+  :global(.settings-tab) { flex: 1; }
+  :global(.settings-tab[data-state="active"]) { border-color: #f8ae2c; color: #f8ae2c; }
+  :global(.settings-tab-content) { display: flex; flex-direction: column; gap: 12px; }
+  :global(.settings-tab-content[hidden]) { display: none; }
+  .engine-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border: 0; padding: 8px; }
+  .engine-options label { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 13px; }
+
   .novel { --scene-gap: 16px; --bottom-inset: max(30px, env(safe-area-inset-bottom, 0px)); position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px) clamp(12px, 3vw, 32px) var(--bottom-inset); gap: var(--scene-gap); color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
   .portrait-filters { position: absolute; pointer-events: none; }
   .vn-card-error { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 950; max-width: 90vw; padding: 10px 16px; border-radius: 8px; background: #422e16; color: #fff; }

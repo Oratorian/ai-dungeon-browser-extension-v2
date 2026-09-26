@@ -7,9 +7,9 @@ function pitchedSampleRate(sampleRate: number, pitch: number): number {
 
 /** Shift the PCM playback pitch, then use native pitch-preserving time stretch
  * to restore the original reading speed. At zero, both factors are exactly one. */
-export function configureNarrationPlayback(player: HTMLAudioElement, sampleRate: number, pitch: number, volume: number) {
+export function configureNarrationPlayback(player: HTMLAudioElement, sampleRate: number, pitch: number, volume: number, speed = 1) {
   player.preservesPitch = true;
-  player.playbackRate = sampleRate / pitchedSampleRate(sampleRate, pitch);
+  player.playbackRate = sampleRate / pitchedSampleRate(sampleRate, pitch) * (Number.isFinite(speed) ? Math.max(0.5, Math.min(2, speed)) : 1);
   player.volume = Number.isFinite(volume) ? Math.max(0, Math.min(1, volume / 100)) : 1;
 }
 

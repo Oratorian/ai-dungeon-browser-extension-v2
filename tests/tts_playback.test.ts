@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
 
 describe("narrator pitch", () => {
+  it.each([0.5, 1, 1.5, 2])("applies speed %s independently of pitch", async speed => {
+    for (const pitch of [-3, 0, 3]) {
+      const audio = { samples: new Float32Array(44100), sampleRate: 44100 };
+      const header = new DataView(await narrationWav(audio, pitch).arrayBuffer());
+      const player = {} as HTMLAudioElement;
+      configureNarrationPlayback(player, audio.sampleRate, pitch, 100, speed);
+      expect(player.preservesPitch).toBe(true);
+      expect(audio.samples.length / header.getUint32(24, true) / player.playbackRate).toBeCloseTo(1 / speed, 8);
+    }
+  });
   it.each([-3, 0, 3])("shifts the WAV pitch by %s semitones and compensates duration", async pitch => {
     const sampleRate = 44100;
     const samples = new Float32Array(sampleRate);
