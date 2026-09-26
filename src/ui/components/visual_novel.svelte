@@ -1,4 +1,6 @@
 <script lang="ts">
+  import TtsVoiceSettings from "./tts_voice_settings.svelte";
+  import { novelAutoDelay } from "@/rendering/novel_auto";
   import { onDestroy, tick, untrack } from "svelte";
   import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
@@ -13,9 +15,7 @@
   import { vnCardError, syncVnCard } from "@/aid/vn_card_sync";
   import { createNovelLocationTracker, retainedLocationSeed, type NovelLocation } from "@/rendering/novel_location";
   import Select from "./select.svelte";
-  import Slider from "./slider.svelte";
   import TtsSettings from "./tts_settings.svelte";
-  import TtsPreview from "./tts_preview.svelte";
   import NovelComposer from "./novel_composer.svelte";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
@@ -29,6 +29,10 @@
   type Frame = NovelFrame & { source: HTMLElement; offset: number };
   let frames = $state<Frame[]>([]);
   let index = $state(0);
+  let autoReading = $state(false);
+  let autoContinue = $state(false);
+  let autoMenuOpen = $state(false);
+  let panelHidden = $state(false);
   let frameAdventure = $state("");
   let pendingBookmark: NovelBookmark | undefined;
   let jumpOpen = $state(false);
@@ -204,6 +208,29 @@
   const available = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
   const active = $derived(available && !extensionState.novelMinimized);
 
+  $effect(() => {
+    const text = narrationText;
+    const position = index;
+    const allowContinue = autoContinue;
+    if (!autoReading || !active || !text || historyOpen || settingsOpen || jumpOpen || locationMenuOpen || autoMenuOpen
+      || composing || retryEditing || continuing || continuationSnapshot || retryTracker || actionError) return;
+    const due = performance.now() + novelAutoDelay(text);
+    const timer = setInterval(() => {
+      if (document.hidden || performance.now() < due) return;
+      // Read the latest playback state without restarting the word timer whenever
+      // a prefetched line finishes. A blocked/paused player must not skip its line.
+      if (bufferingNarration) return;
+      if (narrationEnabled && ttsReady && !narrationMuted && !readWithoutAudio
+        && !narrationQueue?.hasFailed(text) && !narrationAudio?.ended) return;
+      if (position < frames.length - 1) {
+        clearInterval(timer); navigate(position + 1);
+      } else if (allowContinue) {
+        clearInterval(timer); void continueReading();
+      }
+    }, 200);
+    return () => clearInterval(timer);
+  });
+
   function refresh() {
     if (playedShortId() !== $playedAdventureId) return;
     historyCount = retryHistoryCount();
@@ -256,6 +283,7 @@
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
       frameAdventure = adventure ?? ""; pendingBookmark = undefined;
       frames = []; index = 0; composing = false; lastSignature = "";
+      autoReading = false; autoContinue = false; autoMenuOpen = false; panelHidden = false;
       retryEditing = false; retryInstruction = ""; settingsOpen = false; jumpOpen = false;
       locationMenuOpen = false; locationOverride = "__auto"; locationSeed = null; failedBackground = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
@@ -395,6 +423,7 @@
     return fade(node, { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180 });
   }
   async function exitNovel() {
+    autoReading = false; autoMenuOpen = false; panelHidden = false;
     extensionState.novelMinimized = false;
     stopNarration();
     narrationScheduler?.dispose();
@@ -405,6 +434,7 @@
   }
   async function minimizeNovel(event: MouseEvent) {
     event.preventDefault();
+    autoReading = false; autoMenuOpen = false;
     stopNarration();
     settingsOpen = false; locationMenuOpen = false; jumpOpen = false;
     extensionState.novelMinimized = true;
@@ -430,6 +460,9 @@
   }
   function key(event: KeyboardEvent) {
     if (!active || historyOpen) return;
+    if (event.key === "Escape" && autoMenuOpen) {
+      event.preventDefault(); event.stopPropagation(); autoMenuOpen = false; scene?.focus(); return;
+    }
     if (event.key === "Escape" && jumpOpen) {
       event.preventDefault(); event.stopPropagation(); closeJump(); return;
     }
@@ -481,7 +514,7 @@
   {#if historyOpen}
     <button class="resume" onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
   {:else}
-    <div class="novel" style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
+    <div class="novel" class:scene-only={panelHidden} style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
       <svg class="portrait-filters" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
           <filter id="novel-portrait-depth" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
@@ -506,7 +539,21 @@
       {/if}
       <header>
         <span class="title"><span class="scenario-name" title={scenarioName}>{scenarioName}</span>{#if storyMetadata?.scenarioTitle}<small title={adventureName}>{adventureName}</small>{/if}</span>
-        <div class="tools">
+        <div class="tools top-tools" class:menu-open={settingsOpen || locationMenuOpen || autoMenuOpen}>
+          <div class="auto-control" role="group" aria-label="Automatic reading"
+            onmouseenter={() => autoMenuOpen = true}
+            onmouseleave={(event) => { if (!event.currentTarget.matches(":has(:focus-visible)")) autoMenuOpen = false; }}
+            onfocusin={() => autoMenuOpen = true}
+            onfocusout={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !event.currentTarget.matches(":hover")) autoMenuOpen = false; }}>
+            <button aria-pressed={autoReading} aria-expanded={autoMenuOpen} aria-controls="novel-auto-panel" title="Click to toggle automatic reading. Hover for Auto Continue." onclick={() => autoReading = !autoReading}>Auto{autoReading ? ": On" : ""}</button>
+            <div id="novel-auto-panel" class="auto-panel" hidden={!autoMenuOpen}>
+              <div class="auto-panel-content">
+                <button role="switch" aria-checked={autoContinue} onclick={() => autoContinue = !autoContinue}>Auto Continue: {autoContinue ? "On" : "Off"}</button>
+                <small>While Auto is on, request the next AI response after the last loaded line. Uses your selected AI model and credits. Off by default for each VN session.</small>
+              </div>
+            </div>
+          </div>
+          <button aria-pressed={panelHidden} aria-controls="novel-reader-panels" title="Hide the reading panel and shading to see the full portraits." onclick={() => panelHidden = !panelHidden}>{panelHidden ? "Show" : "Hide"}</button>
           <div class="vn-settings-control">
             <button bind:this={settingsButton} aria-expanded={settingsOpen} aria-controls="novel-settings-panel" onclick={() => settingsOpen = !settingsOpen}>Settings</button>
             {#if settingsOpen}
@@ -521,23 +568,7 @@
                   <small>Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.</small>
                 </div>
                 <TtsSettings grid disableInitializeWhenOff />
-                <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
-                  <div class="voice-option" title="Choose the voice that reads the story aloud.">
-                    <span>Voice</span>
-                    <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
-                      bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
-                      items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
-                  </div>
-                  <div class="voice-option" title="Lower values prepare speech faster. Higher values spend more time refining how it sounds.">
-                    <span>Generation steps</span>
-                    <Select ariaLabel="Generation steps" allowDeselect={false} portal={false}
-                      bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
-                      items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
-                  </div>
-                  <div class="voice-option" title="Make the voice lower or higher without changing reading speed. Zero keeps the original voice."><span>Pitch</span><Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} /></div>
-                  <div class="voice-option" title="How many upcoming lines to prepare in advance. A larger queue can reduce waiting as you read, but uses more memory and work up front."><span>Queue</span><Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} /></div>
-                  <div class="voice-preview"><TtsPreview /></div>
-                </fieldset>
+                <TtsVoiceSettings />
               </section>
             {/if}
           </div>
@@ -575,7 +606,7 @@
         {/each}
       </div>
       <div class="reading-shade" aria-hidden="true"></div>
-      <div class="reader-panels" bind:clientHeight={readerHeight}>
+      <div id="novel-reader-panels" class="reader-panels" inert={panelHidden} aria-hidden={panelHidden} bind:clientHeight={readerHeight}>
         {#if $settings.novelTtsEnabled}
         <aside class="voice-panel" aria-label="Narration controls" aria-describedby="novel-audio-hint">
           <div id="novel-audio-menu" class="narration-controls audio-menu">
@@ -668,6 +699,16 @@
   .location-panel { position: absolute; top: 100%; right: 0; z-index: 10; width: min(320px, calc(100vw - 24px)); padding: 12px; display: flex; flex-direction: column; gap: 4px; background: #202b34; border: 1px solid #64727c; border-radius: 8px; box-shadow: 0 8px 24px #0006; }
   .location-panel[hidden] { display: none; }
   .tools { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  .top-tools { position: relative; opacity: .25; transition: opacity 220ms ease 500ms; }
+  .top-tools:hover, .top-tools:has(:focus-visible), .top-tools.menu-open { opacity: 1; transition-delay: 0ms; }
+  .auto-control { position: relative; }
+  .auto-control > button[aria-pressed="true"] { border-color: #f8ae2c; }
+  .auto-panel { position: absolute; top: 100%; left: 0; z-index: 10; width: min(280px, calc(100vw - 64px)); padding-top: 8px; }
+  .auto-panel[hidden] { display: none; }
+  .auto-panel-content { padding: 12px; border: 1px solid #64727c; border-radius: 8px; background: #202b34; box-shadow: 0 8px 24px #0006; }
+  .auto-panel button { width: 100%; }
+  .auto-panel small { font-size: 12px; margin-top: 8px; }
+  @media (prefers-reduced-motion: reduce) { .top-tools { transition: none; } }
   .location-control small { font-size: 11px; }
   header, .tools, footer { display: flex; align-items: center; gap: 12px; }
   header { position: relative; z-index: 3; justify-content: space-between; flex-wrap: wrap; }
@@ -682,27 +723,28 @@
   button:disabled { opacity: .4; cursor: default; }
   .accent { background: #f8ae2c; color: #191c22; border-color: #f8ae2c; }
   .accent:hover:enabled { background: #ffc761; }
-  .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, 1440px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: visible; pointer-events: none; }
+  /* Grow spacing with portrait height above 1080p instead of crowding tall sprites into 1440px. */
+  .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, max(1440px, 133.333dvh)); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: visible; pointer-events: none; }
   .stage-slot { position: relative; grid-row: 1; min-width: 0; min-height: 0; }
   /* Keep portrait ordering below the reading shade and controls. */
   .stage { z-index: 0; }
   .stage-slot { z-index: 0; }
   .stage-slot.speaking { z-index: 1; }
   .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
-  .portrait { position: absolute; left: 50%; transform: translateX(-50%); width: auto; max-width: min(100vw, 1440px); height: 100%; object-fit: contain; object-position: center top; filter: url("#novel-portrait-depth"); mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
+  .portrait { position: absolute; left: 50%; transform: translateX(-50%); width: auto; max-width: min(100vw, max(1440px, 133.333dvh)); height: 100%; object-fit: contain; object-position: center top; filter: url("#novel-portrait-depth"); mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
   .stage-slot[data-edge="left"] .portrait { left: 0; transform: none; object-position: left top; }
   .stage-slot[data-edge="right"] .portrait { left: auto; right: 0; transform: none; object-position: right top; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
   .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + var(--bottom-inset) + 8px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + var(--bottom-inset) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
+  .scene-only .reader-panels, .scene-only .reading-shade { visibility: hidden; pointer-events: none; }
+  .scene-only .portrait { mask-image: none; }
+  .scene-only .stage-caption { bottom: 24px; }
+  .tools > button[aria-pressed="true"] { border-color: #f8ae2c; }
   .voice-panel, .action-panel { display: flex; flex-direction: column; }
   .vn-settings-panel { position: absolute; top: calc(100% + 12px); right: 0; width: min(480px, calc(100vw - 40px)); max-height: calc(100dvh - 150px); overflow: auto; box-sizing: border-box; padding: 16px; border: 1px solid #65717b; border-radius: 12px; background: #141e27fa; box-shadow: 0 12px 32px #0008; }
   .settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-  .voice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; padding: 8px; margin: 0; border: 0; }
-  .voice-option { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 13px; }
-  .voice-preview { grid-column: 1 / -1; min-width: 0; }
-  .voice-options:disabled { opacity: 0.4; }
   .hover-hint { flex-shrink: 0; text-align: center; font-size: 11px; line-height: 1.4; color: #b9c2c8; margin: 6px 0 0; }
   .voice-panel { position: absolute; bottom: 0; left: 0; z-index: 1; width: clamp(160px, 18vw, 220px); max-height: 60vh; overflow: auto; }
   .voice-panel .audio-menu { min-height: 0; overflow: auto; display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
@@ -739,6 +781,8 @@
   .jump-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
   @media (max-width: 900px) {
+    .auto-control { position: static; }
+    .auto-panel { left: auto; right: 0; }
     .portrait { left: -17.5%; transform: none; width: 135%; max-width: none; }
     .reader-panels { grid-template-columns: minmax(0, 1fr); max-height: 65%; }
     .dialogue, footer { grid-column: 1; }

@@ -12,6 +12,29 @@ const cast: NovelCharacter[] = [
 const track = (text: string) => createNovelStageTracker(cast)(parseNovel(text));
 
 describe("paragraph-based visual novel scenes", () => {
+  it("keeps Elarion, Serastra and Sage through attributed speech and participant narration", () => {
+    const characters = [
+      { id: "elarion", name: "Elarion", triggers: "you" },
+      { id: "sera", name: "Serastra", triggers: "" },
+      { id: "sage", name: "Sage", triggers: "" },
+      { id: "absent", name: "Vespera", triggers: "" },
+    ];
+    const text = `You adjust your cuff with a single, deliberate motion. Serastra emerges to deliver an order, but your attention remains fixed on Sage's warning.
+"I am merely a connoisseur of observation, Sage," you reply.
+Your voice is quiet, velvet smooth despite the late hour.
+Sage: "That's what I'm afraid of. Vespera would agree."
+Sage exhales sharply. She doesn't look at you directly now; instead, she pivots toward a table.`;
+    const stages = createNovelStageTracker(characters)(parseNovel(text));
+    expect(stages.length).toBeGreaterThan(4);
+    expect(stages.every(stage => JSON.stringify(stage) === JSON.stringify(["elarion", "sera", "sage", null]))).toBe(true);
+  });
+  it("ends conversation carry for unrelated narration, a different cast, or a new passage", () => {
+    expect(track('Nyx and Sage wait.\n"Welcome," Sage says.\nCoral enters.').at(-1)).toEqual(["coral", null, null, null]);
+    expect(track('Nyx and Sage wait.\n"Welcome," Sage says.\nThe room is empty.').at(-1)).toEqual([null, null, null, null]);
+    expect(createNovelStageTracker(cast)([
+      ...parseNovel('Nyx and Sage wait.\n"Welcome," Sage says.'), ...parseNovel('Her voice is quiet.'),
+    ]).at(-1)).toEqual([null, null, null, null]);
+  });
   it("shows a character through its you alias", () => {
     const tracker = createNovelStageTracker([{ id: "elarion", name: "Elarion", triggers: "Elarion, you" }]);
     expect(tracker(parseNovel('You: "Hello."'))).toEqual([["elarion", null, null, null]]);

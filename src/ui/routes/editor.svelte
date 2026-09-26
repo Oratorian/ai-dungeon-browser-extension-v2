@@ -15,6 +15,7 @@
   import FloatingButton from "@/ui/components/floating_button.svelte";
   import StoryCardAutocomplete from "@/ui/components/story_card_autocomplete.svelte";
   import VisualNovel from "@/ui/components/visual_novel.svelte";
+  import SecretNarration from "@/ui/components/secret_narration.svelte";
   import GitHubUpdateDialog from "@/ui/components/github_update_dialog.svelte";
   import { versionInfo, checkForUpdate, RELEASES_URL, type VersionInfo } from "@/shared/version";
   import { fade, fly } from "svelte/transition";
@@ -43,6 +44,7 @@
 <FloatingButton />
 <StoryCardAutocomplete />
 <VisualNovel />
+<SecretNarration />
 <!-- Mounted outside the editor and hover popover so either picker can review an update. -->
 <BitsConfig defaultPortalTo={portal}>
   <GitHubUpdateDialog />

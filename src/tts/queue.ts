@@ -1,4 +1,5 @@
-export type NarrationOptions = { voice: "M5" | "F5"; steps: number };
+import type { NarratorVoice } from "./voices";
+export type NarrationOptions = { voice: NarratorVoice; steps: number };
 export type NarrationAudio = { samples: Float32Array; sampleRate: number };
 
 export function narrationQueueSize(value: number): number {

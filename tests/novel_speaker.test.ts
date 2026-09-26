@@ -9,6 +9,24 @@ const characters = [
 const speakers = (text: string) => novelSpeakers(parseNovel(text), characters);
 
 describe("explicit VN speakers", () => {
+  it.each(["reply", "whisper", "shout", "yell", "mutter", "hush", "hiss", "scream"])("tracks the player attribution: you %s", verb => {
+    expect(speakers(`"I am merely a connoisseur of observation, Sage," you ${verb}.`)).toEqual(["elarion"]);
+    expect(speakers(`You ${verb}, "Sage is waiting."`)).toEqual(["elarion"]);
+  });
+  it("tracks named, inverted and softly spoken attributions across long quotes", () => {
+    expect(speakers('"Hello. Stay here," Sage whispers.')).toEqual(["sage", "sage"]);
+    expect(speakers('“Stay here,” whispers Sage.')).toEqual(["sage"]);
+    expect(speakers('Elarion quietly replies, «Of course.»')).toEqual(["elarion"]);
+    expect(speakers('"Of course," you softly reply.')).toEqual(["elarion"]);
+    expect(speakers('Sage shouts, "Stop!" Elarion replies, "No."')).toEqual(["sage", "elarion"]);
+  });
+  it("does not use names inside quotes, ordinary action tags or ambiguous attributions", () => {
+    expect(speakers('"Sage whispers, Elarion shouts."')).toEqual([null]);
+    expect(speakers('"Hello." Sage smiles.')).toEqual([null, null]);
+    expect(speakers('"Hello," she whispers.')).toEqual([null]);
+    expect(novelSpeakers(parseNovel('"Hello," Sage whispers.'), [...characters,
+      { id: "other", name: "Other", triggers: "Sage" }])).toEqual([null]);
+  });
   it.each(["You", "you", "Elarion"])("resolves the player alias %s to the same card", label => {
     expect(speakers(`${label}: "Hello."`)).toEqual(["elarion"]);
   });

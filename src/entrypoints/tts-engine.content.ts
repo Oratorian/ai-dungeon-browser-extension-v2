@@ -5,7 +5,7 @@ import { browser } from "wxt/browser";
 // Retain asset message names for compatibility with already installed helpers.
 const origin = "http://localhost:4177";
 const base = "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46/";
-const allowed = /^(onnx\/(tts\.json|unicode_indexer\.json|duration_predictor\.onnx|text_encoder\.onnx|vector_estimator\.onnx|vocoder\.onnx)|voice_styles\/[MF]5\.json)$/;
+const allowed = /^(onnx\/(tts\.json|unicode_indexer\.json|duration_predictor\.onnx|text_encoder\.onnx|vector_estimator\.onnx|vocoder\.onnx)|voice_styles\/[MF][1-5]\.json)$/;
 export default defineContentScript({
   matches: ["http://localhost/*"],
   runAt: "document_start",

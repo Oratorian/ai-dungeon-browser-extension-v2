@@ -12,4 +12,8 @@
     <DebugType>none</DebugType>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Ignore leftovers from builds made before output moved to .output. -->
+    <Compile Remove="bin\**;obj\**" />
+  </ItemGroup>
 </Project>

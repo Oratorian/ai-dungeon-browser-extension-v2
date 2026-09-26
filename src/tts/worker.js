@@ -1,6 +1,7 @@
 import * as ort from 'onnxruntime-web/wasm';
 import { TextToSpeech, UnicodeProcessor, Style } from './supertonic.js';
 import { threadingCapabilities, requestedThreadCount } from './capabilities';
+import { isNarratorVoice, narratorVoices } from './voices';
 
 ort.env.wasm.wasmPaths = new URL('/runtime/', self.location.origin).href;
 let engine;
@@ -37,7 +38,7 @@ async function initialize(threads) {
 }
 
 async function voiceStyle(name) {
-  if (!/^[MF]5$/.test(name)) throw new Error('Invalid narrator.');
+  if (!isNarratorVoice(name)) throw new Error('Invalid narrator.');
   if (!voices.has(name)) {
     const data = await (await asset(`voice_styles/${name}.json`)).json();
     voices.set(name, new Style(
@@ -65,8 +66,7 @@ self.onmessage = async ({ data }) => {
   try {
     if (data.type === 'load') {
       if (!engine) await initialize(data.threads);
-      await voiceStyle('M5');
-      await voiceStyle('F5');
+      for (const voice of narratorVoices) await voiceStyle(voice.value);
       self.postMessage({ type: 'ready', threads: ort.env.wasm.numThreads, capabilities: threadingCapabilities() });
     } else if (data.type === 'speak') {
       if (!engine) throw new Error('Load the model first.');
