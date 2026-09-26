@@ -6,6 +6,7 @@
   import { installKonamiCode } from "@/shared/konami";
   import { readNovelPassages } from "@/rendering/novel_dom";
   import { parseNovel } from "@/rendering/novel";
+  import { createStoryAutoplay } from "@/rendering/story_autoplay";
   import { NarrationQueue, narrationQueueSize } from "@/tts/queue";
   import { generateNarration, ttsState } from "@/tts/service";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
@@ -18,6 +19,8 @@
   let unlocked = $state(false);
   let open = $state(false);
   let reading = $state(false);
+  let paused = $state(false);
+  let autoplay = $state(true);
   let message = $state("");
   let player = $state<HTMLAudioElement>();
   let url = $state("");
@@ -45,7 +48,19 @@
   function stop() {
     request++;
     queue?.dispose(); queue = undefined;
-    clearAudio(); reading = false; message = "";
+    clearAudio(); reading = false; paused = false; message = "";
+  }
+  function togglePause() {
+    if (!reading) return;
+    paused = !paused;
+    if (paused) { player?.pause(); message = "Narration paused."; }
+    else if (player) {
+      const token = request;
+      message = `Reading line ${index + 1} of ${lines.length}.`;
+      void player.play().catch(() => {
+        if (token === request) { paused = true; message = "Playback blocked. Press Play to try again."; }
+      });
+    }
   }
   // A settings change or adventure switch invalidates queued audio. VN owns playback while enabled.
   const configuration = $derived(JSON.stringify([outside, ready, $playedAdventureId,
@@ -54,6 +69,25 @@
   $effect(() => { configuration; untrack(stop); });
   $effect(() => { const volume = $settings.volume; if (player) player.volume = Math.max(0, Math.min(1, volume / 100)); });
   onDestroy(stop);
+
+  function passages() {
+    const output = document.getElementById("gameplay-output");
+    return output ? readNovelPassages(output).map(passage => passage.text) : [];
+  }
+  $effect(() => {
+    if (!unlocked || !autoplay || !outside || !ready || !$playedAdventureId) return;
+    const poll = createStoryAutoplay(untrack(passages));
+    const timer = setInterval(() => {
+      // Native Continue controls are disabled during generation. Also require
+      // a quiet text window, since availability can update before the final DOM render.
+      const controls = [...document.querySelectorAll<HTMLElement>('[aria-label="Command: continue"]')]
+        .filter(control => !control.closest('[hidden], [aria-hidden="true"]'));
+      const busy = controls.length > 0 && controls.every(control => control.hasAttribute("disabled") || control.getAttribute("aria-disabled") === "true");
+      const next = poll(passages(), performance.now(), busy);
+      if (next) narrate(next.text, !next.replace);
+    }, 400);
+    return () => clearInterval(timer);
+  });
 
   function advance(token: number) {
     if (token !== request || !queue) return;
@@ -72,15 +106,25 @@
     configureNarrationPlayback(player, audio.sampleRate, $settings.novelTtsPitch, $settings.volume);
     player.onended = () => { if (token === request) { index++; advance(token); } };
     player.onerror = () => { if (token === request) { stop(); message = "Audio could not be played. Try reading again."; } };
-    message = `Reading line ${index + 1} of ${lines.length}.`;
-    void player.play().catch(() => { if (token === request) { open = true; message = "Audio ready. Press Play below."; } });
+    message = paused ? "Audio ready. Narration paused." : `Reading line ${index + 1} of ${lines.length}.`;
+    if (!paused) void player.play().catch(() => {
+      if (token === request) { paused = true; message = "Audio ready. Press Play."; }
+    });
   }
   function readLatest() {
-    stop();
-    const output = document.getElementById("gameplay-output");
-    const latest = output && readNovelPassages(output).at(-1);
+    const latest = passages().at(-1);
     if (!latest) { message = "No story response is loaded yet."; return; }
-    lines = parseNovel(latest.text).map(frame => frame.text);
+    narrate(latest);
+  }
+  function narrate(text: string, append = false) {
+    const next = parseNovel(text).map(frame => frame.text);
+    if (append && reading && queue) {
+      lines.push(...next);
+      queue.setWindow(lines.slice(index, index + narrationQueueSize($settings.novelTtsQueue) + 1));
+      return;
+    }
+    stop();
+    lines = next;
     index = 0;
     if (!lines.length || !ready || !outside) return;
     reading = true;
@@ -106,29 +150,34 @@
     {#if open}
       <section id="secret-narration-settings" aria-label="Story narration settings" class="bg-theme-neutral-0 text-theme-neutral-900">
         <header><strong>Story narration unlocked</strong><button aria-label="Close narration settings" onclick={() => open = false}>Close</button></header>
-        <p>Read the latest loaded response without entering VN. Wait for the response to finish before reading. Settings are shared with VN.</p>
+        <p>Read without entering VN. Autoplay reads new passages after the text settles. Settings are shared with VN.</p>
+        <button role="switch" aria-checked={autoplay} onclick={() => { autoplay = !autoplay; if (!autoplay) stop(); }}>Autoplay new passages: {autoplay ? "On" : "Off"}</button>
         <TtsSettings grid />
         <TtsVoiceSettings />
         <label class="volume">Volume<Slider ariaLabel="Narration volume" bind:value={$settings.volume} /></label>
         <div class="controls">
           <button disabled={!ready || reading} onclick={readLatest}>Read latest response</button>
-          <button disabled={!reading} onclick={stop}>Stop</button>
-          {#if player}<button onclick={() => { void player?.play().catch(() => message = "Playback blocked. Try again."); }}>Play</button>{/if}
         </div>
-        {#if message}<p role="status">{message}</p>{/if}
       </section>
     {/if}
+    <div class="playback-controls">
     <button class="narration-puck" aria-label="Story narration" title="Story narration" aria-expanded={open} aria-controls="secret-narration-settings" onclick={() => open = !open}>
       <span class="font-symbol" aria-hidden="true">record_voice_over</span>
     </button>
+    <button disabled={!reading && !ready} aria-label={paused || !reading ? "Play narration" : "Pause narration"} onclick={() => reading ? togglePause() : readLatest()}>{paused || !reading ? "Play" : "Pause"}</button>
+    <button disabled={!reading} aria-label="Stop narration" onclick={stop}>Stop</button>
+    </div>
+    {#if message}<div class="playback-status" role="status">{message}</div>{/if}
   </aside>
 {/if}
 
 <style>
   .unlock-notice { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 1100; max-width: calc(100vw - 32px); padding: 12px 20px; border: 1px solid #f8ae2c; border-radius: 12px; background: #202b34; color: #fff; font: 14px 'IBM Plex Sans', sans-serif; pointer-events: none; }
   .secret-narration { position: fixed; left: 16px; bottom: 16px; z-index: 950; font: 14px 'IBM Plex Sans', sans-serif; }
+  .playback-controls { display: flex; align-items: center; gap: 8px; padding: 4px; border-radius: 28px; background: #202b34; color: #eee8de; }
+  .playback-status { max-width: min(400px, calc(100vw - 32px)); margin-top: 6px; padding: 4px 8px; border-radius: 6px; background: #202b34; color: #eee8de; font-size: 12px; }
   .narration-puck { width: 48px; height: 48px; border-radius: 50%; background: #202b34; color: #f8ae2c; }
-  section { position: absolute; bottom: 60px; left: 0; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 100px); overflow: auto; padding: 16px; border: 1px solid #65717b; border-radius: 12px; box-shadow: 0 12px 32px #0008; }
+  section { position: absolute; bottom: calc(100% + 12px); left: 0; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 160px); overflow: auto; padding: 16px; border: 1px solid #65717b; border-radius: 12px; box-shadow: 0 12px 32px #0008; }
   header, .controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   p { margin: 12px 0; font-size: 12px; }
   button { cursor: pointer; border: 1px solid #64727c; border-radius: 8px; padding: 8px 12px; }
