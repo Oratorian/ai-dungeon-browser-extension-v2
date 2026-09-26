@@ -1,7 +1,7 @@
 import { Tab } from "@/shared/types";
 
-/** Which half of the Settings tab is showing. See ui/routes/editor/settings.svelte. */
-export type SettingsSection = "extension" | "cards";
+/** Selected category in the main settings workspace. */
+export type SettingsSection = "extension" | "cards" | "novel" | "speech" | "writing" | "audio" | "images" | "libraries" | "diagnostics";
 
 export const extensionState = $state({
   isEditorOpen: false,

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getContext } from "svelte";
   import { Tooltip } from "bits-ui";
   import { safeHtml } from "@/ui/actions/safe_html";
 
@@ -19,11 +20,16 @@
   };
 
   let { label, info, children }: Props = $props();
+  // Main settings shows help inline; other screens keep the compact tooltip.
+  const inlineHelp = getContext<boolean>("settings-inline-help") ?? false;
 
 </script>
 
 <div class="flex flex-col w-full h-fit gap-2">
-  {#if info}
+  {#if inlineHelp}
+    <span class="font-semibold text-sm">{label}</span>
+    {#if info}<div use:safeHtml={{ html: info }} class="text-sm leading-relaxed text-theme-neutral-800"></div>{/if}
+  {:else if info}
     <Tooltip.Provider>
       <Tooltip.Root delayDuration={200}>
         <Tooltip.Trigger

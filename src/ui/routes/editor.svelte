@@ -57,23 +57,23 @@
   >
     <div
       transition:fly={{ duration: 200, y: 32 }}
-      class="flex flex-col fixed w-[95vw] max-w-160 h-[95vh] bg-theme-neutral-0 rounded-2xl border border-theme-neutral-100 overflow-hidden"
+      style:max-width={extensionState.editorTab === Tab.Settings ? "1160px" : "640px"}
+      class="flex flex-col fixed w-[95vw] h-[95vh] bg-theme-neutral-0 rounded-2xl border border-theme-neutral-100 overflow-hidden"
     >
       <Tabs />
       <BitsConfig defaultPortalTo={portal}>
-        <ScrollArea>
-          {#if extensionState.editorTab === Tab.Adventure}
-            <Adventure />
-          {/if}
-
-          {#if extensionState.editorTab === Tab.Import}
-            <Import />
-          {/if}
-
-          {#if extensionState.editorTab === Tab.Settings}
-            <Settings />
-          {/if}
-        </ScrollArea>
+        {#if extensionState.editorTab === Tab.Settings}
+          <Settings />
+        {:else}
+          <ScrollArea>
+            {#if extensionState.editorTab === Tab.Adventure}
+              <Adventure />
+            {/if}
+            {#if extensionState.editorTab === Tab.Import}
+              <Import />
+            {/if}
+          </ScrollArea>
+        {/if}
       </BitsConfig>
 
       <!-- Permanent footer: installed version + copyright, always visible below the scrolling tab. -->
