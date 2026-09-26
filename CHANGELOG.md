@@ -9,6 +9,36 @@ it, and keep the newest version at the top.
 
 ## v3.0.1
 
+### 🎬 VN reading and scene controls
+
+- **Auto** advances through the story with a pause based on word count and waits for active
+  narration to finish. Hover over Auto to enable **Auto Continue**, which requests another
+  AI response at the end of the loaded story and uses your selected AI model and credits.
+- **Hide** hides the reading panel for an unobstructed scene; **Show** brings it back.
+- Top controls fade when idle and become fully visible on hover or keyboard focus.
+- Location choices are saved per adventure across refreshes and reopening VN, including
+  **Automatic** and **No background**. Missing location cards fall back to Automatic.
+- Portrait spacing scales with large displays, preventing crowded characters at 4K.
+
+### 💬 More natural dialogue and consistent characters
+
+- With **Track Speakers** enabled, dialogue such as `"Careful," you whisper.` now identifies
+  the speaker too, applying the same glow, foreground placement, and listener dimming as
+  named dialogue. Explicit speech attributions before or after a quote are supported.
+- Characters remain present through connected dialogue and narration instead of disappearing
+  between speakers. Names mentioned only inside a quote still do not introduce absent characters.
+- Titles such as **Dr.**, **Mr.**, and **Mrs.** stay with character names instead of creating
+  premature sentence breaks. Separate speakers' dialogue is no longer joined by attribution matching.
+
+### 🔊 A hidden narration extra
+
+- Added an optional discoverable narrator for the normal story view, with autoplay for new
+  passages and always-visible Play/Pause, Stop, and Exit controls.
+- Its settings include ten named voices, Male/Female 1-5. The hidden narrator remembers its
+  own voice choice; VN keeps its familiar Male/Female options.
+- Entering VN exits the hidden narrator. The updated Firefox TTS Helper supports all ten voices;
+  install the updated helper to use the additional voices with Firefox acceleration.
+
 ### 🩹 AI Dungeon action compatibility
 
 - Fixed duplicated action text such as `Action You say ... You say ...` caused by AI Dungeon's
