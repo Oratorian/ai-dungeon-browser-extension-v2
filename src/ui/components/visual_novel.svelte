@@ -1,4 +1,5 @@
 <script lang="ts">
+  import TtsVoiceSettings from "./tts_voice_settings.svelte";
   import { onDestroy, tick, untrack } from "svelte";
   import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
@@ -13,9 +14,7 @@
   import { vnCardError, syncVnCard } from "@/aid/vn_card_sync";
   import { createNovelLocationTracker, retainedLocationSeed, type NovelLocation } from "@/rendering/novel_location";
   import Select from "./select.svelte";
-  import Slider from "./slider.svelte";
   import TtsSettings from "./tts_settings.svelte";
-  import TtsPreview from "./tts_preview.svelte";
   import NovelComposer from "./novel_composer.svelte";
   import { configureNarrationPlayback, narrationWav } from "@/tts/playback";
   import { configureTts, generateNarration, initializeTts, ttsState } from "@/tts/service";
@@ -521,23 +520,7 @@
                   <small>Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.</small>
                 </div>
                 <TtsSettings grid disableInitializeWhenOff />
-                <fieldset class="voice-options" disabled={!$settings.novelTtsEnabled} inert={!$settings.novelTtsEnabled} aria-label="TTS voice settings">
-                  <div class="voice-option" title="Choose the voice that reads the story aloud.">
-                    <span>Voice</span>
-                    <Select ariaLabel="Narrator voice" allowDeselect={false} portal={false}
-                      bind:value={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
-                      items={[{ value: "M5", label: "Male" }, { value: "F5", label: "Female" }]} />
-                  </div>
-                  <div class="voice-option" title="Lower values prepare speech faster. Higher values spend more time refining how it sounds.">
-                    <span>Generation steps</span>
-                    <Select ariaLabel="Generation steps" allowDeselect={false} portal={false}
-                      bind:value={() => String($settings.novelTtsSteps), value => $settings.novelTtsSteps = Number(value)}
-                      items={[5, 6, 7, 8, 9, 10].map(steps => ({ value: String(steps), label: String(steps) }))} />
-                  </div>
-                  <div class="voice-option" title="Make the voice lower or higher without changing reading speed. Zero keeps the original voice."><span>Pitch</span><Slider ariaLabel="Narrator pitch" bind:value={$settings.novelTtsPitch} min={-3} max={3} step={0.5} /></div>
-                  <div class="voice-option" title="How many upcoming lines to prepare in advance. A larger queue can reduce waiting as you read, but uses more memory and work up front."><span>Queue</span><Slider ariaLabel="Narration queue" bind:value={$settings.novelTtsQueue} min={1} max={20} step={1} /></div>
-                  <div class="voice-preview"><TtsPreview /></div>
-                </fieldset>
+                <TtsVoiceSettings />
               </section>
             {/if}
           </div>
@@ -700,10 +683,6 @@
   .voice-panel, .action-panel { display: flex; flex-direction: column; }
   .vn-settings-panel { position: absolute; top: calc(100% + 12px); right: 0; width: min(480px, calc(100vw - 40px)); max-height: calc(100dvh - 150px); overflow: auto; box-sizing: border-box; padding: 16px; border: 1px solid #65717b; border-radius: 12px; background: #141e27fa; box-shadow: 0 12px 32px #0008; }
   .settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-  .voice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; padding: 8px; margin: 0; border: 0; }
-  .voice-option { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 13px; }
-  .voice-preview { grid-column: 1 / -1; min-width: 0; }
-  .voice-options:disabled { opacity: 0.4; }
   .hover-hint { flex-shrink: 0; text-align: center; font-size: 11px; line-height: 1.4; color: #b9c2c8; margin: 6px 0 0; }
   .voice-panel { position: absolute; bottom: 0; left: 0; z-index: 1; width: clamp(160px, 18vw, 220px); max-height: 60vh; overflow: auto; }
   .voice-panel .audio-menu { min-height: 0; overflow: auto; display: flex; align-items: stretch; flex-direction: column; padding: 14px; background: #141e27fa; border: 1px solid #65717b; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
