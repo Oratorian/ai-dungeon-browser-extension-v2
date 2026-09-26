@@ -36,9 +36,10 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
     const dialogueParagraphs = new Set(frames.filter((_, index) => speakers[index]).map(frame => frame.paragraph));
     const paragraphCast = new Map<string, string[]>();
     let previousNamedCharacter: string | null = null;
+    let conversation = false;
     let currentCast: string[] = [];
     return frames.map(frame => {
-      if (frame.startsPassage) previousNamedCharacter = null;
+      if (frame.startsPassage) { previousNamedCharacter = null; conversation = false; }
       let mentioned = paragraphCast.get(frame.paragraph);
       if (!mentioned) {
         const triggered = new Set<string>();
@@ -54,11 +55,22 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
         paragraphCast.set(frame.paragraph, mentioned);
       }
       if (frame.startsParagraph) {
-        // A labeled turn changes who is speaking, not who is still in the room.
+        // An attributed quotation also changes the speaker, not the room's cast.
+        // In particular, native prose may use '"..." you reply' instead of a label.
+        const dialogue = dialogueParagraphs.has(frame.paragraph)
+          || (mentioned.length > 0 && /["“«]/u.test(frame.paragraph));
+        const existing = slots.filter((id): id is string => id !== null);
+        const continuesConversation = conversation && existing.length > 0 && (
+          mentioned.length > 0 ? mentioned.every(id => existing.includes(id))
+            : /^(?:you|your|she|her|he|his|they|their)\b/iu.test(frame.paragraph.trim())
+        );
+        // Narration about an established participant ('Your voice is quiet...')
+        // keeps listeners present. Unrelated narration or a new cast resets this.
         // Prioritize explicit presence when all four slots are already occupied.
-        currentCast = dialogueParagraphs.has(frame.paragraph)
-          ? [...new Set([...mentioned, ...slots.filter((id): id is string => id !== null)])].slice(0, 4)
+        currentCast = dialogue || continuesConversation
+          ? [...new Set([...mentioned, ...existing])].slice(0, 4)
           : mentioned.length ? mentioned : previousNamedCharacter && continuesCharacter(frame.paragraph) ? [previousNamedCharacter] : [];
+        conversation = dialogue || continuesConversation;
         // Only bridge one paragraph. A new explicit mention is needed before another carry.
         previousNamedCharacter = mentioned.length === 1 ? mentioned[0]! : null;
       }
