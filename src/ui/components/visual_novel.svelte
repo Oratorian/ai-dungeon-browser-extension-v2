@@ -1,5 +1,6 @@
 <script lang="ts">
   import TtsVoiceSettings from "./tts_voice_settings.svelte";
+  import { novelAutoDelay } from "@/rendering/novel_auto";
   import { onDestroy, tick, untrack } from "svelte";
   import { fade } from "svelte/transition";
   import { Storage, settings } from "@/storage";
@@ -28,6 +29,9 @@
   type Frame = NovelFrame & { source: HTMLElement; offset: number };
   let frames = $state<Frame[]>([]);
   let index = $state(0);
+  let autoReading = $state(false);
+  let autoContinue = $state(false);
+  let panelHidden = $state(false);
   let frameAdventure = $state("");
   let pendingBookmark: NovelBookmark | undefined;
   let jumpOpen = $state(false);
@@ -203,6 +207,29 @@
   const available = $derived($settings.visualNovelMode && !!$playedAdventureId && !extensionState.isEditorOpen);
   const active = $derived(available && !extensionState.novelMinimized);
 
+  $effect(() => {
+    const text = narrationText;
+    const position = index;
+    const allowContinue = autoContinue;
+    if (!autoReading || !active || !text || historyOpen || settingsOpen || jumpOpen || locationMenuOpen
+      || composing || retryEditing || continuing || continuationSnapshot || retryTracker || actionError) return;
+    const due = performance.now() + novelAutoDelay(text);
+    const timer = setInterval(() => {
+      if (document.hidden || performance.now() < due) return;
+      // Read the latest playback state without restarting the word timer whenever
+      // a prefetched line finishes. A blocked/paused player must not skip its line.
+      if (bufferingNarration) return;
+      if (narrationEnabled && ttsReady && !narrationMuted && !readWithoutAudio
+        && !narrationQueue?.hasFailed(text) && !narrationAudio?.ended) return;
+      if (position < frames.length - 1) {
+        clearInterval(timer); navigate(position + 1);
+      } else if (allowContinue) {
+        clearInterval(timer); void continueReading();
+      }
+    }, 200);
+    return () => clearInterval(timer);
+  });
+
   function refresh() {
     if (playedShortId() !== $playedAdventureId) return;
     historyCount = retryHistoryCount();
@@ -255,6 +282,7 @@
       continuationSnapshot = null; retryTracker = null; readWithoutAudio = false;
       frameAdventure = adventure ?? ""; pendingBookmark = undefined;
       frames = []; index = 0; composing = false; lastSignature = "";
+      autoReading = false; autoContinue = false; panelHidden = false;
       retryEditing = false; retryInstruction = ""; settingsOpen = false; jumpOpen = false;
       locationMenuOpen = false; locationOverride = "__auto"; locationSeed = null; failedBackground = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
@@ -394,6 +422,7 @@
     return fade(node, { duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180 });
   }
   async function exitNovel() {
+    autoReading = false; panelHidden = false;
     extensionState.novelMinimized = false;
     stopNarration();
     narrationScheduler?.dispose();
@@ -404,6 +433,7 @@
   }
   async function minimizeNovel(event: MouseEvent) {
     event.preventDefault();
+    autoReading = false;
     stopNarration();
     settingsOpen = false; locationMenuOpen = false; jumpOpen = false;
     extensionState.novelMinimized = true;
@@ -480,7 +510,7 @@
   {#if historyOpen}
     <button class="resume" onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
   {:else}
-    <div class="novel" style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
+    <div class="novel" class:scene-only={panelHidden} style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
       <svg class="portrait-filters" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
           <filter id="novel-portrait-depth" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
@@ -506,11 +536,17 @@
       <header>
         <span class="title"><span class="scenario-name" title={scenarioName}>{scenarioName}</span>{#if storyMetadata?.scenarioTitle}<small title={adventureName}>{adventureName}</small>{/if}</span>
         <div class="tools">
+          <button aria-pressed={autoReading} title="Advance automatically based on word count. Waits for narration to finish." onclick={() => autoReading = !autoReading}>Auto{autoReading ? ": On" : ""}</button>
+          <button aria-pressed={panelHidden} aria-controls="novel-reader-panels" title="Hide the reading panel and shading to see the full portraits." onclick={() => panelHidden = !panelHidden}>{panelHidden ? "Show" : "Hide"}</button>
           <div class="vn-settings-control">
             <button bind:this={settingsButton} aria-expanded={settingsOpen} aria-controls="novel-settings-panel" onclick={() => settingsOpen = !settingsOpen}>Settings</button>
             {#if settingsOpen}
               <section id="novel-settings-panel" class="vn-settings-panel" aria-label="Visual novel settings">
                 <div class="settings-heading"><strong>VN settings</strong><button onclick={closeSettings} aria-label="Close VN settings">Close</button></div>
+                <div class="instruction-options">
+                  <button role="switch" aria-checked={autoContinue} onclick={() => autoContinue = !autoContinue}>Auto Continue: {autoContinue ? "On" : "Off"}</button>
+                  <small>While Auto is on, request the next AI response after the last loaded line. Uses your selected AI model and credits. Off by default for each VN session.</small>
+                </div>
                 <div class="visual-options" role="group" aria-label="Visual effects">
                   <button role="switch" aria-checked={$settings.novelBlur} aria-label="Background blur" onclick={() => $settings.novelBlur = !$settings.novelBlur} title="Blur the background to make characters stand out. Turn off for a sharper background.">Blur: {$settings.novelBlur ? "On" : "Off"}</button>
                   <button role="switch" aria-checked={$settings.novelGlow} aria-label="Character glow" onclick={() => $settings.novelGlow = !$settings.novelGlow} title="Add a light outline around characters so they are easier to see.">Glow: {$settings.novelGlow ? "On" : "Off"}</button>
@@ -558,7 +594,7 @@
         {/each}
       </div>
       <div class="reading-shade" aria-hidden="true"></div>
-      <div class="reader-panels" bind:clientHeight={readerHeight}>
+      <div id="novel-reader-panels" class="reader-panels" inert={panelHidden} aria-hidden={panelHidden} bind:clientHeight={readerHeight}>
         {#if $settings.novelTtsEnabled}
         <aside class="voice-panel" aria-label="Narration controls" aria-describedby="novel-audio-hint">
           <div id="novel-audio-menu" class="narration-controls audio-menu">
@@ -680,6 +716,10 @@
   .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + var(--bottom-inset) + 8px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + var(--bottom-inset) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
+  .scene-only .reader-panels, .scene-only .reading-shade { visibility: hidden; pointer-events: none; }
+  .scene-only .portrait { mask-image: none; }
+  .scene-only .stage-caption { bottom: 24px; }
+  .tools > button[aria-pressed="true"] { border-color: #f8ae2c; }
   .voice-panel, .action-panel { display: flex; flex-direction: column; }
   .vn-settings-panel { position: absolute; top: calc(100% + 12px); right: 0; width: min(480px, calc(100vw - 40px)); max-height: calc(100dvh - 150px); overflow: auto; box-sizing: border-box; padding: 16px; border: 1px solid #65717b; border-radius: 12px; background: #141e27fa; box-shadow: 0 12px 32px #0008; }
   .settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
