@@ -1,5 +1,6 @@
 <script lang="ts">
   import { storyOutput, continueSelector } from "@/services/story_dom";
+  import { isLynxCat } from "@/services/site";
   import { onDestroy, onMount, untrack } from "svelte";
   import { settings } from "@/storage";
   import { playedAdventureId } from "@/aid/adventure";
@@ -19,6 +20,8 @@
   let notice = $state(false);
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   let unlocked = $state(false);
+  const alwaysAvailable = isLynxCat();
+  const available = $derived(alwaysAvailable || unlocked);
   let open = $state(false);
   let reading = $state(false);
   let paused = $state(false);
@@ -33,7 +36,7 @@
   const outside = $derived(!$settings.visualNovelMode);
   const ready = $derived($settings.novelTtsEnabled && $ttsState.phase === "ready");
 
-  onMount(() => installKonamiCode(window, () => {
+  onMount(() => alwaysAvailable ? undefined : installKonamiCode(window, () => {
     if (outside) { unlocked = true; open = true; }
     notice = true;
     clearTimeout(noticeTimer);
@@ -85,7 +88,7 @@
     return output ? readNovelPassages(output).filter(passage => passage.element.dataset.messageRole !== "user").map(passage => passage.text) : [];
   }
   $effect(() => {
-    if (!unlocked || !autoplay || !outside || !ready || !$playedAdventureId) return;
+    if (!available || !autoplay || !outside || !ready || !$playedAdventureId) return;
     const poll = createStoryAutoplay(untrack(passages));
     const timer = setInterval(() => {
       // Native Continue controls are disabled during generation. Also require
@@ -127,7 +130,7 @@
     narrate(latest);
   }
   function narrate(text: string, append = false) {
-    if (!unlocked || !outside) return;
+    if (!available || !outside) return;
     const next = parseNovel(text).map(frame => frame.text);
     if (append && reading && queue) {
       lines.push(...next);
@@ -156,12 +159,12 @@
   <div class="unlock-notice" role="status">{outside ? "Story narration unlocked! Look for the voice button at the bottom left." : "Exit VN, then enter the Konami code to unlock story narration."}</div>
 {/if}
 
-{#if unlocked && outside && !extensionState.isEditorOpen}
+{#if available && outside && !extensionState.isEditorOpen}
   <aside class="secret-narration">
     {#if open}
       <section id="secret-narration-settings" aria-label="Story narration settings" class="bg-theme-neutral-0 text-theme-neutral-900">
         <div class="panel-intro">
-        <header><strong>Story narration unlocked</strong><button aria-label="Close narration settings" onclick={() => open = false}>Close</button></header>
+        <header><strong>{alwaysAvailable ? "Story narration" : "Story narration unlocked"}</strong><button aria-label="Close narration settings" onclick={() => open = false}>Close</button></header>
         <p>Read without entering VN. Autoplay reads new passages after the text settles. Voice is saved separately; other settings are shared with VN.</p>
         <button class="autoplay-toggle" role="switch" aria-checked={autoplay} onclick={() => { autoplay = !autoplay; if (!autoplay) stop(); }}><span>Autoplay new passages</span><span>{autoplay ? "On" : "Off"}</span></button>
         </div>
@@ -179,7 +182,7 @@
     </button>
     <button disabled={!reading && !ready} aria-label={paused || !reading ? "Play narration" : "Pause narration"} onclick={() => reading ? togglePause() : readLatest()}>{paused || !reading ? "Play" : "Pause"}</button>
     <button disabled={!reading} aria-label="Stop narration" onclick={stop}>Stop</button>
-    <button aria-label="Exit story narration" title="Close the narrator. Enter the Konami code to reopen it." onclick={exitNarrator}>Exit</button>
+    {#if !alwaysAvailable}<button aria-label="Exit story narration" title="Close the narrator. Enter the Konami code to reopen it." onclick={exitNarrator}>Exit</button>{/if}
     </div>
     {#if message}<div class="playback-status" role="status">{message}</div>{/if}
   </aside>
