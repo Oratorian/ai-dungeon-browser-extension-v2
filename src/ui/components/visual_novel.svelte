@@ -226,7 +226,7 @@
   const speaker = $derived(stageCharacters.some(character => character?.id === speakers[index]) ? speakers[index] : null);
   const locations: NovelLocation[] = $derived(sceneCards
     .filter(card => card.type.trim().toLowerCase() === "location")
-    .map(card => ({ id: card.id, name: card.name, triggers: card.triggers, background: card.image }))
+    .map(card => ({ id: card.id, name: card.name, type: card.type, triggers: card.triggers, background: card.image }))
     .sort((a, b) => a.name.localeCompare(b.name)));
   const trackLocation = $derived(createNovelLocationTracker(locations));
   const locationTimeline = $derived(trackLocation(frames, locationSeed));
