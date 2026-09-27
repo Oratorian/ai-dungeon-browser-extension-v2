@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
-// Prepare native card data, not LynxCatAI's flattened AID-compatible import format.
+// Match the four-field story-details export, including its text field labels.
 const [source, destination] = process.argv.slice(2);
 if (!source || !destination || source === destination) {
   throw new Error('Usage: node scripts/convert-lynxcat-story-details.mjs input.json different-output.json');
@@ -15,7 +15,7 @@ const cards = input.filter(card => !/format inspection card/i.test(card.title)).
   if (body.startsWith('[') && body.endsWith(']')) body = body.slice(1, -1);
   const fields = [];
   const remaining = [];
-  const curated = type === 'character' ? ['Gender', 'Appearance', 'Personality'] : [];
+  const curated = type === 'character' ? ['Gender', 'Appearance', 'Personality'] : type === 'location' ? ['Type', 'Region', 'Appearance', 'Atmosphere'] : [];
   for (const line of body.split('\n')) {
     const field = /^([^:]+):\s*(.*)$/.exec(line);
     if (field && curated.includes(field[1]) && (field[1] !== 'Gender' || /^(male|female|other)$/i.test(field[2]))) {
@@ -25,13 +25,13 @@ const cards = input.filter(card => !/format inspection card/i.test(card.title)).
   if (type !== 'other' && remaining.join('\n').trim()) {
     fields.push({ key: 'Description', kind: 'curated', value: remaining.join('\n') });
   }
+  const text = type === 'other' ? body : [...curated, 'Description']
+    .map(key => `${key}: ${fields.find(field => field.key === key)?.value ?? ''}`).join('\n');
   return {
-    name: card.title, type, category: sourceType,
-    content: fields.length ? fields.map(f => `${f.key}: ${f.value}`).join('\n') : body,
-    fields, summary: match[2] ?? card.title,
-    triggers: String(card.keys || '').split(',').map(s => s.trim()).filter(Boolean),
-    aliases: [], tags: [], structuredData: {}, enabled: true,
-    activationMode: 'trigger', priority: 60, tokenBudgetHint: 120,
+    title: card.title,
+    type: type === 'other' ? sourceType : 'Other',
+    value: `${text}\n\nSummary: ${match[2] ?? card.title}`,
+    keys: card.keys ?? '',
   };
 });
 await writeFile(destination, JSON.stringify(cards, null, 2) + '\n', { flag: 'wx' });
