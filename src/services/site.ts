@@ -1,4 +1,8 @@
 import type { Adventure } from "@/shared/types";
+export function isSupportedStoryUrl(value: string): boolean {
+  try { return ["https://play.aidungeon.com", "https://beta.aidungeon.com", "https://alpha.aidungeon.com", "https://lynxcatai.com"].includes(new URL(value).origin); }
+  catch { return false; }
+}
 export const isLynxCat = () => typeof location !== "undefined" && location.hostname === "lynxcatai.com";
 export const siteName = () => isLynxCat() ? "LynxCatAI" : "AI Dungeon";
 export function lynxRunId(pathname: string): string | null {

@@ -1,3 +1,4 @@
+import { isSupportedStoryUrl } from "@/services/site";
 import { browser } from "wxt/browser";
 import { FirefoxTtsHelper, FIREFOX_ENGINE_URL } from "./firefox_helper";
 
@@ -47,7 +48,7 @@ export function installTtsRelay() {
         await browser.tabs.group({ groupId: current.groupId, tabIds: [tab.id] });
       } else {
         const group = await browser.tabs.group({ tabIds: [route.owner, tab.id], createProperties: { windowId: current.windowId } });
-        if (!route.closed) await browser.tabGroups?.update(group, { title: "AI Dungeon + TTS", color: "orange" });
+        if (!route.closed) await browser.tabGroups?.update(group, { title: new URL(owner.url ?? "https://play.aidungeon.com").hostname === "lynxcatai.com" ? "LynxCatAI + TTS" : "AI Dungeon + TTS", color: "orange" });
       }
     } catch {
       // Older Firefox versions or a concurrent tab move must not break narration.
@@ -56,7 +57,7 @@ export function installTtsRelay() {
   }
   browser.runtime.onConnect.addListener(port => {
     if (port.name === "de-tts-client") {
-      if (!/^https:\/\/(play|beta|alpha)\.aidungeon\.com\//.test(port.sender?.url ?? "") || port.sender?.tab?.id == null) { port.disconnect(); return; }
+      if (!isSupportedStoryUrl(port.sender?.url ?? "") || port.sender?.tab?.id == null) { port.disconnect(); return; }
       const token = crypto.randomUUID();
       const route: Route = { client: port, owner: port.sender.tab.id, closed: false, timer: setTimeout(() => close(token,
         "Firefox TTS engine unavailable. Check the TTS Helper installation, then retry Initialize TTS."), 18000) };

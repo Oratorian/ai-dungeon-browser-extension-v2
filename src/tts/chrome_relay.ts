@@ -1,3 +1,4 @@
+import { isSupportedStoryUrl } from "@/services/site";
 import { browser } from "wxt/browser";
 
 type Port = ReturnType<typeof browser.runtime.connect>;
@@ -47,7 +48,7 @@ export function installChromeTtsRelay() {
         for (const token of clients.keys()) close(token, "Chrome TTS engine disconnected. Retry Initialize TTS.");
       });
     } else if (port.name === "de-tts-client") {
-      if (!/^https:\/\/(play|beta|alpha)\.aidungeon\.com\//.test(port.sender?.url ?? "")) { port.disconnect(); return; }
+      if (!isSupportedStoryUrl(port.sender?.url ?? "")) { port.disconnect(); return; }
       const token = crypto.randomUUID();
       clients.set(token, { port, timer: setTimeout(() => close(token, "Chrome TTS engine unavailable. Retry Initialize TTS or turn acceleration off."), 18000) });
       port.onDisconnect.addListener(() => close(token));
