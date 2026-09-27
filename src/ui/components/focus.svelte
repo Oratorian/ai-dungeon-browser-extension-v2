@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { cardImage } from "@/shared/card_images";
   import { Popover, Slider } from "bits-ui";
   import { Storage, settings } from "@/storage";
   import { AudioManager } from "@/audio/manager";
@@ -26,7 +27,7 @@
     return adventures[selectedId]?.storyCards[id] ?? null;
   });
 
-  let graphic = $derived(card?.graphics?.[card?.graphicIndex ?? 0]);
+  let graphic = $derived(cardImage(card));
 
   onMount(() => {
     unsubCurrentlyPlaying = AudioManager.currentlyPlaying.subscribe((value) => {

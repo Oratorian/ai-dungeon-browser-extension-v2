@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { cardImage } from "@/shared/card_images";
   import { novelDialogueVoice, novelSpeechKey, readNovelSpeechKey } from "@/rendering/novel_voice";
   import { Tabs } from "bits-ui";
   import VnVoiceProfile from "./vn_voice_profile.svelte";
@@ -187,7 +188,7 @@
   const characters = $derived.by(() => {
     const cards = $selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [];
     const result: NovelCharacter[] = cards.filter(c => c.type.trim().toLowerCase() === "character")
-      .map(c => ({ id: c.id, name: c.name, triggers: c.triggers, portrait: c.graphics[c.graphicIndex] || c.icons[c.iconIndex] }));
+      .map(c => ({ id: c.id, name: c.name, triggers: c.triggers, portrait: cardImage(c) }));
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
   const frame = $derived(frames[index]);
@@ -220,7 +221,7 @@
   const speaker = $derived(stageCharacters.some(character => character?.id === speakers[index]) ? speakers[index] : null);
   const locations: NovelLocation[] = $derived(($selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [])
     .filter(card => card.type.trim().toLowerCase() === "location")
-    .map(card => ({ id: card.id, name: card.name, triggers: card.triggers, background: card.graphics[card.graphicIndex] || card.graphics[0] }))
+    .map(card => ({ id: card.id, name: card.name, triggers: card.triggers, background: cardImage(card) }))
     .sort((a, b) => a.name.localeCompare(b.name)));
   const trackLocation = $derived(createNovelLocationTracker(locations));
   const locationTimeline = $derived(trackLocation(frames, locationSeed));

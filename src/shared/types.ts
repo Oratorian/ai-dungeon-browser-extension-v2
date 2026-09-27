@@ -20,6 +20,8 @@ export type StoryCard = {
   triggers: string;
   type: string;
   gender?: "male" | "female" | "none";
+  /** Native website fallback, never mixed with user-owned image arrays. */
+  lynxImageUrl?: string | null;
   icons: string[];
   iconIndex: number;
   graphics: string[];

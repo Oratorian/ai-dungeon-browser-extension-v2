@@ -18,6 +18,7 @@ export type AidCard = {
   triggers: string;
   /** Optional native gender supplied by services such as LynxCatAI. */
   gender?: "male" | "female" | "none";
+  lynxImageUrl?: string | null;
 };
 
 /**

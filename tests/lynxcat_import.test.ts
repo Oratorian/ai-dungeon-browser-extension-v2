@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { get } from "svelte/store";
 import { lynxCards } from "@/services/lynxcat_cards";
+import { cardImage } from "@/shared/card_images";
 import { lynxRunId } from "@/services/site";
 import { Storage } from "@/storage";
 import { aidDetected } from "@/aid/bridge";
@@ -9,8 +10,8 @@ import { refreshLynxCards, disconnectLynx, lynxImportError } from "@/services/ly
 beforeEach(() => { Storage.adventures.set({}); Storage.selectedAdventureId.set(null); });
 afterEach(() => { disconnectLynx(); vi.unstubAllGlobals(); });
 const raw = { id: "card-1", name: "Kael", type: "other", category: "Character", triggers: ["Kael"], aliases: ["Kael", "engineer"], imageUrl: "https://example.com/portrait.png", content: "Private card text" };
-it("maps imported categories and aliases, excluding all native image and content fields", () => {
-  expect(lynxCards([raw])).toEqual([{id:"lynxcat:card-1",name:"Kael",type:"character",triggers:"Kael, engineer"}]);
+it("maps imported categories and aliases, keeping native images separate from local media and excluding content", () => {
+  expect(lynxCards([raw])).toEqual([{id:"lynxcat:card-1",name:"Kael",type:"character",triggers:"Kael, engineer",lynxImageUrl:raw.imageUrl}]);
   expect(lynxCards([{...raw,type:"location",category:"Character"}])[0]?.type).toBe("location");
   expect(lynxCards([null, {}, {...raw,enabled:false}, {...raw,deletedAt:"yesterday"}])).toEqual([]);
 });
@@ -32,6 +33,27 @@ it("keeps service links separate and preserves them through export/import", () =
   expect(Storage.findAdventureForAid("same-id",null)?.id).toBe(aid.id);
   const restored=Storage.importAdventure(Storage.exportAdventure(lynx.id)!);
   expect(restored.adventure).toMatchObject({lynxRunId:"same-id",lynxStoryId:"story-id"});
+});
+it("uses website images only as a fallback and follows image changes on reimport", () => {
+  const adventure = Storage.createAdventure("Pictures");
+  const sync = (imageUrl: unknown) => Storage.importStoryCards(adventure.id, lynxCards([{ ...raw, imageUrl }]));
+  const current = () => Object.values(Storage.getAdventureById(adventure.id)!.storyCards)[0]!;
+  sync(raw.imageUrl);
+  expect(current().graphics).toEqual([]);
+  expect(cardImage(current())).toBe(raw.imageUrl);
+  expect(cardImage(current(), "icon")).toBe(raw.imageUrl);
+  Storage.updateStoryCard(adventure.id, current().id, { graphics: ["local-portrait"], icons: ["local-icon"] });
+  sync("https://example.com/new.png");
+  expect(cardImage(current())).toBe("local-portrait");
+  expect(cardImage(current(), "icon")).toBe("local-icon");
+  const restored = Storage.importAdventure(Storage.exportAdventure(adventure.id)!);
+  expect(Object.values(restored.adventure!.storyCards)[0]?.lynxImageUrl).toBe("https://example.com/new.png");
+  Storage.updateStoryCard(adventure.id, current().id, { graphics: [], icons: [] });
+  expect(cardImage(current())).toBe("https://example.com/new.png");
+  sync(null);
+  expect(cardImage(current())).toBeUndefined();
+  sync("javascript:alert(1)");
+  expect(cardImage(current())).toBeUndefined();
 });
 it("accepts only play routes", () => {
   expect(lynxRunId("/plays/play-123")).toBe("play-123");

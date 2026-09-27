@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { cardImage } from "@/shared/card_images";
   import { Storage, settings } from "@/storage";
   import type { StoryCard } from "@/shared/types";
 
@@ -58,10 +59,10 @@
 
   const iconsLength = $derived(storyCard ? getArrayLength(storyCard.icons) : 0);
   const graphicsLength = $derived(storyCard ? getArrayLength(storyCard.graphics) : 0);
-  const hasGraphic = $derived(graphicsLength > 0);
-  const currentGraphic = $derived(hasGraphic ? getArrayItem(storyCard?.graphics, storyCard?.graphicIndex ?? 0) : null);
-  const hasIcon = $derived(iconsLength > 0);
-  const currentIcon = $derived(hasIcon ? getArrayItem(storyCard?.icons, storyCard?.iconIndex ?? 0) : null);
+  const currentGraphic = $derived(cardImage(storyCard));
+  const hasGraphic = $derived(!!currentGraphic);
+  const currentIcon = $derived(cardImage(storyCard, "icon"));
+  const hasIcon = $derived(!!currentIcon);
 
   const typeIcons: Record<string, string> = {
     character: "sentiment_excited",

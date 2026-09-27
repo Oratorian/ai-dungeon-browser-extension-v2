@@ -1,3 +1,4 @@
+import { websiteImageUrl } from "@/shared/card_images";
 import { FLOATING_BUTTON_DEFAULT_SIZE } from "@/shared/floating_button";
 import type { NarratorVoice } from "@/tts/voices";
 import type { Adventure, AudioClip, StoryCard } from "@/shared/types";
@@ -173,6 +174,7 @@ function normalizeStoryCard(card: unknown): StoryCard | null {
     triggers: typeof c.triggers === "string" ? c.triggers : "",
     type: typeof c.type === "string" ? c.type : "character",
     gender: c.gender === "male" || c.gender === "female" ? c.gender : "none",
+    lynxImageUrl: websiteImageUrl(c.lynxImageUrl),
     icons: ensureArray(c.icons),
     iconIndex: typeof c.iconIndex === "number" ? c.iconIndex : 0,
     graphics: ensureArray(c.graphics),

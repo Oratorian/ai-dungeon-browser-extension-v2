@@ -1,5 +1,6 @@
 import type { AidCard } from "@/aid/protocol";
-/** Import only matching metadata. Native images and story contents never enter the card set. */
+import { websiteImageUrl } from "@/shared/card_images";
+/** Import matching metadata and the native image URL, never story contents. */
 export function lynxCards(raw: unknown): AidCard[] {
   if (!Array.isArray(raw)) return [];
   const cards: AidCard[] = [];
@@ -18,7 +19,7 @@ export function lynxCards(raw: unknown): AidCard[] {
     const field = fields.find(f => f && typeof f.key === "string" && f.key.trim().toLowerCase() === "gender");
     const nativeGender = type === "character" && typeof field?.value === "string" ? field.value.trim().toLowerCase() : "";
     const gender = nativeGender === "male" || nativeGender === "female" ? nativeGender : nativeGender === "other" || nativeGender === "none" ? "none" : undefined;
-    cards.push({ id: `lynxcat:${card.id}`, name: card.name.trim(), type, triggers, ...(gender !== undefined ? { gender } : {}) });
+    cards.push({ id: `lynxcat:${card.id}`, name: card.name.trim(), type, triggers, lynxImageUrl: websiteImageUrl(card.imageUrl), ...(gender !== undefined ? { gender } : {}) });
   }
   return cards;
 }

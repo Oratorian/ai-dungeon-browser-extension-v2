@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { cardImage } from "@/shared/card_images";
   import type { StoryCard } from "@/shared/types";
   import { settings, Storage } from "@/storage";
   import { fly } from "svelte/transition";
@@ -27,8 +28,8 @@
   }
 
   let icons = $derived(card.icons);
-  let icon = $derived(icons[card.iconIndex]);
-  let graphic = $derived(card.graphics[card.graphicIndex]);
+  let icon = $derived(cardImage(card, "icon"));
+  let graphic = $derived(cardImage(card));
   let iconSize = $derived($settings.iconSize);
   let color = $derived(card.useCustomColor ? card.color : $settings.iconColor);
   let border = $derived(`${$settings.iconThickness}px solid ${color}`);

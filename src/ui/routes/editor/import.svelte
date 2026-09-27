@@ -157,7 +157,7 @@
   </aside>
   <SettingsCard icon="sync" label={`Import from ${service}`} description="Check the source and destination before importing. Nothing is copied until you click Import.">
     {#if lynx}
-      <p class="text-sm text-theme-neutral-800">Import test: reads card names, types, matching words and character gender. A missing gender leaves your local choice unchanged; Other uses the narrator voice. Your local pictures stay in the extension; attached website pictures are not imported. VN and story highlighting are not connected to LynxCatAI yet.</p>
+      <p class="text-sm text-theme-neutral-800">Import test: reads card names, types, matching words and character gender. A missing gender leaves your local choice unchanged; Other uses the narrator voice. Your extension pictures take priority. If a card has none, its attached LynxCatAI picture is used. VN and story highlighting are not connected to LynxCatAI yet.</p>
       <button class="px-4 py-3 rounded-lg border border-theme-neutral-600 bg-theme-neutral-300 disabled:opacity-50" disabled={$lynxImportLoading} onclick={() => refreshLynxCards()}>{$lynxImportLoading ? "Reading cards..." : "Refresh cards"}</button>
       {#if $lynxImportError}<p role="alert" class="text-pretty-red">{$lynxImportError}</p>{/if}
     {/if}

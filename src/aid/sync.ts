@@ -18,13 +18,14 @@ export type IncomingCard = {
   type: string;
   triggers: string;
   gender?: StoryCard["gender"];
+  lynxImageUrl?: string | null;
 };
 
 export type SyncPlan = {
   /** Cards not present in any form; to be created. */
-  additions: { name: string; type: string; triggers: string; aidId?: string; gender?: StoryCard["gender"] }[];
+  additions: { name: string; type: string; triggers: string; aidId?: string; gender?: StoryCard["gender"]; lynxImageUrl?: string | null }[];
   /** Existing card id to the AID-sourced fields that differ. */
-  updates: Record<string, Partial<Pick<StoryCard, "name" | "type" | "triggers" | "aidId" | "gender">>>;
+  updates: Record<string, Partial<Pick<StoryCard, "name" | "type" | "triggers" | "aidId" | "gender" | "lynxImageUrl">>>;
   /** Incoming cards that matched an existing one and needed no change. */
   unchanged: number;
   /** Incoming cards that could not be used at all (no name, or a duplicate within the batch). */
@@ -61,7 +62,7 @@ export function planAidSync(existing: StoryCard[], incoming: IncomingCard[]): Sy
     const match = (card.id && byAidId.get(card.id)) || byName.get(key);
 
     if (!match) {
-      plan.additions.push({ name, type, triggers, ...(card.id ? { aidId: card.id } : {}), ...(gender !== undefined ? { gender } : {}) });
+      plan.additions.push({ name, type, triggers, ...(card.id ? { aidId: card.id } : {}), ...(gender !== undefined ? { gender } : {}), ...(card.lynxImageUrl !== undefined ? { lynxImageUrl: card.lynxImageUrl } : {}) });
       continue;
     }
 
@@ -73,6 +74,7 @@ export function planAidSync(existing: StoryCard[], incoming: IncomingCard[]): Sy
     if (match.type !== type) changes.type = type;
     if (match.triggers !== triggers) changes.triggers = triggers;
     if (gender !== undefined && match.gender !== gender) changes.gender = gender;
+    if (card.lynxImageUrl !== undefined && match.lynxImageUrl !== card.lynxImageUrl) changes.lynxImageUrl = card.lynxImageUrl;
     if (card.id && !match.aidId) changes.aidId = card.id;
 
     if (Object.keys(changes).length > 0) plan.updates[match.id] = changes;
