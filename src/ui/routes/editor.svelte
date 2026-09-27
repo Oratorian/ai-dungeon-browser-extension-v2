@@ -56,12 +56,12 @@
 {#if extensionState.isEditorOpen}
   <div
     transition:fade={{ duration: 150 }}
-    class="flex fixed w-screen h-screen bg-theme-neutral-0/80 justify-center place-items-center z-1000"
+    class="flex fixed inset-0 w-screen h-screen bg-theme-neutral-0/80 justify-center place-items-center z-1000"
   >
     <div
       transition:fly={{ duration: 200, y: 32 }}
       style:max-width="1160px"
-      class="flex flex-col fixed w-[95vw] h-[95vh] bg-theme-neutral-0 rounded-2xl border border-theme-neutral-100 overflow-hidden"
+      class="flex flex-col relative w-[95vw] h-[95vh] bg-theme-neutral-0 rounded-2xl border border-theme-neutral-100 overflow-hidden"
     >
       <Tabs />
       <BitsConfig defaultPortalTo={portal}>

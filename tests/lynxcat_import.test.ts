@@ -50,3 +50,20 @@ it("shows an understandable error on an expired login", async () => {
   vi.stubGlobal("fetch",vi.fn(async()=>({ok:false,status:401})));
   await refreshLynxCards();expect(get(lynxImportError)).toContain("Log in");expect(get(aidDetected).cards).toEqual([]);
 });
+it("loads cards using absolute authenticated URLs in the extension context", async () => {
+  vi.stubGlobal("location", { hostname: "lynxcatai.com", pathname: "/plays/play-123" });
+  const requests: string[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (url: string, options: RequestInit) => {
+    const parsed = new URL(url); // Firefox's extension fetch rejects relative URLs.
+    expect(parsed.origin).toBe("https://lynxcatai.com");
+    expect(options.credentials).toBe("include");
+    requests.push(parsed.pathname);
+    return { ok: true, json: async () => parsed.pathname.endsWith("/elements")
+      ? { dynamicCards: [{ ...raw, type: "character" }] }
+      : { run: { id: "play-123", storyId: "story-123", title: "Test" } } };
+  }));
+  await refreshLynxCards();
+  expect(requests.sort()).toEqual(["/api/runs/play-123", "/api/runs/play-123/elements"]);
+  expect(get(lynxImportError)).toBe("");
+  expect(get(aidDetected).cards).toHaveLength(1);
+});

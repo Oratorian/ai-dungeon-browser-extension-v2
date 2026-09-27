@@ -22,7 +22,7 @@ export async function refreshLynxCards() {
   lynxImportLoading.set(true);
   try {
     const read = async (suffix: string) => {
-      const response = await fetch(`/api/runs/${encodeURIComponent(runId)}${suffix}`, { credentials: "same-origin", signal: controller!.signal });
+      const response = await fetch(`https://lynxcatai.com/api/runs/${encodeURIComponent(runId)}${suffix}`, { credentials: "include", signal: controller!.signal });
       if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "Log in to LynxCatAI and open your story, then try again." : `LynxCatAI could not load the cards (${response.status}). Try refreshing.`);
       return response.json();
     };
