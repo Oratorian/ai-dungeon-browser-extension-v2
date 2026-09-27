@@ -544,13 +544,13 @@
   <div class="vn-card-error" role="alert">VN Mode story card: {$vnCardError} <button onclick={() => syncVnCard(true)}>Retry</button></div>
 {/if}
 {#if available && extensionState.novelMinimized}
-  <button class="resume" onclick={() => extensionState.novelMinimized = false}>Return to VN</button>
+  <button class="resume" class:lynx-vn={isLynxCat()} onclick={() => extensionState.novelMinimized = false}>Return to VN</button>
 {/if}
 {#if active}
   {#if historyOpen}
-    <button class="resume" onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
+    <button class="resume" class:lynx-vn={isLynxCat()} onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
   {:else}
-    <div class="novel" class:scene-only={panelHidden} style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
+    <div class="novel" class:lynx-vn={isLynxCat()} class:scene-only={panelHidden} style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
       <svg class="portrait-filters" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
           <filter id="novel-portrait-depth" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
@@ -859,4 +859,52 @@
     .voice-panel, .action-panel { bottom: calc(100% + 12px); width: calc(50% - 8px); max-height: 30vh; }
   }
   @media (max-width: 500px) { .novel { --scene-gap: 10px; } .tools { gap: 6px; } button { padding: 7px 10px; font-size: 13px; } .dialogue { gap: 10px; } .stage-caption { font-size: 13px; } }
+
+  /* Host-specific skin, including child controls inside the VN shadow tree. */
+  :global(.lynx-vn) {
+    --color-pretty-theme: #7b9cff;
+    --color-theme-neutral-100: #090b0f;
+    --color-theme-neutral-200: #10151e;
+    --color-theme-neutral-300: #171e29;
+    --color-theme-neutral-400: #1b2330;
+    --color-theme-neutral-500: #28354b;
+    --color-theme-neutral-800: #a7b2c5;
+    --color-theme-neutral-900: #f1f7ff;
+    font-family: 'Nunito Sans', Inter, system-ui, sans-serif;
+    color: #f1f7ff;
+  }
+  :global(.novel.lynx-vn) { background: radial-gradient(ellipse at 50% 35%, #17243b, #030a11 80%); }
+  :global(.novel.lynx-vn .title) { color: #f1f7ff; letter-spacing: .01em; font-weight: 600; }
+  :global(.novel.lynx-vn .scenario-name) { text-transform: none; font-size: 18px; }
+  :global(.novel.lynx-vn .title small) { font-weight: 400; color: #a7b2c5; }
+  :global(.novel.lynx-vn .prose) { font-family: 'Nunito Sans', Inter, system-ui, sans-serif; color: #f7f4fb; line-height: 1.65; }
+  :global(.novel.lynx-vn .location-shade) { background: linear-gradient(#030a1199, #030a1126 45%, #030a11c9); }
+  :global(.novel.lynx-vn .reading-shade) { background: linear-gradient(transparent, #030a11ed 90px, #030a11); }
+  :global(.novel.lynx-vn button), :global(.resume.lynx-vn) {
+    border-color: #3b414c; border-radius: 6px; background: #090b0f; color: #dce5f5;
+    font-family: inherit; font-weight: 600; box-shadow: none;
+  }
+  :global(.novel.lynx-vn button:hover:enabled), :global(.resume.lynx-vn:hover) { background: #1b263b; border-color: #7b9cff; color: #f1f7ff; }
+  :global(.novel.lynx-vn button:focus-visible), :global(.novel.lynx-vn input:focus-visible), :global(.novel.lynx-vn textarea:focus-visible), :global(.resume.lynx-vn:focus-visible) { outline: 2px solid #7b9cff; outline-offset: 3px; }
+  :global(.novel.lynx-vn .accent), :global(.novel.lynx-vn .send), :global(.novel.lynx-vn button[aria-pressed="true"]), :global(.novel.lynx-vn button[aria-checked="true"]), :global(.novel.lynx-vn .settings-tab[aria-selected="true"]) {
+    background: #192743; border-color: #7b9cff; color: #abc0ff;
+  }
+  :global(.novel.lynx-vn .accent), :global(.novel.lynx-vn .send) { background: linear-gradient(115deg, #4f67ff, #7c2dd8); border-color: #8c85ff; color: #fff; }
+  :global(.novel.lynx-vn .accent:hover:enabled), :global(.novel.lynx-vn .send:hover:enabled) { background: #263b61; color: #fff; }
+  :global(.novel.lynx-vn .generation-controls button) { border-color: #7b9cff; color: #7b9cff; }
+  :global(.novel.lynx-vn .retry-control button) { border-color: #69c4b2; color: #69c4b2; }
+  :global(.novel.lynx-vn .vn-settings-panel), :global(.novel.lynx-vn .location-panel), :global(.novel.lynx-vn .auto-panel-content), :global(.novel.lynx-vn .audio-menu), :global(.novel.lynx-vn .action-menu), :global(.novel.lynx-vn .jump-panel) {
+    background: #0c1016fa; border-color: #3b414c; border-radius: 6px; box-shadow: 0 12px 32px #0006;
+  }
+  :global(.novel.lynx-vn .settings-tabs) { border-color: #3b414c; background: #090b0f; border-radius: 6px; }
+  :global(.novel.lynx-vn .settings-tab) { background: #151c28; border-color: #3b414c; color: #a7b2c5; border-radius: 4px; box-shadow: none; }
+  :global(.novel.lynx-vn .settings-tab:hover) { background: #202e46; color: #f1f7ff; }
+  :global(.novel.lynx-vn .profile) { border-color: #3b414c; background: #10151e; border-radius: 6px; }
+  :global(.novel.lynx-vn input), :global(.novel.lynx-vn textarea) { background: #090b0f; color: #f7f4fb; border: 1px solid #3b414c; border-radius: 6px; font-family: inherit; }
+  :global(.novel.lynx-vn small), :global(.novel.lynx-vn .narration-controls), :global(.novel.lynx-vn .controls span) { color: #a7b2c5; }
+  :global(.novel.lynx-vn .stage-caption) { background: #0c1016e8; border-color: #3b414c; border-radius: 6px; font-weight: 600; }
+  :global(.novel.lynx-vn .speaking .stage-caption) { background: #192743ed; border-color: #7b9cff; color: #c4d3ff; }
+  :global(.novel.lynx-vn .queue-badge) { background: #151c28; border-color: #3b414c; color: #c4d3ff; }
+  :global(.novel.lynx-vn .page-counter) { background: transparent; border-color: transparent; color: #a7b2c5; }
+  :global(.resume.lynx-vn) { border-color: #7b9cff; color: #7b9cff; }
 </style>
