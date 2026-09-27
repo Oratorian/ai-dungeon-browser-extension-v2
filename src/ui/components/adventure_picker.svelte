@@ -153,20 +153,20 @@
 
 <input bind:this={fileInput} type="file" accept=".json" onchange={handleFileSelect} class="hidden" />
 
-<div class="flex flex-col gap-2 w-full">
-  <div class="flex items-center gap-2">
+<div class="flex flex-col gap-2 w-full min-w-0">
+  <div class="flex items-center gap-2 min-w-0">
     <DropdownMenu.Root bind:open={pickerOpen} onOpenChange={(open) => { if (open) void checkGitHubUpdates(); }}>
       <DropdownMenu.Trigger
-        class="flex items-center gap-2 flex-1 h-12 px-4 bg-theme-neutral-200 hover:bg-theme-neutral-300 rounded-xl transition-colors"
+        class="flex items-center gap-2 flex-1 min-w-0 w-full h-12 px-4 bg-theme-neutral-200 hover:bg-theme-neutral-300 rounded-xl transition-colors"
       >
-        <span class="font-symbol text-xl text-theme-neutral-800">hiking</span>
-        <span class="flex-1 text-left truncate">
+        <span class="font-symbol shrink-0 text-xl text-theme-neutral-800">hiking</span>
+        <span class="flex-1 min-w-0 text-left truncate" title={selectedAdventure?.name ?? "Select Adventure"}>
           {selectedAdventure?.name ?? "Select Adventure"}
         </span>
         {#if selectedId && $githubUpdates[selectedId]}
           <span class="shrink-0 rounded-full px-2 py-0.5 text-xs bg-pretty-theme/20 text-pretty-theme">Update available</span>
         {/if}
-        <span class="font-symbol text-theme-neutral-700">unfold_more</span>
+        <span class="font-symbol shrink-0 text-theme-neutral-700">unfold_more</span>
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Portal>
