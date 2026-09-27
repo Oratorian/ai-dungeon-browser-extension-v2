@@ -1,0 +1,30 @@
+// @vitest-environment jsdom
+import { expect, it, vi } from "vitest";
+import { get, writable } from "svelte/store";
+vi.mock("@/storage", () => ({ settings: writable({ visualNovelMode: true, novelStoryCardInstructions: true }) }));
+vi.mock("@/services/site", () => ({ isLynxCat: () => true }));
+vi.mock("@/aid/adventure", () => ({ playedShortId: () => "play-test" }));
+vi.mock("@/services/lynxcat_vn_writer", () => ({ writeLynxVnStyle: vi.fn(), LynxStyleBusy: class extends Error {} }));
+import { settings } from "@/storage";
+import { writeLynxVnStyle } from "@/services/lynxcat_vn_writer";
+import { startVnCardSession, syncVnCard } from "@/aid/vn_card_sync";
+const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+it("clears stale startup instructions and serializes Exit behind a pending enable", async () => {
+  const save = vi.mocked(writeLynxVnStyle).mockResolvedValue(undefined);
+  startVnCardSession(); await flush();
+  expect(get(settings).visualNovelMode).toBe(false);
+  expect(save).toHaveBeenLastCalledWith("play-test", false);
+  let finish!: () => void;
+  save.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+  settings.update(v => ({ ...v, visualNovelMode: true })); syncVnCard();
+  expect(save).toHaveBeenLastCalledWith("play-test", true);
+  settings.update(v => ({ ...v, visualNovelMode: false })); syncVnCard();
+  expect(save).toHaveBeenCalledTimes(2);
+  finish(); await flush();
+  expect(save).toHaveBeenLastCalledWith("play-test", false);
+  expect(save).toHaveBeenCalledTimes(3);
+  settings.update(v => ({ ...v, visualNovelMode: true, novelStoryCardInstructions: false })); syncVnCard(); await flush();
+  expect(save).toHaveBeenCalledTimes(3);
+  settings.update(v => ({ ...v, novelStoryCardInstructions: true })); syncVnCard(); await flush();
+  expect(save).toHaveBeenLastCalledWith("play-test", true);
+});

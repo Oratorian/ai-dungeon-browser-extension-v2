@@ -36,6 +36,10 @@ export default defineContentScript({
     if (isLynxCat()) {
       await Storage.load();
       Storage.listen();
+      startVnCardSession();
+      ctx.setInterval(syncVnCard, 2000);
+      const stopVnStyleSync = Storage.settings.subscribe(() => syncVnCard());
+      ctx.onInvalidated(stopVnStyleSync);
       followLynxStory();
       ctx.setInterval(followLynxStory, 1000);
       ctx.onInvalidated(disconnectLynx);

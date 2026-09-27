@@ -541,7 +541,7 @@
 <svelte:window onkeydown={(event) => { if (event.key === " " && !event.defaultPrevented) key(event); }} />
 
 {#if $vnCardError}
-  <div class="vn-card-error" role="alert">VN Mode story card: {$vnCardError} <button onclick={() => syncVnCard(true)}>Retry</button></div>
+  <div class="vn-card-error" role="alert">VN instructions: {$vnCardError} <button onclick={() => syncVnCard(true)}>Retry</button></div>
 {/if}
 {#if available && extensionState.novelMinimized}
   <button class="resume" class:lynx-vn={isLynxCat()} onclick={() => extensionState.novelMinimized = false}>Return to VN</button>
@@ -620,7 +620,7 @@
                 </div>
                 <div class="instruction-options">
                   <button role="switch" aria-checked={$settings.novelStoryCardInstructions} aria-label="Track Speakers" onclick={() => $settings.novelStoryCardInstructions = !$settings.novelStoryCardInstructions}>Track Speakers: {$settings.novelStoryCardInstructions ? "On" : "Off"}</button>
-                  <small>{isLynxCat() ? 'Highlights speakers when the story names them. For more reliable results, ask for Name: "dialogue" in LynxCatAI’s AI Instructions. This switch does not change those instructions.' : 'Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.'}</small>
+                  <small>{isLynxCat() ? 'Adds dialogue formatting instructions to AI Writing Style so VN can highlight speakers. Keeps your own writing style. Turning this off or exiting VN removes the added instructions. Might take 2 or 3 turns to take effect.' : 'Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.'}</small>
                 </div>
                     <small>Speed and pitch are saved separately for each voice. Cards with no gender use Narration. Dialogue voices require Track Speakers.</small>
                     <VnVoiceProfile label="Narration" bind:voice={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}

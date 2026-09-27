@@ -4,6 +4,7 @@ import { settings } from "@/storage";
 import { playedShortId } from "./adventure";
 import { aidDetected } from "./bridge";
 import { VN_CARD_MESSAGE } from "./vn_card";
+import { LynxStyleBusy, writeLynxVnStyle } from "@/services/lynxcat_vn_writer";
 
 export const vnCardError = writable("");
 let completed = "";
@@ -12,6 +13,29 @@ let failed = "";
 let connected = false;
 let desired = "";
 const managed = new Set<string>();
+let lynxBusy = false;
+
+function syncLynxStyle(retry: boolean) {
+  const runId = playedShortId();
+  if (!runId) return;
+  const enabled = instructionsEnabled();
+  const key = `${runId}:${enabled}`;
+  if (retry || desired !== key) {
+    desired = key; completed = ""; failed = ""; vnCardError.set("");
+  }
+  if (lynxBusy || completed === key || failed === key) return;
+  lynxBusy = true;
+  void writeLynxVnStyle(runId, enabled).then(() => {
+    if (desired === key) { completed = key; vnCardError.set(""); }
+  }).catch(error => {
+    if (desired !== key) return;
+    if (!(error instanceof LynxStyleBusy)) failed = key;
+    vnCardError.set(error instanceof Error ? error.message : "Could not update AI Writing Style.");
+  }).finally(() => {
+    lynxBusy = false;
+    if (desired !== key || `${playedShortId()}:${instructionsEnabled()}` !== key) syncVnCard();
+  });
+}
 
 function instructionsEnabled() {
   const value = get(settings);
@@ -26,7 +50,7 @@ export function startVnCardSession() {
 
 /** Called independently of VN visibility so Exit mode can disable the native card. */
 export function syncVnCard(retry = false) {
-  if (isLynxCat()) return;
+  if (isLynxCat()) { syncLynxStyle(retry); return; }
   if (!connected) {
     connected = true;
     window.addEventListener("message", event => {
