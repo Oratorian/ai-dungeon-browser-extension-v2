@@ -51,3 +51,16 @@ it("handles replaced messages and text edits without duplicating or reverting st
   expect(document.querySelector("p")!.textContent).toBe("He says, Kael replies.");
   expect(document.querySelectorAll("p img")).toHaveLength(1);
 });
+it("pins a hovered portrait through Focus without activating native story editing", () => {
+  const card = setup(); renderer!.destroy();
+  let focused = "";
+  renderer = createLynxRenderer(document, id => focused = id);
+  renderer.render([card], { ...options, highlightFocus: true });
+  document.querySelector('.story-detail-mention')!.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  const focus = [...document.querySelectorAll('button')].find(b => b.textContent === "Focus")!;
+  expect(focus.style.display).toBe("block"); focus.click();
+  expect(focused).toBe(card.id);
+  renderer.render([card], { ...options, highlightFocus: false });
+  document.querySelector('.story-detail-mention')!.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  expect(focus.style.display).toBe("none");
+});

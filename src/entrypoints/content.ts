@@ -39,7 +39,7 @@ export default defineContentScript({
       followLynxStory();
       ctx.setInterval(followLynxStory, 1000);
       ctx.onInvalidated(disconnectLynx);
-      const renderer = createLynxRenderer();
+      const renderer = createLynxRenderer(document, id => { extensionState.focusCardId = id; });
       let pending: ReturnType<typeof setTimeout> | undefined;
       const observe = () => observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["src", "data-entity-id", "class"] });
       const schedule = () => {
@@ -54,7 +54,7 @@ export default defineContentScript({
       const observer = new MutationObserver(records => {
         if (records.some(r => (r.target as Element).closest?.('[aria-label="Story transcript"]') || [...r.addedNodes].some(n => n instanceof Element && (n.matches('[aria-label="Story transcript"]') || n.querySelector('[aria-label="Story transcript"]'))))) schedule();
       });
-      const unsubscribe = [Storage.adventures.subscribe(schedule), Storage.selectedAdventureId.subscribe(schedule), Storage.settings.subscribe(schedule)];
+      const unsubscribe = [Storage.adventures.subscribe(schedule), Storage.selectedAdventureId.subscribe(() => { extensionState.focusCardId = null; schedule(); }), Storage.settings.subscribe(schedule)];
       observe();
       ctx.onInvalidated(() => { observer.disconnect(); clearTimeout(pending); unsubscribe.forEach(stop => stop()); renderer.destroy(); });
     } else {

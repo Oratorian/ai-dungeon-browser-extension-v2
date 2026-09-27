@@ -3,10 +3,10 @@ import { cardImage } from "@/shared/card_images";
 
 const transcript = '[aria-label="Story transcript"]';
 const mentionSelector = `${transcript} .story-turn-copy .story-detail-mention[data-entity-id]`;
-type Options = { iconColor: string; highlightBold: boolean; iconSize: number };
+type Options = { iconColor: string; highlightBold: boolean; iconSize: number; highlightFocus?: boolean };
 
 /** Decorate native mentions without replacing React-owned text or controls. */
-export function createLynxRenderer(doc: Document = document) {
+export function createLynxRenderer(doc: Document = document, onFocus: (id: string) => void = () => {}) {
   const originals = new Map<HTMLElement, { style: string | null; src?: string | null; override?: string }>();
   const added = new Set<HTMLElement>();
   const highlighted: string[] = [];
@@ -17,6 +17,13 @@ export function createLynxRenderer(doc: Document = document) {
   preview.referrerPolicy = "no-referrer";
   preview.style.cssText = "position:fixed;z-index:2147483647;max-width:280px;max-height:45vh;object-fit:contain;pointer-events:none;border-radius:10px;box-shadow:0 8px 30px #0009;display:none";
   doc.body.append(preview);
+  const focus = doc.createElement("button");
+  focus.textContent = "Focus";
+  focus.style.cssText = "position:fixed;z-index:2147483647;display:none;background:#202b34;color:white;border:1px solid #82909a;border-radius:8px;padding:8px 12px;cursor:pointer";
+  doc.body.append(focus);
+  let hoveredCard: StoryCard | undefined;
+  let allowFocus = false;
+  focus.addEventListener("click", event => { event.stopPropagation(); if (hoveredCard) onFocus(hoveredCard.id); focus.style.display = "none"; preview.style.display = "none"; });
   let cardsByMention = new Map<Element, StoryCard>();
   function remember(element: HTMLElement) {
     if (!originals.has(element)) originals.set(element, { style: element.getAttribute("style"), ...(element.tagName === "IMG" ? { src: element.getAttribute("src") } : {}) });
@@ -33,6 +40,8 @@ export function createLynxRenderer(doc: Document = document) {
   const registry = () => (doc.defaultView as any)?.CSS?.highlights;
   function clearHighlights() { for (const name of highlighted) registry()?.delete(name); highlighted.length = 0; style.textContent = ""; }
   function render(cards: StoryCard[], options: Options) {
+    allowFocus = options.highlightFocus !== false;
+    focus.style.display = "none";
     preview.style.display = "none";
     clearHighlights();
     const byId = new Map(cards.filter(c => c.aidId?.startsWith("lynxcat:")).map(c => [c.aidId!.slice(8), c]));
@@ -94,21 +103,26 @@ export function createLynxRenderer(doc: Document = document) {
     }
   }
   function hover(event: MouseEvent) {
+    if (event.target === focus) return;
     const mention = (event.target as Element)?.closest?.(mentionSelector);
     const card = mention ? cardsByMention.get(mention) : undefined;
     const picture = cardImage(card);
-    if (!picture || !mention) { preview.style.display = "none"; return; }
+    if (!picture || !mention) { preview.style.display = "none"; focus.style.display = "none"; return; }
+    hoveredCard = card;
     const rect = mention.getBoundingClientRect();
     preview.src = picture;
     preview.style.left = `${Math.max(8, Math.min(rect.left, doc.documentElement.clientWidth - 288))}px`;
     preview.style.bottom = `${Math.max(8, doc.documentElement.clientHeight - rect.top + 8)}px`;
     preview.style.display = "block";
+    focus.style.left = preview.style.left;
+    focus.style.top = `${rect.top}px`;
+    focus.style.display = allowFocus ? "block" : "none";
   }
   doc.addEventListener("mouseover", hover);
   return { render, destroy() {
     doc.removeEventListener("mouseover", hover);
     for (const element of originals.keys()) restore(element);
     for (const element of added) element.remove();
-    clearHighlights(); style.remove(); preview.remove();
+    clearHighlights(); style.remove(); preview.remove(); focus.remove();
   } };
 }

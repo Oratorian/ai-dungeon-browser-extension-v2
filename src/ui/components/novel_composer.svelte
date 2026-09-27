@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { isLynxCat } from "@/services/site";
   import { onMount } from "svelte";
   import { ACTION_MODES, openActionInput, readActionInput, setActionMode, submitAction, writeActionDraft, type ActionMode } from "@/aid/action_input";
   import { playedShortId } from "@/aid/adventure";
@@ -67,8 +68,8 @@
 
 <div class="composer">
   <div class="modes" role="group" aria-label="Action mode">
-    {#each ACTION_MODES as value}
-      <button aria-pressed={mode === value} disabled={busy || blocked} onclick={() => choose(value)}>{value}</button>
+    {#each (isLynxCat() ? ["Story" as ActionMode] : ACTION_MODES) as value}
+      <button aria-pressed={mode === value} disabled={busy || blocked} onclick={() => choose(value)}>{isLynxCat() ? "Your turn" : value}</button>
     {/each}
   </div>
   <textarea data-novel-action aria-label="Visual novel action" bind:this={field} value={draft} {placeholder} rows="3" disabled={busy || blocked}

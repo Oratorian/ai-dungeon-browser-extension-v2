@@ -1,10 +1,11 @@
 /** Adapt the native composer rather than duplicating AI Dungeon's action API. */
+import { isLynxCat } from "@/services/site";
 export const ACTION_MODES = ["Do", "Say", "Story", "Guide"] as const;
 export type ActionMode = typeof ACTION_MODES[number];
 
-const input = () => document.querySelector<HTMLTextAreaElement>("#game-text-input");
+const input = () => document.querySelector<HTMLTextAreaElement>(isLynxCat() ? 'textarea[aria-label="Player turn"]' : "#game-text-input");
 const modeButton = () => document.querySelector<HTMLElement>('[aria-label="Change input mode"]');
-const submitButton = () => document.querySelector<HTMLElement>('[aria-label="Submit action"]');
+const submitButton = () => document.querySelector<HTMLElement>(isLynxCat() ? '[aria-label="Send turn"]' : '[aria-label="Submit action"]');
 // Continue/Retry may close the native composer. Restore its draft when the user next opens it, rather
 // than reopening controls that AI Dungeon removes while generating the continuation.
 const deferredDrafts = new Map<string, string>();
@@ -25,6 +26,7 @@ export async function retryStory(signal: AbortSignal) {
 /** Only the VN instruction form's explicit submit calls this; opening it never retries. */
 export async function retryStoryWithChanges(instruction: string, signal: AbortSignal) {
   signal.throwIfAborted();
+  if (isLynxCat()) throw new Error("LynxCatAI supports plain Retry only.");
   if (!instruction.trim()) throw new Error("Describe what the AI should change first.");
   if (instruction.length > 1000) throw new Error("Retry instructions must be at most 1000 characters.");
   // AI Dungeon uses a single-line input; preserve word boundaries from our textarea.
@@ -60,10 +62,12 @@ const historyButton = () => [...document.querySelectorAll<HTMLElement>('[aria-la
   .find(button => !button.closest('[aria-hidden="true"]') && !disabled(button)) ?? null;
 
 export function retryHistoryCount(): number {
+  if (isLynxCat()) return 0;
   return Number(historyButton()?.textContent?.trim()) || 0;
 }
 
 export function closeRetryHistory() {
+  if (isLynxCat()) return;
   const button = historyButton();
   if (button?.getAttribute("aria-expanded") === "true") button.click();
 }
@@ -71,6 +75,7 @@ export function closeRetryHistory() {
 /** Let the native picker own previewing and selecting existing alternatives. */
 export async function browseRetryHistory(signal: AbortSignal) {
   signal.throwIfAborted();
+  if (isLynxCat()) throw new Error("LynxCatAI does not have retry history.");
   const route = location.pathname;
   if (!historyButton()) {
     const close = document.querySelector<HTMLElement>('[aria-label="Close text input"]');
@@ -92,6 +97,12 @@ export async function browseRetryHistory(signal: AbortSignal) {
 
 async function runStoryCommand(command: "continue" | "retry", signal: AbortSignal) {
   signal.throwIfAborted();
+  if (isLynxCat()) {
+    const button = document.querySelector<HTMLElement>(command === "continue" ? '[aria-label="Continue story"]' : '.play-composer-action.is-retry');
+    if (disabled(button)) throw new Error(`LynxCatAI is not ready to ${command} yet.`);
+    button!.click();
+    return;
+  }
   const route = location.pathname;
   const draft = input()?.value ?? "";
   const close = document.querySelector<HTMLElement>('[aria-label="Close text input"]');
@@ -116,6 +127,8 @@ async function runStoryCommand(command: "continue" | "retry", signal: AbortSigna
 
 export function readActionInput() {
   const field = input();
+  if (isLynxCat()) return { available: !!field, value: field?.value ?? "", placeholder: field?.placeholder ?? "Write your turn...", mode: "Story" as ActionMode,
+    canSubmit: !!field && !field.disabled && !field.readOnly && !disabled(submitButton()) };
   const labels = [...(modeButton()?.querySelectorAll("span") ?? [])].map(span => span.textContent?.trim().toLowerCase());
   const mode = ACTION_MODES.find(mode => labels.includes(mode.toLowerCase())) ?? null;
   const available = !!field && !!mode && !field.closest('[aria-hidden="true"], .gameplay-action-input-dock[data-visible="false"]');
@@ -156,6 +169,7 @@ export async function openActionInput(signal: AbortSignal) {
 }
 
 export async function setActionMode(mode: ActionMode, signal: AbortSignal) {
+  if (isLynxCat() && mode !== "Story") throw new Error("LynxCatAI uses a single free-text turn field.");
   await openActionInput(signal);
   if (readActionInput().mode === mode) return;
   signal.throwIfAborted();

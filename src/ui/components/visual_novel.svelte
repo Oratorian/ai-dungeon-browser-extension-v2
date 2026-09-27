@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { isLynxCat } from "@/services/site";
+  import { storyOutput, storyOutputSelector } from "@/services/story_dom";
   import { cardImage } from "@/shared/card_images";
   import { novelDialogueVoice, novelSpeechKey, readNovelSpeechKey } from "@/rendering/novel_voice";
   import { Tabs } from "bits-ui";
@@ -258,7 +260,7 @@
   function refresh() {
     if (playedShortId() !== $playedAdventureId) return;
     historyCount = retryHistoryCount();
-    const currentOutput = document.querySelector<HTMLElement>("#gameplay-output");
+    const currentOutput = storyOutput();
     if (currentOutput !== output) { output = currentOutput; lastSignature = ""; }
     const passages = output ? readNovelPassages(output) : [];
     const signature = JSON.stringify(passages.map(p => {
@@ -321,7 +323,7 @@
     };
     const observer = new MutationObserver(records => {
       if (records.some(record => output?.contains(record.target) || [...record.addedNodes, ...record.removedNodes].some(node =>
-        node instanceof HTMLElement && (node.id === "gameplay-output" || node.querySelector("#gameplay-output"))))) schedule();
+        node instanceof HTMLElement && (node.matches(storyOutputSelector()) || node.querySelector(storyOutputSelector()))))) schedule();
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     const locationVersion = locationRevision;
@@ -615,7 +617,7 @@
                 </div>
                 <div class="instruction-options">
                   <button role="switch" aria-checked={$settings.novelStoryCardInstructions} aria-label="Track Speakers" onclick={() => $settings.novelStoryCardInstructions = !$settings.novelStoryCardInstructions}>Track Speakers: {$settings.novelStoryCardInstructions ? "On" : "Off"}</button>
-                  <small>Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.</small>
+                  <small>{isLynxCat() ? 'Highlights speakers when the story names them. For more reliable results, ask for Name: "dialogue" in LynxCatAI’s AI Instructions. This switch does not change those instructions.' : 'Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.'}</small>
                 </div>
                     <small>Speed and pitch are saved separately for each voice. Cards with no gender use Narration. Dialogue voices require Track Speakers.</small>
                     <VnVoiceProfile label="Narration" bind:voice={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}
@@ -709,7 +711,7 @@
           <div class="generation-controls" role="group" aria-label="Story generation">
           <div class="retry-control" role="group" aria-label="Retry controls">
             <button onclick={() => retryReading()} title="Regenerate AI Dungeon's latest response" disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{retryTracker ? "Retrying..." : "Retry"}</button>
-            <button class="retry-edit" aria-label="Retry with changes" aria-expanded={retryEditing} title="Retry with an instruction" onclick={() => { retryEditing = !retryEditing; composing = false; }} disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}><span class="font-symbol" aria-hidden="true">edit</span></button>
+            {#if !isLynxCat()}<button class="retry-edit" aria-label="Retry with changes" aria-expanded={retryEditing} title="Retry with an instruction" onclick={() => { retryEditing = !retryEditing; composing = false; }} disabled={!frames.length || continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}><span class="font-symbol" aria-hidden="true">edit</span></button>{/if}
             {#if historyCount > 1}<button class="retry-count" onclick={showRetryHistory} aria-label={`Retry history: ${historyCount} responses`} title="Choose an existing retry response" disabled={continuing || !!retryTracker || !!continuationSnapshot || (composing && composerBusy)}>{historyCount}</button>{/if}
           </div>
           <button onclick={continueReading} disabled={continuing || !!retryTracker || (composing && composerBusy)}>{continuing && !retryTracker ? "Continuing..." : "Continue"}</button>

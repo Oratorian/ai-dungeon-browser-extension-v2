@@ -24,7 +24,7 @@
   const gameInput = () => {
     let field = document.activeElement;
     while (field?.shadowRoot?.activeElement) field = field.shadowRoot.activeElement;
-    return field instanceof HTMLTextAreaElement && (field.id === "game-text-input" || field.hasAttribute("data-novel-action")) && !field.disabled && !field.readOnly ? field : null;
+    return field instanceof HTMLTextAreaElement && (field.id === "game-text-input" || field.getAttribute("aria-label") === "Player turn" || field.hasAttribute("data-novel-action")) && !field.disabled && !field.readOnly ? field : null;
   };
 
   function close(dismiss = false) {

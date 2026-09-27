@@ -2,6 +2,7 @@ import { get, writable } from "svelte/store";
 import { Debug } from "@/shared/debug";
 import { Storage } from "@/storage";
 import { aidDetected } from "@/aid/bridge";
+import { isLynxCat, lynxRunId } from "@/services/site";
 
 // Tracks which AI Dungeon adventure is being played and auto-selects the extension adventure that
 // was imported from it, so story-card highlighting follows the adventure on screen without the user
@@ -32,6 +33,7 @@ export function playedScenarioIdNow(): string | null {
 
 /** The AI Dungeon adventure shortId from the current URL, or null. Reuses the shared URL parser. */
 export function playedShortId(): string | null {
+  if (isLynxCat()) return lynxRunId(location.pathname);
   return Debug.getAdventureId() || null;
 }
 

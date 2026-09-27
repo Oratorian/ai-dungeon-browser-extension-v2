@@ -25,6 +25,11 @@ export function storyText(node: Node): string {
 }
 
 export function readNovelPassages(output: HTMLElement) {
+  if (output.matches('[aria-label="Story transcript"]')) {
+    return [...output.querySelectorAll<HTMLElement>('article[data-message-id][data-message-role]')]
+      .map(element => ({ element, text: [...element.querySelectorAll('.story-turn-copy')].map(storyText).join('').trim() }))
+      .filter(p => p.text);
+  }
   // Player actions may use a labelled row or a standalone typography block
   // instead of the animation container.
   // Read visible text, never the aria-label (which repeats it). Keep DOM order

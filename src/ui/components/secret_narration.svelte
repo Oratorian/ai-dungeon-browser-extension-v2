@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { storyOutput, continueSelector } from "@/services/story_dom";
   import { onDestroy, onMount, untrack } from "svelte";
   import { settings } from "@/storage";
   import { playedAdventureId } from "@/aid/adventure";
@@ -80,8 +81,8 @@
   onDestroy(stop);
 
   function passages() {
-    const output = document.getElementById("gameplay-output");
-    return output ? readNovelPassages(output).map(passage => passage.text) : [];
+    const output = storyOutput();
+    return output ? readNovelPassages(output).filter(passage => passage.element.dataset.messageRole !== "user").map(passage => passage.text) : [];
   }
   $effect(() => {
     if (!unlocked || !autoplay || !outside || !ready || !$playedAdventureId) return;
@@ -89,7 +90,7 @@
     const timer = setInterval(() => {
       // Native Continue controls are disabled during generation. Also require
       // a quiet text window, since availability can update before the final DOM render.
-      const controls = [...document.querySelectorAll<HTMLElement>('[aria-label="Command: continue"]')]
+      const controls = [...document.querySelectorAll<HTMLElement>(continueSelector())]
         .filter(control => !control.closest('[hidden], [aria-hidden="true"]'));
       const busy = controls.length > 0 && controls.every(control => control.hasAttribute("disabled") || control.getAttribute("aria-disabled") === "true");
       const next = poll(passages(), performance.now(), busy);

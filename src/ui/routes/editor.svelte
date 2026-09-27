@@ -1,5 +1,8 @@
 <script lang="ts">
   import { isLynxCat } from "@/services/site";
+  import Focus from "@/ui/components/focus.svelte";
+  import { settings } from "@/storage";
+  import { AudioManager } from "@/audio/manager";
   /* Lib */
   import { BitsConfig } from "bits-ui";
 
@@ -40,13 +43,20 @@
       void checkGitHubUpdates();
     });
   });
+  $effect(() => {
+    if (isLynxCat() && (!extensionState.focusCardId || $settings.visualNovelMode || extensionState.isEditorOpen)) untrack(() => AudioManager.stop());
+  });
 </script>
 
 <FloatingButton />
 <StoryCardAutocomplete />
-{#if !isLynxCat()}
 <VisualNovel />
 <SecretNarration />
+{#if isLynxCat() && extensionState.focusCardId && !$settings.visualNovelMode && !extensionState.isEditorOpen}
+  <aside class="fixed top-24 left-6 w-80 max-w-[85vw] z-1000" aria-label="Focused story card">
+    <button class="bg-theme-neutral-200 rounded-lg px-3 py-2 mb-2" onclick={() => extensionState.focusCardId = null}>Close focus</button>
+    <Focus />
+  </aside>
 {/if}
 <!-- Mounted outside the editor and hover popover so either picker can review an update. -->
 <BitsConfig defaultPortalTo={portal}>

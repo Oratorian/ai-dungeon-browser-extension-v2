@@ -1,3 +1,6 @@
+import { isLynxCat, linkedRun, linkedStory, siteName } from "@/services/site";
+import { storyOutput, storyOutputSelector } from "@/services/story_dom";
+import { cardImage } from "@/shared/card_images";
 import { get } from "svelte/store";
 import { extensionState } from "@/shared/state.svelte";
 import { Config } from "@/shared/config";
@@ -227,10 +230,11 @@ export async function collectDiagnostics(): Promise<string> {
   const version = get(versionInfo);
 
   /* ------------------------------------------------------------------ DOM */
-  const output = document.querySelector<HTMLElement>(Config.SELECTOR_OUTPUT);
-  const containers = output ? Array.from(output.querySelectorAll<HTMLElement>(Config.SELECTOR_RESPONSE)) : [];
+  const lynx = isLynxCat();
+  const output = storyOutput();
+  const containers = output ? Array.from(output.querySelectorAll<HTMLElement>(lynx ? "article[data-message-id]" : Config.SELECTOR_RESPONSE)) : [];
   const rendered = containers.filter((c) => c.hasAttribute(Config.ATTRIBUTE_ALTERED)).length;
-  const issues = nodeIssues(containers);
+  const issues = lynx ? [] : nodeIssues(containers);
   const lastActionNodes = containers.filter((c) => (c.getAttribute("aria-label") ?? "").startsWith("Last action:")).length;
 
   const lastAction = document.querySelector(Config.SELECTOR_LAST_ACTION);
@@ -241,15 +245,15 @@ export async function collectDiagnostics(): Promise<string> {
   const shortId = playedShortId();
   const adventure = Storage.getSelectedAdventure();
   const cards = adventure ? Object.values(adventure.storyCards) : [];
-  const withIcons = cards.filter((c) => c.icons.length > 0).length;
-  const withPortraits = cards.filter((c) => c.graphics.length > 0).length;
-  const portraits = cards.flatMap((c) => c.graphics);
+  const withIcons = cards.filter((c) => !!cardImage(c, "icon")).length;
+  const withPortraits = cards.filter((c) => !!cardImage(c)).length;
+  const portraits = cards.flatMap((c) => cardImage(c) ? [cardImage(c)!] : []);
   const portraitHosts = hostsOf(portraits);
   const cardMap = get(Storage.cardMap);
   const detected = get(aidDetected);
   const scenarioId = shortId && detected.shortId === shortId ? detected.scenarioId : null;
-  const linkedByAdventure = Boolean(adventure && shortId && adventure.aidShortId === shortId);
-  const linkedByScenario = Boolean(adventure && scenarioId && adventure.aidScenarioId === scenarioId);
+  const linkedByAdventure = Boolean(adventure && shortId && linkedRun(adventure) === shortId);
+  const linkedByScenario = Boolean(adventure && scenarioId && linkedStory(adventure) === scenarioId);
   const linked = linkedByAdventure || linkedByScenario;
 
   // Do the card triggers actually match anything on screen? This separates "highlighting is broken"
@@ -276,7 +280,7 @@ export async function collectDiagnostics(): Promise<string> {
   /* --------------------------------------------------------------- Detail */
   detail.push("", "[DOM]");
   detail.push(row("gameplay output", output ? "found" : "MISSING"));
-  if (!output) detail.push(row("  selector", Config.SELECTOR_OUTPUT));
+  if (!output) detail.push(row("  selector", storyOutputSelector()));
   detail.push(row("response nodes", containers.length + " (rendered " + rendered + ", last-action " + lastActionNodes + ")"));
   if (!output || containers.length === 0) detail.push(row("  selector", Config.SELECTOR_RESPONSE));
   if (issues.length > 0) {
@@ -306,7 +310,7 @@ export async function collectDiagnostics(): Promise<string> {
   );
   detail.push(row("text animation", wordFade ? "DETECTED" : "off"));
   if (DOM.skippedAnimated > 0) detail.push(row("  skipped so far", String(DOM.skippedAnimated)));
-  detail.push(row("live components", String(DOM.mountedCount)));
+  detail.push(row("live components", lynx ? "native DOM decorations" : String(DOM.mountedCount)));
 
   detail.push("", "[Content]");
   detail.push(
@@ -401,7 +405,7 @@ export async function collectDiagnostics(): Promise<string> {
   if (shortId && !output) {
     findings.push({
       level: "error",
-      text: "AI Dungeon's gameplay output was not found. Either the page had not finished loading, or AI Dungeon changed its page structure and the extension needs an update.",
+      text: siteName() + " story output was not found. The page may still be loading, or its markup may have changed.",
     });
   }
 
@@ -412,7 +416,7 @@ export async function collectDiagnostics(): Promise<string> {
     });
   }
 
-  if (containers.length > 0 && rendered === 0) {
+  if (!lynx && containers.length > 0 && rendered === 0) {
     findings.push({
       level: "error",
       text: "Found " + containers.length + " responses but rendered none. Nothing is highlighted, so no icons or portraits can appear.",
@@ -550,7 +554,7 @@ export async function collectDiagnostics(): Promise<string> {
     });
   }
 
-  if (location.host !== "play.aidungeon.com") {
+  if (!lynx && location.host !== "play.aidungeon.com") {
     findings.push({
       level: "ok",
       text: "This is " + location.host + ", not the live site. Its page structure can differ from play.aidungeon.com, so breakage here does not necessarily affect everyone.",
