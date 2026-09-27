@@ -1,7 +1,7 @@
 <script lang="ts">
   import { isLynxCat } from "@/services/site";
   import { storyOutput, storyOutputSelector } from "@/services/story_dom";
-  import { cardImage } from "@/shared/card_images";
+  import { novelCards } from "@/rendering/novel_cards";
   import { novelDialogueVoice, novelSpeechKey, readNovelSpeechKey } from "@/rendering/novel_voice";
   import { Tabs } from "bits-ui";
   import VnVoiceProfile from "./vn_voice_profile.svelte";
@@ -187,10 +187,13 @@
     untrack(() => { if (!narrationAudio) playNarration(); });
   });
 
+  const sceneCards = $derived(novelCards(
+    $selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [],
+    isLynxCat() && $playedAdventureId && $aidDetected.shortId === $playedAdventureId ? $aidDetected.cards : []
+  ));
   const characters = $derived.by(() => {
-    const cards = $selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [];
-    const result: NovelCharacter[] = cards.filter(c => c.type.trim().toLowerCase() === "character")
-      .map(c => ({ id: c.id, name: c.name, triggers: c.triggers, portrait: cardImage(c) }));
+    const result: NovelCharacter[] = sceneCards.filter(c => c.type.trim().toLowerCase() === "character")
+      .map(c => ({ id: c.id, name: c.name, triggers: c.triggers, portrait: c.image }));
     return result.sort((a, b) => a.name.localeCompare(b.name));
   });
   const frame = $derived(frames[index]);
@@ -215,15 +218,15 @@
   const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => characters.find(c => c.id === id)));
   const speakers = $derived($settings.novelStoryCardInstructions !== false ? novelSpeakers(frames, characters) : []);
   const speechKeys = $derived(frames.map((frame, position) => {
-    const card = $selected && speakers[position] ? $adventures[$selected]?.storyCards[speakers[position]!] : undefined;
+    const card = sceneCards.find(card => card.id === speakers[position]);
     const voice = novelDialogueVoice(card?.gender, narratorVoice, $settings.novelTtsMaleVoice, $settings.novelTtsFemaleVoice);
     return novelSpeechKey(frame.text, voice);
   }));
   const narrationKey = $derived(speechKeys[index] ?? "");
   const speaker = $derived(stageCharacters.some(character => character?.id === speakers[index]) ? speakers[index] : null);
-  const locations: NovelLocation[] = $derived(($selected ? Object.values($adventures[$selected]?.storyCards ?? {}) : [])
+  const locations: NovelLocation[] = $derived(sceneCards
     .filter(card => card.type.trim().toLowerCase() === "location")
-    .map(card => ({ id: card.id, name: card.name, triggers: card.triggers, background: cardImage(card) }))
+    .map(card => ({ id: card.id, name: card.name, triggers: card.triggers, background: card.image }))
     .sort((a, b) => a.name.localeCompare(b.name)));
   const trackLocation = $derived(createNovelLocationTracker(locations));
   const locationTimeline = $derived(trackLocation(frames, locationSeed));
