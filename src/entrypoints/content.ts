@@ -1,5 +1,6 @@
 import { isLynxCat } from "@/services/site";
 import { followLynxStory, disconnectLynx } from "@/services/lynxcat";
+import { createLynxRenderer } from "@/rendering/lynxcat";
 import { Debug } from "#imports";
 import appStyle from "@/app.css?inline";
 import contentStyle from "@/content.css?inline";
@@ -38,6 +39,24 @@ export default defineContentScript({
       followLynxStory();
       ctx.setInterval(followLynxStory, 1000);
       ctx.onInvalidated(disconnectLynx);
+      const renderer = createLynxRenderer();
+      let pending: ReturnType<typeof setTimeout> | undefined;
+      const observe = () => observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["src", "data-entity-id", "class"] });
+      const schedule = () => {
+        if (pending !== undefined) return;
+        pending = setTimeout(() => {
+          pending = undefined;
+          observer.disconnect();
+          try { renderer.render(Object.values(Storage.getSelectedAdventure()?.storyCards ?? {}), get(Storage.settings)); }
+          finally { observe(); }
+        }, 80);
+      };
+      const observer = new MutationObserver(records => {
+        if (records.some(r => (r.target as Element).closest?.('[aria-label="Story transcript"]') || [...r.addedNodes].some(n => n instanceof Element && (n.matches('[aria-label="Story transcript"]') || n.querySelector('[aria-label="Story transcript"]'))))) schedule();
+      });
+      const unsubscribe = [Storage.adventures.subscribe(schedule), Storage.selectedAdventureId.subscribe(schedule), Storage.settings.subscribe(schedule)];
+      observe();
+      ctx.onInvalidated(() => { observer.disconnect(); clearTimeout(pending); unsubscribe.forEach(stop => stop()); renderer.destroy(); });
     } else {
       await Events.onStart();
       startVnCardSession();
