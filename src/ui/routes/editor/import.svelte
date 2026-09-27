@@ -141,7 +141,7 @@
 
     const res = Storage.importStoryCards(
       adventure.id,
-      selectedCards.map((c) => ({ id: c.id, name: c.name, type: c.type, triggers: c.triggers }))
+      selectedCards
     );
     result = { ...res, adventureName: adventure.name };
   }
