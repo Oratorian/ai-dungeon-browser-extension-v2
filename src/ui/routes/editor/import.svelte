@@ -153,11 +153,11 @@
     <SettingsCard icon="help" label="How it works" description="A few quick steps to get your cards ready.">
       <ol class="steps text-theme-neutral-800"><li><b>Open your story</b><p>Open the story cards in {service}, or refresh your adventure so the extension can find them.</p></li><li><b>Choose what to bring over</b><p>Pick the card types you want and check which set they will go into.</p></li><li><b>Make them yours</b><p>Click Import, then head to Story cards to add portraits, icons and sounds.</p></li></ol>
     </SettingsCard>
-    <SettingsCard icon="verified_user" label="Your pictures stay put" description="Importing again updates existing cards instead of making extra copies."><p class="text-sm text-theme-neutral-800 leading-relaxed">Only names, types and matching words are brought over. Your existing icons, portraits and sounds stay as they are. This does not change the cards in {service}.</p></SettingsCard>
+    <SettingsCard icon="verified_user" label="Your pictures stay put" description="Importing again updates existing cards instead of making extra copies."><p class="text-sm text-theme-neutral-800 leading-relaxed">Names, types and matching words{lynx ? ", plus gender when it is set on a character," : ""} are brought over. Your existing icons, portraits and sounds stay as they are. This does not change the cards in {service}.</p></SettingsCard>
   </aside>
   <SettingsCard icon="sync" label={`Import from ${service}`} description="Check the source and destination before importing. Nothing is copied until you click Import.">
     {#if lynx}
-      <p class="text-sm text-theme-neutral-800">Import test: reads card names, types and matching words. Your local pictures stay in the extension; attached website pictures are not imported. VN and story highlighting are not connected to LynxCatAI yet.</p>
+      <p class="text-sm text-theme-neutral-800">Import test: reads card names, types, matching words and character gender. A missing gender leaves your local choice unchanged; Other uses the narrator voice. Your local pictures stay in the extension; attached website pictures are not imported. VN and story highlighting are not connected to LynxCatAI yet.</p>
       <button class="px-4 py-3 rounded-lg border border-theme-neutral-600 bg-theme-neutral-300 disabled:opacity-50" disabled={$lynxImportLoading} onclick={() => refreshLynxCards()}>{$lynxImportLoading ? "Reading cards..." : "Refresh cards"}</button>
       {#if $lynxImportError}<p role="alert" class="text-pretty-red">{$lynxImportError}</p>{/if}
     {/if}

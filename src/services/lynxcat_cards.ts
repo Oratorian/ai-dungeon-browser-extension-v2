@@ -13,7 +13,12 @@ export function lynxCards(raw: unknown): AidCard[] {
     const type = (!nativeType || nativeType === "other") && ["character", "location"].includes(category) ? category : nativeType || "other";
     const triggers = [...new Set([...(Array.isArray(card.triggers) ? card.triggers : []), ...(Array.isArray(card.aliases) ? card.aliases : [])]
       .filter((v): v is string => typeof v === "string").map(v => v.trim()).filter(Boolean))].join(", ");
-    cards.push({ id: `lynxcat:${card.id}`, name: card.name.trim(), type, triggers });
+    const structured = card.structuredData && typeof card.structuredData === "object" ? card.structuredData as Record<string, unknown> : {};
+    const fields = Array.isArray(card.fields) ? card.fields : Array.isArray(structured.fields) ? structured.fields : [];
+    const field = fields.find(f => f && typeof f.key === "string" && f.key.trim().toLowerCase() === "gender");
+    const nativeGender = type === "character" && typeof field?.value === "string" ? field.value.trim().toLowerCase() : "";
+    const gender = nativeGender === "male" || nativeGender === "female" ? nativeGender : nativeGender === "other" || nativeGender === "none" ? "none" : undefined;
+    cards.push({ id: `lynxcat:${card.id}`, name: card.name.trim(), type, triggers, ...(gender !== undefined ? { gender } : {}) });
   }
   return cards;
 }

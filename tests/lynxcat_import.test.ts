@@ -50,6 +50,26 @@ it("shows an understandable error on an expired login", async () => {
   vi.stubGlobal("fetch",vi.fn(async()=>({ok:false,status:401})));
   await refreshLynxCards();expect(get(lynxImportError)).toContain("Log in");expect(get(aidDetected).cards).toEqual([]);
 });
+it("imports native gender on creation and reimport without clearing absent gender", () => {
+  const adventure = Storage.createAdventure("Gender sync");
+  const native = (value: string) => ({ ...raw, type: "character", fields: [{ key: "Gender", kind: "curated", value }] });
+  Storage.importStoryCards(adventure.id, lynxCards([native(" Male ")]));
+  const current = () => Object.values(Storage.getAdventureById(adventure.id)!.storyCards)[0]!;
+  expect(current().gender).toBe("male");
+  Storage.importStoryCards(adventure.id, lynxCards([native("Female")]));
+  expect(current().gender).toBe("female");
+  for (const value of ["", "unknown"]) {
+    Storage.importStoryCards(adventure.id, lynxCards([native(value)]));
+    expect(current().gender).toBe("female");
+  }
+  Storage.importStoryCards(adventure.id, lynxCards([raw]));
+  expect(current().gender).toBe("female");
+  Storage.importStoryCards(adventure.id, lynxCards([native("Other")]));
+  expect(current().gender).toBe("none");
+  expect(Object.values(Storage.getAdventureById(adventure.id)!.storyCards)).toHaveLength(1);
+  expect(lynxCards([{ ...native("Male"), type: "location" }])[0]).not.toHaveProperty("gender");
+  expect(lynxCards([{ ...raw, type: "character", structuredData: { fields: [{ key: "Gender", value: "Female" }] } }])[0]?.gender).toBe("female");
+});
 it("loads cards using absolute authenticated URLs in the extension context", async () => {
   vi.stubGlobal("location", { hostname: "lynxcatai.com", pathname: "/plays/play-123" });
   const requests: string[] = [];

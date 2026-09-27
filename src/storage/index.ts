@@ -588,7 +588,7 @@ export class Storage {
     }
     for (const addition of plan.additions) {
       const id = crypto.randomUUID();
-      next[id] = { id, ...addition, ...this.defaultStoryCardFields() };
+      next[id] = { id, ...this.defaultStoryCardFields(), ...addition };
     }
 
     const updated = Object.keys(plan.updates).length;

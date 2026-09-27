@@ -17,13 +17,14 @@ export type IncomingCard = {
   name: string;
   type: string;
   triggers: string;
+  gender?: StoryCard["gender"];
 };
 
 export type SyncPlan = {
   /** Cards not present in any form; to be created. */
-  additions: { name: string; type: string; triggers: string; aidId?: string }[];
+  additions: { name: string; type: string; triggers: string; aidId?: string; gender?: StoryCard["gender"] }[];
   /** Existing card id to the AID-sourced fields that differ. */
-  updates: Record<string, Partial<Pick<StoryCard, "name" | "type" | "triggers" | "aidId">>>;
+  updates: Record<string, Partial<Pick<StoryCard, "name" | "type" | "triggers" | "aidId" | "gender">>>;
   /** Incoming cards that matched an existing one and needed no change. */
   unchanged: number;
   /** Incoming cards that could not be used at all (no name, or a duplicate within the batch). */
@@ -47,6 +48,7 @@ export function planAidSync(existing: StoryCard[], incoming: IncomingCard[]): Sy
     const key = name.toLowerCase();
     const type = card.type || "character";
     const triggers = card.triggers ?? "";
+    const gender = card.gender === "male" || card.gender === "female" || card.gender === "none" ? card.gender : undefined;
 
     // A batch can carry duplicates (AID lists a card once per version it has). Take the first.
     if (!name || (card.id && seenIds.has(card.id)) || seenNames.has(key)) {
@@ -59,7 +61,7 @@ export function planAidSync(existing: StoryCard[], incoming: IncomingCard[]): Sy
     const match = (card.id && byAidId.get(card.id)) || byName.get(key);
 
     if (!match) {
-      plan.additions.push({ name, type, triggers, ...(card.id ? { aidId: card.id } : {}) });
+      plan.additions.push({ name, type, triggers, ...(card.id ? { aidId: card.id } : {}), ...(gender !== undefined ? { gender } : {}) });
       continue;
     }
 
@@ -70,6 +72,7 @@ export function planAidSync(existing: StoryCard[], incoming: IncomingCard[]): Sy
     if (card.id && match.aidId === card.id && match.name !== name) changes.name = name;
     if (match.type !== type) changes.type = type;
     if (match.triggers !== triggers) changes.triggers = triggers;
+    if (gender !== undefined && match.gender !== gender) changes.gender = gender;
     if (card.id && !match.aidId) changes.aidId = card.id;
 
     if (Object.keys(changes).length > 0) plan.updates[match.id] = changes;
