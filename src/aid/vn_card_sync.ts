@@ -1,3 +1,4 @@
+import { isLynxCat } from "@/services/site";
 import { get, writable } from "svelte/store";
 import { settings } from "@/storage";
 import { playedShortId } from "./adventure";
@@ -25,6 +26,7 @@ export function startVnCardSession() {
 
 /** Called independently of VN visibility so Exit mode can disable the native card. */
 export function syncVnCard(retry = false) {
+  if (isLynxCat()) return;
   if (!connected) {
     connected = true;
     window.addEventListener("message", event => {

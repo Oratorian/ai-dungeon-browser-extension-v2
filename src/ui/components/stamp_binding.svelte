@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { isLynxCat, siteName, linkedRun, linkedStory } from "@/services/site";
+  const lynx = isLynxCat();
+  const service = siteName();
   import { Storage } from "@/storage";
   import type { Adventure } from "@/shared/types";
   import { playedAdventureId, playedScenarioId } from "@/aid/adventure";
@@ -30,37 +33,37 @@
 
   const selected = $derived(selectedId ? (adventures[selectedId] ?? null) : null);
 
-  const stampedScenario = $derived(!!selected?.aidScenarioId);
-  const stampedAdventure = $derived(!!selected?.aidShortId);
+  const stampedScenario = $derived(!!linkedStory(selected));
+  const stampedAdventure = $derived(!!linkedRun(selected));
   const stamped = $derived(stampedScenario || stampedAdventure);
   // Whether the stamps point at what is open right now, so a set bound to some other story is not
   // described as loading for this one.
   const stampMatchesOpen = $derived(
-    (stampedAdventure && selected?.aidShortId === playedId) ||
-      (stampedScenario && !!scenarioId && selected?.aidScenarioId === scenarioId)
+    (stampedAdventure && linkedRun(selected) === playedId) ||
+      (stampedScenario && !!scenarioId && linkedStory(selected) === scenarioId)
   );
   const stampSummary = $derived(
     stampedScenario && stampedAdventure
       ? "Auto-loads for every adventure of its scenario, and for one adventure by id"
       : stampedScenario
         ? "Auto-loads for every adventure started from its scenario"
-        : "Auto-loads for one AI Dungeon adventure"
+        : `Auto-loads for one ${service} adventure`
   );
 
   function stampScenarioId() {
     if (!selected || !scenarioId) return;
-    Storage.setAidScenarioId(selected.id, scenarioId);
+    (lynx ? Storage.setLynxStoryId : Storage.setAidScenarioId).call(Storage, selected.id, scenarioId);
   }
 
   function stampAdventureId() {
     if (!selected || !playedId) return;
-    Storage.setAidShortId(selected.id, playedId);
+    (lynx ? Storage.setLynxRunId : Storage.setAidShortId).call(Storage, selected.id, playedId);
   }
 
   function unbind() {
     if (!selected) return;
-    Storage.setAidShortId(selected.id, null);
-    Storage.setAidScenarioId(selected.id, null);
+    (lynx ? Storage.setLynxRunId : Storage.setAidShortId).call(Storage, selected.id, null);
+    (lynx ? Storage.setLynxStoryId : Storage.setAidScenarioId).call(Storage, selected.id, null);
   }
 </script>
 
@@ -98,7 +101,7 @@
         <button onclick={unbind} class="text-xs text-theme-neutral-700 hover:text-pretty-red">Unbind</button>
       </span>
     {:else}
-      <span class="text-xs text-theme-neutral-700 min-w-0 truncate">Not linked to an AI Dungeon adventure</span>
+      <span class="text-xs text-theme-neutral-700 min-w-0 truncate">Not linked to a {service} adventure</span>
       <span class="flex items-center gap-1.5 shrink-0">
         <button
           onclick={stampScenarioId}
@@ -106,8 +109,8 @@
           title={scenarioId
             ? "Auto-load this set for every adventure started or duplicated from the open adventure's scenario"
             : playedId
-              ? "AI Dungeon has not told us which scenario this adventure came from yet; reload the page or stamp the adventure instead"
-              : "Open the adventure in AI Dungeon first"}
+              ? `The story has not loaded yet. Refresh ${service} or link this adventure only.`
+              : `Open the adventure in ${service} first`}
           class="text-xs px-2 py-1.5 bg-pretty-theme text-theme-neutral-0 rounded-md hover:opacity-90 disabled:opacity-40 transition-all"
         >
           Stamp Scenario
@@ -115,7 +118,7 @@
         <button
           onclick={stampAdventureId}
           disabled={!playedId}
-          title={playedId ? "Auto-load this set for this one AI Dungeon adventure only" : "Open the adventure in AI Dungeon first"}
+          title={playedId ? `Auto-load this set for this one ${service} adventure only` : `Open the adventure in ${service} first`}
           class="text-xs px-2 py-1.5 bg-theme-neutral-300 text-theme-neutral-900 rounded-md hover:bg-theme-neutral-400 disabled:opacity-40 transition-all"
         >
           This adventure only

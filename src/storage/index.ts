@@ -208,6 +208,8 @@ function normalizeAdventure(adventure: unknown): Adventure | null {
     // Preserve the played-adventure link across reloads (dropping it here made the binding vanish
     // on every F5, so the "Stamp" button kept reappearing).
     aidShortId: typeof a.aidShortId === "string" ? a.aidShortId : undefined,
+    lynxRunId: typeof a.lynxRunId === "string" ? a.lynxRunId : undefined,
+    lynxStoryId: typeof a.lynxStoryId === "string" ? a.lynxStoryId : undefined,
     aidScenarioId: typeof a.aidScenarioId === "string" ? a.aidScenarioId : undefined,
     contentVersion: contentVersion(a.contentVersion) ?? undefined,
     githubSource: normalizeGitHubSource(a.githubSource),
@@ -494,7 +496,18 @@ export class Storage {
     this.setAidLink(adventureId, "aidScenarioId", scenarioId);
   }
 
-  private static setAidLink(adventureId: string, field: "aidShortId" | "aidScenarioId", value: string | null): void {
+  static setLynxRunId(adventureId: string, value: string | null) { this.setAidLink(adventureId, "lynxRunId", value); }
+  static setLynxStoryId(adventureId: string, value: string | null) { this.setAidLink(adventureId, "lynxStoryId", value); }
+  static selectAdventureByLynxId(runId: string | null, storyId: string | null): boolean {
+    const all = Object.values(get(this.adventures));
+    const match = (runId ? all.find(a => a.lynxRunId === runId) : undefined)
+      ?? (storyId ? all.find(a => a.lynxStoryId === storyId) : undefined);
+    if (!match) return false;
+    if (get(this.selectedAdventureId) !== match.id) this.selectAdventure(match.id);
+    return true;
+  }
+
+  private static setAidLink(adventureId: string, field: "aidShortId" | "aidScenarioId" | "lynxRunId" | "lynxStoryId", value: string | null): void {
     this.adventures.update((advs) => {
       const target = advs[adventureId];
       if (!target) return advs;

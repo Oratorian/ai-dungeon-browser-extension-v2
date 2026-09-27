@@ -1,3 +1,5 @@
+import { isLynxCat } from "@/services/site";
+import { followLynxStory, disconnectLynx } from "@/services/lynxcat";
 import { Debug } from "#imports";
 import appStyle from "@/app.css?inline";
 import contentStyle from "@/content.css?inline";
@@ -13,7 +15,7 @@ import { get } from "svelte/store";
 import { startVnCardSession, syncVnCard } from "@/aid/vn_card_sync";
 
 export default defineContentScript({
-  matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
+  matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*", "https://lynxcatai.com/*"],
   cssInjectionMode: "ui",
   async main(ctx) {
     // Capture our own uncaught errors from the very start, so the diagnostics report can show
@@ -21,7 +23,7 @@ export default defineContentScript({
     installErrorCapture();
 
     // Listen for story cards the page-world interceptor detects, and ask for any already captured.
-    connectAidBridge();
+    if (!isLynxCat()) connectAidBridge();
 
     // Inject content styles omitting the base overrides stuff.
     const style = document.createElement("style");
@@ -30,17 +32,25 @@ export default defineContentScript({
     document.head.appendChild(style);
 
     // Do the startup events (loads storage).
-    await Events.onStart();
-    startVnCardSession();
-    ctx.setInterval(syncVnCard, 2000);
-    const stopVnCardSync = Storage.settings.subscribe(() => syncVnCard());
-    ctx.onInvalidated(stopVnCardSync);
+    if (isLynxCat()) {
+      await Storage.load();
+      Storage.listen();
+      followLynxStory();
+      ctx.setInterval(followLynxStory, 1000);
+      ctx.onInvalidated(disconnectLynx);
+    } else {
+      await Events.onStart();
+      startVnCardSession();
+      ctx.setInterval(syncVnCard, 2000);
+      const stopVnCardSync = Storage.settings.subscribe(() => syncVnCard());
+      ctx.onInvalidated(stopVnCardSync);
 
-    // Follow the played adventure: auto-select its imported card set as the URL changes (AI Dungeon
-    // routes client-side, so poll). Must run after Events.onStart() so storage is loaded first;
-    // ctx.setInterval is cleared automatically if the context dies.
-    autoSelectPlayedAdventure();
-    ctx.setInterval(autoSelectPlayedAdventure, 1000);
+      // Follow the played adventure: auto-select its imported card set as the URL changes (AI Dungeon
+      // routes client-side, so poll). Must run after Events.onStart() so storage is loaded first;
+      // ctx.setInterval is cleared automatically if the context dies.
+      autoSelectPlayedAdventure();
+      ctx.setInterval(autoSelectPlayedAdventure, 1000);
+    }
 
     Debug.log("Creating shadow root UI...");
     const ui = await createShadowRootUi(ctx, {

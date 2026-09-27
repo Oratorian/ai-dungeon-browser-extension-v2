@@ -44,6 +44,9 @@ export type Adventure = {
   /** AI Dungeon adventure shortId this was imported from; lets the extension auto-select this
    *  card set when that adventure is played (see aid/adventure.ts). */
   aidShortId?: string;
+  /** Separate service links prevent mixing AI Dungeon and LynxCatAI adventures. */
+  lynxRunId?: string;
+  lynxStoryId?: string;
   /** AI Dungeon scenario id this card set follows: it auto-loads for every adventure started or
    *  duplicated from that scenario. An aidShortId match on another set takes precedence, so one
    *  adventure of the scenario can still carry its own set. */

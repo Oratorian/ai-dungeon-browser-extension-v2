@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { isLynxCat } from "@/services/site";
   /* Lib */
   import { BitsConfig } from "bits-ui";
 
@@ -43,8 +44,10 @@
 
 <FloatingButton />
 <StoryCardAutocomplete />
+{#if !isLynxCat()}
 <VisualNovel />
 <SecretNarration />
+{/if}
 <!-- Mounted outside the editor and hover popover so either picker can review an update. -->
 <BitsConfig defaultPortalTo={portal}>
   <GitHubUpdateDialog />

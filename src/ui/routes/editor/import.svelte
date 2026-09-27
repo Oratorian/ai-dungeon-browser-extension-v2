@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { isLynxCat, siteName, lynxRunId, linkedRun, linkedStory } from "@/services/site";
+  import { refreshLynxCards, lynxImportError, lynxImportLoading } from "@/services/lynxcat";
+  const lynx = isLynxCat();
+  const service = siteName();
   import SettingsCard from "@/ui/components/settings_card.svelte";
   import { aidDetected } from "@/aid/bridge";
   import { playedAdventureId, playedScenarioId, playedShortId } from "@/aid/adventure";
@@ -38,8 +42,8 @@
   // True when the currently selected adventure is already the one bound to that adventure, by its
   // id or by the scenario it came from (a duplicate of an adventure imported before).
   const targetMatches = $derived(
-    (!!target?.aidShortId && !!importedShortId && target.aidShortId === importedShortId) ||
-      (!!target?.aidScenarioId && !!scenarioId && target.aidScenarioId === scenarioId)
+    (!!linkedRun(target) && !!importedShortId && linkedRun(target) === importedShortId) ||
+      (!!linkedStory(target) && !!scenarioId && linkedStory(target) === scenarioId)
   );
 
   // Default the "Create new adventure" toggle: create a fresh one UNLESS the selected adventure is
@@ -47,7 +51,7 @@
   // it unchecked). Recomputed when that context changes; a manual toggle sticks until then.
   let scenarioKey = "";
   $effect(() => {
-    const key = `${target?.id ?? ""}|${target?.aidShortId ?? ""}|${target?.aidScenarioId ?? ""}|${importedShortId ?? ""}|${scenarioId ?? ""}`;
+    const key = `${target?.id ?? ""}|${linkedRun(target) ?? ""}|${linkedStory(target) ?? ""}|${importedShortId ?? ""}|${scenarioId ?? ""}`;
     if (key !== scenarioKey) {
       scenarioKey = key;
       createScenario = !targetMatches;
@@ -85,7 +89,7 @@
   // instead of briefly hiding valid cards while the 1s poll catches up.
   const detectedMatchesPlayed = $derived.by(() => {
     void playedId; // recompute when the URL poll changes (covers a cached switch with no new capture)
-    const url = playedShortId();
+    const url = lynx ? lynxRunId(location.pathname) : playedShortId();
     return !url || !detected.shortId || detected.shortId === url;
   });
 
@@ -95,13 +99,13 @@
     if (createScenario) {
       if (!target)
         return scenarioId
-          ? `A new adventure "${newAdventureName}" will be created and linked to this AI Dungeon adventure and its scenario, so it also loads for duplicates and restarts.`
-          : `A new adventure "${newAdventureName}" will be created and linked to this AI Dungeon adventure.`;
+          ? `A new adventure "${newAdventureName}" will be created and linked to this ${service} adventure and its story, so it also loads for duplicates and restarts.`
+          : `A new adventure "${newAdventureName}" will be created and linked to this ${service} adventure.`;
       if (targetMatches) return `"${targetName}" already matches this adventure, but a separate new one will be created.`;
       return `The selected "${targetName}" is a different adventure, so a new one is created and linked, keeping cards out of the wrong one.`;
     }
     if (targetMatches) return `"${targetName}" is already linked to this adventure, so cards will merge into it.`;
-    if (target) return `Cards will merge into the selected "${targetName}", which is not linked to this AI Dungeon adventure.`;
+    if (target) return `Cards will merge into the selected "${targetName}", which is not linked to this ${service} adventure.`;
     return `No adventure is selected, so a new one will be created anyway.`;
   });
 
@@ -117,7 +121,8 @@
   }
 
   function doImport() {
-    if (selectedCards.length === 0) return;
+    if (selectedCards.length === 0 || !detectedMatchesPlayed) return;
+    if (lynx && ($lynxImportLoading || detected.shortId !== lynxRunId(location.pathname))) return;
 
     // With "Create new adventure" on (default), or when nothing is selected, make a fresh adventure
     // named after the AI Dungeon adventure and bind it to that adventure's shortId and, when known,
@@ -128,8 +133,8 @@
     if (createScenario || !target) {
       adventure = Storage.createAdventure(newAdventureName);
       Storage.selectAdventure(adventure.id);
-      if (importedShortId) Storage.setAidShortId(adventure.id, importedShortId);
-      if (scenarioId) Storage.setAidScenarioId(adventure.id, scenarioId);
+      if (importedShortId) (lynx ? Storage.setLynxRunId : Storage.setAidShortId).call(Storage, adventure.id, importedShortId);
+      if (scenarioId) (lynx ? Storage.setLynxStoryId : Storage.setAidScenarioId).call(Storage, adventure.id, scenarioId);
     } else {
       adventure = target;
     }
@@ -142,15 +147,20 @@
   }
 </script>
 
-<header class="page-heading"><span class="text-pretty-theme text-xs font-bold uppercase tracking-widest">Connect your story</span><h1>Card sync</h1><p class="text-theme-neutral-800">Bring your AI Dungeon cards into the extension, ready for pictures and sounds.</p></header>
+<header class="page-heading"><span class="text-pretty-theme text-xs font-bold uppercase tracking-widest">Connect your story</span><h1>Card sync</h1><p class="text-theme-neutral-800">Bring your {service} cards into the extension, ready for pictures and sounds.</p></header>
 <div class="sync-workspace">
   <aside class="sync-guide">
     <SettingsCard icon="help" label="How it works" description="A few quick steps to get your cards ready.">
-      <ol class="steps text-theme-neutral-800"><li><b>Open your story</b><p>Open the story cards in AI Dungeon, or refresh your adventure so the extension can find them.</p></li><li><b>Choose what to bring over</b><p>Pick the card types you want and check which set they will go into.</p></li><li><b>Make them yours</b><p>Click Import, then head to Story cards to add portraits, icons and sounds.</p></li></ol>
+      <ol class="steps text-theme-neutral-800"><li><b>Open your story</b><p>Open the story cards in {service}, or refresh your adventure so the extension can find them.</p></li><li><b>Choose what to bring over</b><p>Pick the card types you want and check which set they will go into.</p></li><li><b>Make them yours</b><p>Click Import, then head to Story cards to add portraits, icons and sounds.</p></li></ol>
     </SettingsCard>
-    <SettingsCard icon="verified_user" label="Your pictures stay put" description="Importing again updates existing cards instead of making extra copies."><p class="text-sm text-theme-neutral-800 leading-relaxed">Only names, types and matching words are brought over. Your existing icons, portraits and sounds stay as they are. This does not change the cards in AI Dungeon.</p></SettingsCard>
+    <SettingsCard icon="verified_user" label="Your pictures stay put" description="Importing again updates existing cards instead of making extra copies."><p class="text-sm text-theme-neutral-800 leading-relaxed">Only names, types and matching words are brought over. Your existing icons, portraits and sounds stay as they are. This does not change the cards in {service}.</p></SettingsCard>
   </aside>
-  <SettingsCard icon="sync" label="Import from AI Dungeon" description="Check the source and destination before importing. Nothing is copied until you click Import.">
+  <SettingsCard icon="sync" label={`Import from ${service}`} description="Check the source and destination before importing. Nothing is copied until you click Import.">
+    {#if lynx}
+      <p class="text-sm text-theme-neutral-800">Import test: reads card names, types and matching words. Your local pictures stay in the extension; attached website pictures are not imported. VN and story highlighting are not connected to LynxCatAI yet.</p>
+      <button class="px-4 py-3 rounded-lg border border-theme-neutral-600 bg-theme-neutral-300 disabled:opacity-50" disabled={$lynxImportLoading} onclick={() => refreshLynxCards()}>{$lynxImportLoading ? "Reading cards..." : "Refresh cards"}</button>
+      {#if $lynxImportError}<p role="alert" class="text-pretty-red">{$lynxImportError}</p>{/if}
+    {/if}
     <div class="flex flex-col gap-3 bg-theme-neutral-100 rounded-xl p-3">
       {#if detected.cards.length === 0 || !detectedMatchesPlayed}
         <div class="flex flex-col items-center justify-center py-10 text-theme-neutral-700 gap-2">
@@ -158,13 +168,13 @@
           {#if !detectedMatchesPlayed}
             <span class="text-sm font-bold">Cards are for a different adventure</span>
             <span class="text-xs text-center max-w-xs">
-              The detected cards belong to another adventure (AI Dungeon has not sent the new cards to the extension yet). Reload the
+              The detected cards belong to another adventure ({service} has not sent the new cards to the extension yet). Reload the
               page to detect the adventure you're playing now.
             </span>
           {:else}
             <span class="text-sm font-bold">No story cards detected</span>
             <span class="text-xs text-center max-w-xs">
-              Open your story cards in AI Dungeon, or refresh the adventure. They will appear here once the extension finds them.
+              Open your story cards in {service}, or refresh the adventure. They will appear here once the extension finds them.
             </span>
           {/if}
         </div>

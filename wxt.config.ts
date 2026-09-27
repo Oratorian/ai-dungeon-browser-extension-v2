@@ -95,7 +95,7 @@ export default defineConfig({
         // interceptor.js is the page-world GraphQL tap, injected by aid-inject.content.ts.
         // icon/* is the extension icon, shown as the face of the floating button.
         resources: ["fonts/*", "icon/*", "interceptor.js", "tts.html"],
-        matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*"],
+        matches: ["https://play.aidungeon.com/*", "https://beta.aidungeon.com/*", "https://alpha.aidungeon.com/*", "https://lynxcatai.com/*"],
       },
     ],
     browser_specific_settings: {
