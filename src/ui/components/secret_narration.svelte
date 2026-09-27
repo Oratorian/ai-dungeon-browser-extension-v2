@@ -21,7 +21,7 @@
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   let unlocked = $state(false);
   const alwaysAvailable = isLynxCat();
-  const available = $derived(alwaysAvailable || unlocked);
+  const available = $derived(alwaysAvailable ? !!$playedAdventureId : unlocked);
   let open = $state(false);
   let reading = $state(false);
   let paused = $state(false);
@@ -62,7 +62,7 @@
     lines = []; index = 0;
     clearTimeout(noticeTimer);
   }
-  $effect(() => { if (!outside) untrack(exitNarrator); });
+  $effect(() => { if (!outside || !available) untrack(exitNarrator); });
   function togglePause() {
     if (!reading) return;
     paused = !paused;
