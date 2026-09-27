@@ -5,6 +5,18 @@ import { createNovelLocationTracker, retainedLocationSeed } from "@/rendering/no
 const locations = [{ id: "cafe", name: "Dragon Cafe", triggers: "cafe" }, { id: "kitchen", name: "Kitchen", triggers: "" }, { id: "quarter", name: "Old Quarter", triggers: "quarter" }];
 const track = createNovelLocationTracker(locations);
 describe("VN location tracking", () => {
+  it("recognizes the live Lynx location answer and carries it into narration", () => {
+    const grove = createNovelLocationTracker([{ id: "grove", name: "The Shattered Grove", triggers: "Shattered Grove" }]);
+    const frames = parseNovel(`Lyra: "We're in the Shattered Grove. It's difficult to explain."\nShe pauses, her gaze drifting across the crystalline shards.`);
+    expect(grove(frames)).toEqual(frames.map(() => "grove"));
+    expect(track(parseNovel('Sage: “We’re currently in the kitchen.”'), "cafe")).toEqual(["kitchen"]);
+    expect(track(parseNovel('"You are at the Old Quarter"'), "cafe")).toEqual(["quarter"]);
+  });
+  it("does not mistake questions, plans, memories or incomplete location statements for arrivals", () => {
+    for (const text of ['"We’re in the kitchen?"', '"We were in the kitchen."', '"We will be in the kitchen."', '"If we are in the kitchen, hide."', '"I remember we are in the kitchen."', '"We’re not in the kitchen."', '"We’re in the kitchen', '"The kitchen is lovely."']) {
+      expect(track(parseNovel(text), "cafe").at(-1)).toBe("cafe");
+    }
+  });
   it("carries a setting across paragraphs and switches on explicit player movement", () => {
     expect(track(parseNovel('You enter the Dragon Cafe. Sage waves.\nYou walk into the kitchen. Pots rattle.'))).toEqual(["cafe", "cafe", "kitchen", "kitchen"]);
   });
