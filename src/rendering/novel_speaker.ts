@@ -19,6 +19,8 @@ export function novelSpeakers(frames: NovelFrame[], characters: NovelCharacter[]
   const adverbs = "(?:\\s+[\\p{L}]+ly){0,2}";
   const prefix = new RegExp(`${boundary}(${names})(?:\\s*:\\s*|${adverbs}\\s+${speechVerb}${adverbs}\\s*[,;:]?\\s*)$`, "iu");
   const suffix = new RegExp(`^\\s*[,;]?\\s*(?:(${names})${adverbs}\\s+${speechVerb}|${speechVerb}${adverbs}\\s+(${names}))(?![\\p{L}\\p{N}_])`, "iu");
+  const bridgeSubject = new RegExp(`^\\s*(${names})(?![\\p{L}\\p{N}_])`, "iu");
+  const bridgeNames = new RegExp(`${boundary}(${names})(?![\\p{L}\\p{N}_])`, "giu");
   let paragraph = "";
   let offset = 0;
   let spans: { start: number; end: number; speaker: string | null }[] = [];
@@ -40,8 +42,24 @@ export function novelSpeakers(frames: NovelFrame[], characters: NovelCharacter[]
         // An explicit unknown label should not borrow a known trailing attribution.
         const name = leading?.[1] ?? (/[:]\s*$/u.test(before) ? "" : trailing?.[1] ?? trailing?.[2] ?? "");
         const owners = aliases.get(name.toLowerCase());
-        spans.push({ start: match.index, end,
-          speaker: owners?.size === 1 ? [...owners][0]! : null });
+        let speaker = owners?.size === 1 ? [...owners][0]! : null;
+        const prior = spans.at(-1)?.speaker;
+        // A speaker can resume after an action beat in the same paragraph:
+        // Serastra: "Help?" Serastra laughs. "You want to help?"
+        // Explicit labels/attributions, including ambiguous ones, take precedence.
+        if (!speaker && prior && !leading && !trailing && !/:\s*$/u.test(before)) {
+          const subject = bridgeSubject.exec(before)?.[1]?.toLowerCase();
+          const subjectOwners = subject ? aliases.get(subject) : undefined;
+          const sameSubject = subjectOwners?.size === 1 && subjectOwners.has(prior);
+          const pronoun = /^\s*(?:she|he|they)\b/iu.test(before);
+          const mentions = [...before.matchAll(bridgeNames)];
+          const noOtherCharacter = mentions.every(mention => {
+            const ids = aliases.get(mention[1]!.toLowerCase());
+            return ids?.size === 1 && ids.has(prior);
+          });
+          if (noOtherCharacter && (!before.trim() || sameSubject || pronoun)) speaker = prior;
+        }
+        spans.push({ start: match.index, end, speaker });
       }
     }
     const start = paragraph.indexOf(frame.text, offset);

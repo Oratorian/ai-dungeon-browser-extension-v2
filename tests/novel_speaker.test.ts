@@ -9,6 +9,20 @@ const characters = [
 const speakers = (text: string) => novelSpeakers(parseNovel(text), characters);
 
 describe("explicit VN speakers", () => {
+  it("keeps the speaker when dialogue resumes after their action beat", () => {
+    const text = 'Serastra: "Help?" Serastra barks a laugh that sounds like a tea kettle boiling over. "You want to help? You want to assist in the sacred art of custard creation?"';
+    expect(novelSpeakers(parseNovel(text), [...characters, { id: "serastra", name: "Serastra", triggers: "" }]))
+      .toEqual(["serastra", null, "serastra", "serastra"]);
+    expect(speakers('Sage: “Wait.” She smiles. “Stay here.”')).toEqual(["sage", null, "sage"]);
+    expect(speakers('Sage: "Wait." "Stay here."')).toEqual(["sage", "sage"]);
+  });
+  it("does not carry resumed dialogue over a different actor, label or paragraph", () => {
+    expect(speakers('Sage: "Wait." Elarion smiles. "No."')).toEqual(["sage", null, null]);
+    expect(speakers('Sage: "Wait." Guest: "No."')).toEqual(["sage", null]);
+    expect(speakers('Sage: "Wait." Elarion: "No."')).toEqual(["sage", "elarion"]);
+    expect(speakers('Sage: "Wait."\n"No."')).toEqual(["sage", null]);
+    expect(speakers('Sage: "Wait." A stranger laughs. "No."')).toEqual(["sage", null, null]);
+  });
   it.each(["reply", "whisper", "shout", "yell", "mutter", "hush", "hiss", "scream"])("tracks the player attribution: you %s", verb => {
     expect(speakers(`"I am merely a connoisseur of observation, Sage," you ${verb}.`)).toEqual(["elarion"]);
     expect(speakers(`You ${verb}, "Sage is waiting."`)).toEqual(["elarion"]);
