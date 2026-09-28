@@ -44,7 +44,7 @@ it("reads fresh notes, saves only authorsNote, retires old cards and rejects sta
   const count = requests.filter(r => r.variables.input).length;
   await send(true);
   expect(requests.filter(r => r.variables.input)).toHaveLength(count);
-  note += "New player note";
+  note = `${note ?? ""}New player note`;
   expect((await send(false)).error).toBeUndefined();
   expect(note).toBe("New player note");
   expect(refresh).toHaveBeenCalledWith("story");
