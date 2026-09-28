@@ -620,7 +620,7 @@
                 </div>
                 <div class="instruction-options">
                   <button role="switch" aria-checked={$settings.novelStoryCardInstructions} aria-label="Track Speakers" onclick={() => $settings.novelStoryCardInstructions = !$settings.novelStoryCardInstructions}>Track Speakers: {$settings.novelStoryCardInstructions ? "On" : "Off"}</button>
-                  <small>{isLynxCat() ? 'Adds dialogue formatting instructions to AI Writing Style so VN can highlight speakers. Keeps your own writing style. Turning this off or exiting VN removes the added instructions. Might take 2 or 3 turns to take effect.' : 'Asks the AI to put names before dialogue so VN can highlight who is speaking. Might take 2 or 3 turns to take effect. Turning this off removes the extra writing instructions.'}</small>
+                  <small>{isLynxCat() ? 'Adds dialogue formatting instructions to AI Writing Style so VN can highlight speakers. Keeps your own writing style. Turning this off or exiting VN removes the added instructions. Might take 2 or 3 turns to take effect.' : 'Adds dialogue formatting instructions to Author’s Note so VN can highlight speakers. Keeps your own notes and adds the component if needed. Turning this off or exiting VN removes the added instructions. Might take 2 or 3 turns to take effect.'}</small>
                 </div>
                     <small>Speed and pitch are saved separately for each voice. Cards with no gender use Narration. Dialogue voices require Track Speakers.</small>
                     <VnVoiceProfile label="Narration" bind:voice={() => $settings.novelTtsVoice, value => $settings.novelTtsVoice = value === "F5" ? "F5" : "M5"}

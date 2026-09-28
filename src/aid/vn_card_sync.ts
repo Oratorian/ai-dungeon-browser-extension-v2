@@ -2,7 +2,6 @@ import { isLynxCat } from "@/services/site";
 import { get, writable } from "svelte/store";
 import { settings } from "@/storage";
 import { playedShortId } from "./adventure";
-import { aidDetected } from "./bridge";
 import { VN_CARD_MESSAGE } from "./vn_card";
 import { LynxStyleBusy, writeLynxVnStyle } from "@/services/lynxcat_vn_writer";
 
@@ -12,7 +11,6 @@ let pending: { id: string; key: string; deadline: number } | undefined;
 let failed = "";
 let connected = false;
 let desired = "";
-const managed = new Set<string>();
 let lynxBusy = false;
 
 function syncLynxStyle(retry: boolean) {
@@ -70,14 +68,11 @@ export function syncVnCard(retry = false) {
   if (retry) { failed = ""; completed = ""; }
   if (pending && Date.now() > pending.deadline) {
     failed = pending.key; pending = undefined;
-    vnCardError.set("VN Mode card save timed out. Refresh the page and retry.");
+    vnCardError.set("VN instructions save timed out. Refresh the page and retry.");
   }
   const shortId = playedShortId();
   if (!shortId) return;
   const enabled = instructionsEnabled();
-  const detected = get(aidDetected);
-  if (enabled || detected.shortId === shortId && detected.cards.some(card => card.name === "VN Mode")) managed.add(shortId);
-  if (!enabled && !managed.has(shortId)) return;
   const key = `${shortId}:${enabled}`;
   // Results from a previous visit to this mode must not suppress a fresh toggle.
   // An unsuccessful save may also have reached the server before its response failed.

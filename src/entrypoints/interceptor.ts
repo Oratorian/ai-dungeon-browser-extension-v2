@@ -1,5 +1,5 @@
 import { AID_MSG, sanitizeCards, type AidCard, type AidMessage, type AidStats } from "@/aid/protocol";
-import { installVnCardWriter } from "@/aid/vn_card";
+import { installVnAuthorsNoteWriter } from "@/aid/vn_authors_note";
 import { readStoryMetadata } from "@/aid/story_metadata";
 
 // Page-world (MAIN) script. It is injected as a <script> tag by aid-inject.content.ts at
@@ -64,7 +64,6 @@ export default defineUnlistedScript(() => {
   // A new shortId resets the set (the user switched adventures).
   function capture(holder: Holder, full: boolean) {
     const { shortId, scenarioId, title, scenarioTitle, cards } = holder;
-    vnWriter.capture(shortId, cards, full, holder.rawCards);
     if (!cards.length && !full) return;
     if (!latest || (shortId && shortId !== latest.shortId)) {
       latest = { shortId: shortId ?? null, scenarioId: null, title: title ?? null, scenarioTitle: null, byId: new Map() };
@@ -186,7 +185,7 @@ export default defineUnlistedScript(() => {
 
   // --- fetch (initial + refetched adventure loads: authoritative full sets) ---
   const _fetch = window.fetch.bind(window);
-  const vnWriter = installVnCardWriter(_fetch, pageShortId);
+  const vnWriter = installVnAuthorsNoteWriter(_fetch, pageShortId);
   window.fetch = function (...args: any[]) {
     const p = _fetch(...(args as [any, any]));
     try {

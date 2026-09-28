@@ -18,5 +18,5 @@ export async function refreshVnCardView(shortId: string) {
     await Promise.all([...queries.values()].map(query => query.refetch()));
     return;
   }
-  throw new Error("The VN Mode card was saved, but AI Dungeon's card view could not refresh. Retry or refresh the page.");
+  throw new Error("VN instructions were saved, but AI Dungeon's view could not refresh. Retry or refresh the page.");
 }
