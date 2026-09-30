@@ -7,6 +7,54 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
+## v3.1.0
+
+### 🐈 LynxCatAI support
+
+- Use Visual Novel Mode, character focus, story highlighting, and local narration on LynxCatAI.
+- VN can use LynxCatAI's character and location cards directly, without importing a card set.
+  Your extension pictures take priority; website pictures fill in when no local picture is selected.
+- Import and sync LynxCatAI card names, types, triggers, gender, and website image links while
+  keeping your local media. AI Dungeon and LynxCatAI story links are stored separately.
+- LynxCatAI gets its own VN styling, with dark panels, blue-purple accents, and matching typography.
+- The normal-story narrator is available without the hidden shortcut on LynxCatAI, only inside
+  a played story. It stops when you leave the story or enter VN.
+- VN uses LynxCatAI's native turn box, Continue, and Retry. AI Dungeon's retry history and
+  retry-with-instructions controls are not shown on LynxCatAI.
+- Fixed TTS initialization on LynxCatAI, including the optional accelerated engine.
+
+### 📝 VN instructions in the story's writing settings
+
+- **Track Speakers** now adds its formatting instructions to AI Dungeon's **Author's Note**,
+  creating the component when needed, instead of creating a VN Mode story card.
+- On LynxCatAI, the instructions go into **AI Writing Style** for the played story.
+- Instructions live in a marked block. Your own notes are preserved; turning Track Speakers off,
+  exiting VN, or loading a fresh page removes the managed block. Right-click minimization keeps
+  the VN session active.
+- Recognized legacy VN Mode cards are deactivated. Existing unrelated cards are left alone.
+- Open edits and full writing-style fields are protected from being overwritten or truncated.
+  Changes to the AI's dialogue formatting may still take 2 or 3 turns to appear.
+
+### 🔊 Dialogue voices and clearer settings
+
+- Story cards have a **Gender** choice: Male, Female, or None. With Track Speakers enabled,
+  VN uses the selected male or female dialogue voice; None uses the narrator.
+- Choose from **M1-M4** and **F1-F4** for dialogue. Narration uses **Male (M5)** or **Female (F5)**.
+- Set speed and pitch separately for each voice.
+- VN settings have two clear tabs: **Narration & Voices**, opened by default, and **TTS Engine**.
+- Redesigned the main settings, Story cards, and Card sync screens with more room, clearer
+  sections, and everyday explanations. The editor opens at the larger size from the start.
+- Moved card search and filters into the header, leaving more room for the cards. Improved
+  input styling, tab visibility, and the card-set dropdown's fit within its sidebar.
+
+### 🎭 Scene and dialogue fixes
+
+- A speaker stays identified when dialogue resumes after their own action in the same paragraph,
+  such as `Serastra: "Help?" Serastra laughs. "You want to help?"`. The action stays narration.
+- Automatic location tracking looks up mentioned names and triggers against **Location** cards,
+  including mentions in dialogue. It keeps the last matched location until another is mentioned.
+  Character and Other cards do not change the background; manual location selection remains available.
+
 ## v3.0.1
 
 ### 🎬 VN reading and scene controls
