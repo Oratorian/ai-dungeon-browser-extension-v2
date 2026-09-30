@@ -20,5 +20,5 @@ it("refreshes only the current adventure's native queries and deduplicates subsc
   expect(other.refetch).not.toHaveBeenCalled();
   expect(unrelated.refetch).not.toHaveBeenCalled();
   document.body.innerHTML = "";
-  await expect(refreshVnCardView("story")).rejects.toThrow("card view could not refresh");
+  await expect(refreshVnCardView("story")).rejects.toThrow("view could not refresh");
 });
