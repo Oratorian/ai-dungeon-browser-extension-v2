@@ -269,7 +269,7 @@
             <ImageLibrary images={graphics} onchange={handleGraphicsChange} label="Graphic" maxImages={4}
               selectedIndex={editingGraphic} onselect={type.trim().toLowerCase() === "character" ? index => editingGraphic = editingGraphic === index ? null : index : undefined} />
             {#if type.trim().toLowerCase() === "character" && graphics.length > 0}
-              <span class="text-xs text-theme-neutral-700">Click a picture to edit its VN switching settings.</span>
+              <span class="text-xs text-theme-neutral-700">Click a picture to edit its switching settings.</span>
             {/if}
           </Field>
           {#if type.trim().toLowerCase() === "character" && editingVariant}

@@ -19,6 +19,7 @@
   import FloatingButton from "@/ui/components/floating_button.svelte";
   import StoryCardAutocomplete from "@/ui/components/story_card_autocomplete.svelte";
   import VisualNovel from "@/ui/components/visual_novel.svelte";
+  import StoryPortraitTracking from "@/ui/components/story_portrait_tracking.svelte";
   import SecretNarration from "@/ui/components/secret_narration.svelte";
   import GitHubUpdateDialog from "@/ui/components/github_update_dialog.svelte";
   import { versionInfo, checkForUpdate, RELEASES_URL, type VersionInfo } from "@/shared/version";
@@ -51,6 +52,7 @@
 <FloatingButton />
 <StoryCardAutocomplete />
 <VisualNovel />
+<StoryPortraitTracking />
 <SecretNarration />
 {#if isLynxCat() && extensionState.focusCardId && !$settings.visualNovelMode && !extensionState.isEditorOpen}
   <aside class="fixed top-24 left-6 w-80 max-w-[85vw] z-1000" aria-label="Focused story card">

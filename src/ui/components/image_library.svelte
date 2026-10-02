@@ -272,7 +272,7 @@
             {/snippet}
             {#if onselect}
               <button class="preview-select" aria-label="Edit {label.toLowerCase()} {index + 1}" aria-pressed={selectedIndex === index}
-                title="Click to edit this picture's VN settings" onclick={() => onselect?.(index)}>
+                title={label === "Icon" ? "Click to link this icon to a graphic" : "Click to edit picture switching"} onclick={() => onselect?.(index)}>
                 {@render thumbnail()}
               </button>
             {:else}

@@ -23,9 +23,10 @@ export function createNovelPortraitTracker(cards: NovelCard[]) {
     const triggers = phrases(portrait.triggers);
     return triggers.length ? [{ card: card.id, portrait: portrait.id, match: pattern(triggers) }] : [];
   }));
-  return (frames: NovelFrame[]) => {
+  return (frames: NovelFrame[], seed: Record<string, PortraitMatch> = {}) => {
     const timeline: Record<string, PortraitMatch>[] = [];
-    let current: Record<string, PortraitMatch> = {};
+    let current: Record<string, PortraitMatch> = Object.fromEntries(Object.entries(seed)
+      .filter(([id, match]) => characters.some(card => card.id === id && card.portraits?.some(portrait => portrait.id === match.portrait))));
     let paragraph = "", masked = "", offset = 0;
     for (const [at, frame] of frames.entries()) {
       if (frame.startsParagraph || paragraph !== frame.paragraph) {

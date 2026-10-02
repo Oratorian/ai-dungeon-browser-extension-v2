@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { cardImage } from "@/shared/card_images";
+  import { cardImage, cardIconIndexes, withCardPortrait } from "@/shared/card_images";
+  import { graphicIds } from "@/shared/portrait_variants";
+  import { storyPortraits, chooseStoryPortrait } from "@/rendering/story_portraits";
   import type { StoryCard } from "@/shared/types";
   import { settings, Storage } from "@/storage";
   import { fly } from "svelte/transition";
@@ -27,9 +29,10 @@
     }, hideDelay);
   }
 
-  let icons = $derived(card.icons);
-  let icon = $derived(cardImage(card, "icon"));
-  let graphic = $derived(cardImage(card));
+  const displayCard = $derived(withCardPortrait(card, $storyPortraits[card.id]));
+  let icons = $derived(cardIconIndexes(displayCard));
+  let icon = $derived(cardImage(displayCard, "icon"));
+  let graphic = $derived(cardImage(displayCard));
   let iconSize = $derived($settings.iconSize);
   let color = $derived(card.useCustomColor ? card.color : $settings.iconColor);
   let border = $derived(`${$settings.iconThickness}px solid ${color}`);
@@ -56,7 +59,8 @@
         onclick={(event: MouseEvent) => {
           event.stopPropagation();
           if (card.graphics.length <= 1) return;
-          const nextIndex = (card.graphicIndex + 1) % card.graphics.length;
+          const nextIndex = (displayCard.graphicIndex + 1) % card.graphics.length;
+          chooseStoryPortrait(card.id, graphicIds(card.graphics)[nextIndex]!);
           Storage.updateStoryCard($adventureId!, card.id, { graphicIndex: nextIndex });
         }}
         style="position: relative; border-radius: 8px;"
@@ -96,7 +100,7 @@
       transition:fly={{ duration: 200, y: -16 }}
       class="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 z-10 flex gap-1 p-1"
     >
-      {#each icons as src, i}
+      {#each icons as i}
         <button
           onclick={(event: MouseEvent) => {
             event.stopPropagation();
@@ -105,7 +109,7 @@
           class="group cursor-pointer overflow-hidden bg-transparent p-0 border-none leading-none"
         >
           <img
-            {src}
+            src={card.icons[i]}
             alt=""
             class="min-w-24 min-h-24 aspect-square object-cover transition group-hover:brightness-110"
             style:border-radius={"5%"}
