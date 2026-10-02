@@ -26,6 +26,8 @@ export type StoryCard = {
   iconIndex: number;
   graphics: string[];
   graphicIndex: number;
+  /** Optional VN labels and matching phrases, in the same order as graphics. */
+  graphicVariants?: { name: string; triggers: string }[];
   useCustomColor: boolean;
   color: string;
   limit: string;

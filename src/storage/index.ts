@@ -1,4 +1,5 @@
 import { websiteImageUrl } from "@/shared/card_images";
+import { readGraphicVariants } from "@/shared/portrait_variants";
 import { FLOATING_BUTTON_DEFAULT_SIZE } from "@/shared/floating_button";
 import type { NarratorVoice } from "@/tts/voices";
 import type { Adventure, AudioClip, StoryCard } from "@/shared/types";
@@ -179,6 +180,7 @@ function normalizeStoryCard(card: unknown): StoryCard | null {
     iconIndex: typeof c.iconIndex === "number" ? c.iconIndex : 0,
     graphics: ensureArray(c.graphics),
     graphicIndex: typeof c.graphicIndex === "number" ? c.graphicIndex : 0,
+    graphicVariants: readGraphicVariants(c.graphicVariants, ensureArray(c.graphics).length),
     useCustomColor: typeof c.useCustomColor === "boolean" ? c.useCustomColor : false,
     color: typeof c.color === "string" ? c.color : "#f8ae2c",
     limit: typeof c.limit === "string" ? c.limit : "none",

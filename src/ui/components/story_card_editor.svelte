@@ -4,6 +4,7 @@
   import { Storage } from "@/storage";
   import { AudioManager } from "@/audio/manager";
   import type { Adventure, StoryCard } from "@/shared/types";
+  import { readGraphicVariants, remapGraphicVariants } from "@/shared/portrait_variants";
   import Field from "./field.svelte";
   import SettingsCard from "./settings_card.svelte";
   import Row from "./row.svelte";
@@ -26,6 +27,8 @@
   let gender = $state("none");
   let icons = $state<string[]>([]);
   let graphics = $state<string[]>([]);
+  let graphicVariants = $state<NonNullable<StoryCard["graphicVariants"]>>([]);
+  let graphicIndex = $state(0);
   let colorSelection = $state<string>("");
   let color = $state<string>("#f8ae2c");
   let limit = $state<string>("none");
@@ -54,6 +57,8 @@
         gender = card.gender ?? "none";
         icons = ensureArray(card.icons);
         graphics = ensureArray(card.graphics);
+        graphicVariants = readGraphicVariants(card.graphicVariants, graphics.length);
+        graphicIndex = card.graphicIndex;
         colorSelection = card.useCustomColor ? "custom" : "global";
         color = card.color;
         limit = card.limit;
@@ -98,8 +103,9 @@
       gender: gender === "male" || gender === "female" ? gender : "none",
       icons,
       graphics,
+      graphicVariants,
       iconIndex: icons.length > 0 ? Math.min(storyCard?.iconIndex ?? 0, icons.length - 1) : 0,
-      graphicIndex: graphics.length > 0 ? Math.min(storyCard?.graphicIndex ?? 0, graphics.length - 1) : 0,
+      graphicIndex: graphics.length > 0 ? Math.min(graphicIndex, graphics.length - 1) : 0,
       useCustomColor: colorSelection === "custom" ? true : false,
       color: color || "#f8ae2c",
       limit: limit,
@@ -121,6 +127,8 @@
   }
 
   function handleGraphicsChange(newGraphics: string[]) {
+    graphicVariants = remapGraphicVariants(graphics, newGraphics, graphicVariants);
+    graphicIndex = Math.max(0, newGraphics.indexOf(graphics[graphicIndex] ?? ""));
     graphics = newGraphics;
   }
 
@@ -230,6 +238,25 @@
           <Field label="Graphics" info="Pictures used when you focus this card and in Visual Novel Mode. For location cards, these can become the scene background.">
             <ImageLibrary images={graphics} onchange={handleGraphicsChange} label="Graphic" maxImages={4} />
           </Field>
+          {#if type.trim().toLowerCase() === "character" && graphics.length > 0}
+            <Field label="VN picture switching" info="Click the character's name in VN to choose a picture. Optional matching phrases change it automatically when narration names this character. Spoken words do not change pictures. Separate phrases with commas, and leave them blank for manual switching only.">
+              <div class="picture-rules">
+                {#each graphicVariants as variant, index (index)}
+                  <div class="picture-rule">
+                    <img src={graphics[index]} alt="Picture {index + 1}" />
+                    <div>
+                      <label>Picture {index + 1} name
+                        <input bind:value={variant.name} placeholder="For example: Red uniform" />
+                      </label>
+                      <label>Matching phrases
+                        <input bind:value={variant.triggers} placeholder="red uniform, wearing armor" />
+                      </label>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </Field>
+          {/if}
         </SettingsCard>
 <SettingsCard icon="text_fields" label="Text" description="Decide where this card highlights text and which color it uses.">
           <Row>
@@ -288,6 +315,12 @@
 </Dialog.Root>
 
 <style>
+  .picture-rules { display: flex; flex-direction: column; gap: 12px; }
+  .picture-rule { display: flex; align-items: center; gap: 12px; }
+  .picture-rule img { width: 56px; height: 76px; object-fit: contain; border-radius: 8px; background: #0003; }
+  .picture-rule > div { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 6px; }
+  .picture-rule label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .picture-rule input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #ffffff40; border-radius: 8px; background: #0003; color: inherit; font: inherit; }
   .card-edit-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; padding:8px 24px 24px; overflow-y:auto; min-height:0; flex:1; align-items:start; }
   @media(max-width:800px) { .card-edit-grid { grid-template-columns:1fr; padding:8px 16px 16px; } }
 </style>
