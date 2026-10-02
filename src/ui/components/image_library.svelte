@@ -75,6 +75,7 @@
     if (images.length >= maxImages) return;
     images = [...images, src];
     onchange?.(images);
+    onselect?.(images.length - 1);
   }
 
   function submitUrl() {
