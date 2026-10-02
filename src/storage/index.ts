@@ -80,6 +80,7 @@ const defaultSettings = {
   novelTtsFemaleVoice: "F1",
   novelTtsVoiceProfiles: {} as Record<string, { speed: number; pitch: number }>,
   secretTtsVoice: "M5" as NarratorVoice,
+  lynxStoryNarration: true,
   novelTtsSteps: 5,
   novelTtsPitch: 0,
   novelTtsQueue: 3,

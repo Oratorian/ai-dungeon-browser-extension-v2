@@ -20,8 +20,8 @@
   let notice = $state(false);
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   let unlocked = $state(false);
-  const alwaysAvailable = isLynxCat();
-  const available = $derived(alwaysAvailable ? !!$playedAdventureId : unlocked);
+  const lynx = isLynxCat();
+  const available = $derived(lynx ? $settings.lynxStoryNarration && !!$playedAdventureId : unlocked);
   let open = $state(false);
   let reading = $state(false);
   let paused = $state(false);
@@ -36,7 +36,7 @@
   const outside = $derived(!$settings.visualNovelMode);
   const ready = $derived($settings.novelTtsEnabled && $ttsState.phase === "ready");
 
-  onMount(() => alwaysAvailable ? undefined : installKonamiCode(window, () => {
+  onMount(() => lynx ? undefined : installKonamiCode(window, () => {
     if (outside) { unlocked = true; open = true; }
     notice = true;
     clearTimeout(noticeTimer);
@@ -61,6 +61,10 @@
     unlocked = false; open = false; notice = false;
     lines = []; index = 0;
     clearTimeout(noticeTimer);
+  }
+  function dismissNarrator() {
+    if (lynx) $settings.lynxStoryNarration = false;
+    exitNarrator();
   }
   $effect(() => { if (!outside || !available) untrack(exitNarrator); });
   function togglePause() {
@@ -164,7 +168,7 @@
     {#if open}
       <section id="secret-narration-settings" aria-label="Story narration settings" class="bg-theme-neutral-0 text-theme-neutral-900">
         <div class="panel-intro">
-        <header><strong>{alwaysAvailable ? "Story narration" : "Story narration unlocked"}</strong><button aria-label="Close narration settings" onclick={() => open = false}>Close</button></header>
+        <header><strong>{lynx ? "Story narration" : "Story narration unlocked"}</strong><button aria-label="Close narration settings" onclick={() => open = false}>Close</button></header>
         <p>Read without entering VN. Autoplay reads new passages after the text settles. Voice is saved separately; other settings are shared with VN.</p>
         <button class="autoplay-toggle" role="switch" aria-checked={autoplay} onclick={() => { autoplay = !autoplay; if (!autoplay) stop(); }}><span>Autoplay new passages</span><span>{autoplay ? "On" : "Off"}</span></button>
         </div>
@@ -182,7 +186,9 @@
     </button>
     <button disabled={!reading && !ready} aria-label={paused || !reading ? "Play narration" : "Pause narration"} onclick={() => reading ? togglePause() : readLatest()}>{paused || !reading ? "Play" : "Pause"}</button>
     <button disabled={!reading} aria-label="Stop narration" onclick={stop}>Stop</button>
-    {#if !alwaysAvailable}<button aria-label="Exit story narration" title="Close the narrator. Enter the Konami code to reopen it." onclick={exitNarrator}>Exit</button>{/if}
+    <button aria-label={lynx ? "Hide story narration" : "Exit story narration"}
+      title={lynx ? "Hide the narrator. Turn it back on in Settings > Voices & speech." : "Close the narrator. Enter the Konami code to reopen it."}
+      onclick={dismissNarrator}>{lynx ? "Hide" : "Exit"}</button>
     </div>
     {#if message}<div class="playback-status" role="status">{message}</div>{/if}
   </aside>

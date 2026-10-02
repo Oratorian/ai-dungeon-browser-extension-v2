@@ -2,14 +2,16 @@
   import { Switch } from "bits-ui";
   type Props = {
     checked: boolean;
+    ariaLabel?: string;
   };
 
-  let { checked = $bindable() }: Props = $props();
+  let { checked = $bindable(), ariaLabel }: Props = $props();
 </script>
 
 <div class="flex items-center space-x-3 place-self-end">
   <Switch.Root
     bind:checked
+    aria-label={ariaLabel}
     class="data-[state=checked]:bg-pretty-theme bg-theme-neutral-100 hover:bg-pretty-theme/40 data-[state=unchecked]:shadow-mini-inset focus-visible:outline-hidden inline-flex h-9 min-h-9 w-15 shrink-0 cursor-pointer items-center rounded-full px-0.75 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
   >
     <Switch.Thumb

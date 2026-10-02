@@ -19,6 +19,7 @@
   import VnVoiceProfile from "@/ui/components/vn_voice_profile.svelte";
   import { narratorVoices } from "@/tts/voices";
   import { MENTION_CARD_TYPES, type MentionCardType } from "@/aid/mentions";
+  import { isLynxCat } from "@/services/site";
 
   /* Storage */
   import { settings } from "@/storage";
@@ -28,6 +29,7 @@
 
 
   setContext("settings-inline-help", true);
+  const lynx = isLynxCat();
   const sections: { id: SettingsSection; icon: string; label: string; description: string }[] = [
     { id: "extension", icon: "tune", label: "Everyday controls", description: "Make the extension comfortable to use." },
     { id: "cards", icon: "sticker", label: "Story appearance", description: "Choose how names, pictures and story text look." },
@@ -192,6 +194,13 @@
     {/if}
     {#if current.id === "speech"}
     <div class="speech-controls">
+{#if lynx}
+<SettingsCard icon="record_voice_over" label="LynxCatAI narrator" description="Read aloud without entering Visual Novel Mode.">
+    <Field label="Narration outside VN" info="Show the reading controls at the bottom left while you're in a story. Turn this off to hide them and stop narration. You can switch them back on here.">
+      <Switch ariaLabel="Narration outside VN" bind:checked={$settings.lynxStoryNarration} />
+    </Field>
+  </SettingsCard>
+{/if}
 <SettingsCard icon="record_voice_over" label="Speech engine" description="">
     <p class="text-sm text-theme-neutral-800">Turn on TTS to read your story aloud in English. Click Initialize TTS to get the voices ready. The first setup downloads about 380 MB; later visits reuse those files. Your story is not sent to an online voice service.</p>
     <TtsSettings grid />
