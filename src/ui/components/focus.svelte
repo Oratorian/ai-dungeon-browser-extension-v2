@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { cardImage } from "@/shared/card_images";
+  import { cardImage, withCardPortrait } from "@/shared/card_images";
+  import { graphicIds } from "@/shared/portrait_variants";
+  import { storyPortraits, chooseStoryPortrait } from "@/rendering/story_portraits";
   import { Popover, Slider } from "bits-ui";
   import { Storage, settings } from "@/storage";
   import { AudioManager } from "@/audio/manager";
@@ -27,7 +29,8 @@
     return adventures[selectedId]?.storyCards[id] ?? null;
   });
 
-  let graphic = $derived(cardImage(card));
+  const displayCard = $derived(card ? withCardPortrait(card, $storyPortraits[card.id]) : null);
+  let graphic = $derived(cardImage(displayCard));
 
   onMount(() => {
     unsubCurrentlyPlaying = AudioManager.currentlyPlaying.subscribe((value) => {
@@ -160,7 +163,8 @@
     onclick={(event: MouseEvent) => {
       event.stopPropagation();
       if (!card || card.graphics.length <= 1) return;
-      const nextIndex = (card.graphicIndex + 1) % card.graphics.length;
+      const nextIndex = ((displayCard?.graphicIndex ?? card.graphicIndex) + 1) % card.graphics.length;
+      chooseStoryPortrait(card.id, graphicIds(card.graphics)[nextIndex]!);
       const selectedId = Storage.getSelectedAdventure()?.id;
       if (selectedId) {
         Storage.updateStoryCard(selectedId, card.id, { graphicIndex: nextIndex });

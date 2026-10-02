@@ -13,6 +13,8 @@ import { installErrorCapture } from "@/shared/errors";
 import { matchesHotkey } from "@/shared/hotkey";
 import { Storage } from "@/storage";
 import { get } from "svelte/store";
+import { storyPortraits } from "@/rendering/story_portraits";
+import { withCardPortrait } from "@/shared/card_images";
 import { startVnCardSession, syncVnCard } from "@/aid/vn_card_sync";
 
 export default defineContentScript({
@@ -51,14 +53,15 @@ export default defineContentScript({
         pending = setTimeout(() => {
           pending = undefined;
           observer.disconnect();
-          try { renderer.render(Object.values(Storage.getSelectedAdventure()?.storyCards ?? {}), get(Storage.settings)); }
+          try { const pictures = get(storyPortraits); renderer.render(Object.values(Storage.getSelectedAdventure()?.storyCards ?? {})
+            .map(card => withCardPortrait(card, pictures[card.id])), get(Storage.settings)); }
           finally { observe(); }
         }, 80);
       };
       const observer = new MutationObserver(records => {
         if (records.some(r => (r.target as Element).closest?.('[aria-label="Story transcript"]') || [...r.addedNodes].some(n => n instanceof Element && (n.matches('[aria-label="Story transcript"]') || n.querySelector('[aria-label="Story transcript"]'))))) schedule();
       });
-      const unsubscribe = [Storage.adventures.subscribe(schedule), Storage.selectedAdventureId.subscribe(() => { extensionState.focusCardId = null; schedule(); }), Storage.settings.subscribe(schedule)];
+      const unsubscribe = [Storage.adventures.subscribe(schedule), Storage.selectedAdventureId.subscribe(() => { extensionState.focusCardId = null; schedule(); }), Storage.settings.subscribe(schedule), storyPortraits.subscribe(schedule)];
       observe();
       ctx.onInvalidated(() => { observer.disconnect(); clearTimeout(pending); unsubscribe.forEach(stop => stop()); renderer.destroy(); });
     } else {

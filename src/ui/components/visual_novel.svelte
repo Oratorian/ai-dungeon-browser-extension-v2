@@ -2,6 +2,8 @@
   import { isLynxCat } from "@/services/site";
   import { storyOutput, storyOutputSelector } from "@/services/story_dom";
   import { novelCards } from "@/rendering/novel_cards";
+  import { createNovelPortraitTracker, novelPortrait, readPortraitChoices, type PortraitChoices } from "@/rendering/novel_portraits";
+  import NovelPortraitPicker from "./novel_portrait_picker.svelte";
   import { novelDialogueVoice, novelSpeechKey, readNovelSpeechKey } from "@/rendering/novel_voice";
   import { Tabs } from "bits-ui";
   import VnVoiceProfile from "./vn_voice_profile.svelte";
@@ -64,6 +66,39 @@
   }
   let locationMenuOpen = $state(false);
   let settingsOpen = $state(false);
+  let portraitChoices = $state<PortraitChoices>({});
+  let portraitChoicesLoaded = $state(false);
+  let portraitMenu = $state<string | null>(null);
+  let portraitButton: HTMLButtonElement | undefined;
+  let portraitRevision = 0;
+  const portraitStoreKey = $derived($playedAdventureId ? `vn-portraits:${$playedAdventureId}:${$selected ?? "native"}` : "");
+  $effect(() => {
+    const key = portraitStoreKey;
+    untrack(() => { portraitChoices = {}; portraitMenu = null; portraitChoicesLoaded = false; });
+    const revision = portraitRevision;
+    let disposed = false;
+    if (key) void chrome.storage.local.get(key).then(saved => {
+      if (!disposed && revision === portraitRevision) portraitChoices = readPortraitChoices(saved[key], untrack(() => sceneCards));
+    }).catch(() => {}).finally(() => { if (!disposed) portraitChoicesLoaded = true; });
+    return () => { disposed = true; };
+  });
+  function savePortraitChoices() {
+    portraitRevision++;
+    if (portraitStoreKey) void chrome.storage.local.set({ [portraitStoreKey]: $state.snapshot(portraitChoices) }).catch(() => {});
+  }
+  function choosePortrait(id: string, locked = true) {
+    if (!portraitMenu) return;
+    portraitChoices = { ...portraitChoices, [portraitMenu]: { portrait: id, locked, anchor: createNovelBookmark(frames, index) } };
+    savePortraitChoices();
+  }
+  function useAutomaticPortrait() {
+    if (!portraitMenu) return;
+    const next = { ...portraitChoices };
+    delete next[portraitMenu]; portraitChoices = next; savePortraitChoices();
+  }
+  function closePortraitPicker() {
+    portraitMenu = null; portraitButton?.focus();
+  }
   let settingsButton: HTMLButtonElement | undefined = $state();
   let locationSeed = $state<string | null>(null);
   let failedBackground = $state("");
@@ -215,7 +250,15 @@
   });
   const trackStage = $derived(createNovelStageTracker(characters));
   const stages = $derived(trackStage(frames));
-  const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => characters.find(c => c.id === id)));
+  const trackPortraits = $derived(createNovelPortraitTracker(sceneCards));
+  const portraitTimeline = $derived(trackPortraits(frames));
+  const displayedPortraits = $derived.by(() => Object.fromEntries(sceneCards.map(card => [card.id,
+    novelPortrait(card, portraitTimeline[index]?.[card.id], portraitChoices[card.id], frames)])));
+  const pickerCard = $derived(sceneCards.find(card => card.id === portraitMenu));
+  const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => {
+    const character = characters.find(c => c.id === id);
+    return character ? { ...character, portrait: displayedPortraits[character.id]?.image } : undefined;
+  }));
   const speakers = $derived($settings.novelStoryCardInstructions !== false ? novelSpeakers(frames, characters) : []);
   const speechKeys = $derived(frames.map((frame, position) => {
     const card = sceneCards.find(card => card.id === speakers[position]);
@@ -241,7 +284,7 @@
     const key = narrationKey;
     const position = index;
     const allowContinue = autoContinue;
-    if (!autoReading || !active || !text || historyOpen || settingsOpen || jumpOpen || locationMenuOpen || autoMenuOpen
+    if (!autoReading || !active || !text || historyOpen || settingsOpen || jumpOpen || locationMenuOpen || autoMenuOpen || portraitMenu
       || composing || retryEditing || continuing || continuationSnapshot || retryTracker || actionError) return;
     const due = performance.now() + novelAutoDelay(text);
     const timer = setInterval(() => {
@@ -314,6 +357,7 @@
       frames = []; index = 0; composing = false; lastSignature = "";
       autoReading = false; autoContinue = false; autoMenuOpen = false; panelHidden = false;
       retryEditing = false; retryInstruction = ""; settingsOpen = false; jumpOpen = false;
+      portraitMenu = null;
       locationMenuOpen = false; locationOverride = "__auto"; locationSeed = null; failedBackground = "";
       output = null; sourceIds = new WeakMap(); nextSourceId = 0;
     });
@@ -472,7 +516,7 @@
     event.preventDefault();
     autoReading = false; autoMenuOpen = false;
     stopNarration();
-    settingsOpen = false; locationMenuOpen = false; jumpOpen = false;
+    settingsOpen = false; locationMenuOpen = false; jumpOpen = false; portraitMenu = null;
     extensionState.novelMinimized = true;
     await tick();
     document.querySelector<HTMLTextAreaElement>("#game-text-input")?.focus();
@@ -496,6 +540,9 @@
   }
   function key(event: KeyboardEvent) {
     if (!active || historyOpen) return;
+    if (event.key === "Escape" && portraitMenu) {
+      event.preventDefault(); event.stopPropagation(); closePortraitPicker(); return;
+    }
     if (event.key === "Escape" && autoMenuOpen) {
       event.preventDefault(); event.stopPropagation(); autoMenuOpen = false; scene?.focus(); return;
     }
@@ -510,18 +557,20 @@
     }
     event.stopPropagation();
     if (event.key === "Tab" && scene) {
-      const controls = [...scene.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex='0']")].filter(control => !control.closest("[inert], [hidden]") && control.getClientRects().length);
+      const controlRoot = portraitMenu ? scene.querySelector(".portrait-picker") ?? scene : scene;
+      const controls = [...controlRoot.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex='0']")].filter(control => !control.closest("[inert], [hidden]") && control.getClientRects().length);
       const focused = (scene.getRootNode() as ShadowRoot).activeElement;
       if (event.shiftKey && (focused === controls[0] || focused === scene)) { event.preventDefault(); controls.at(-1)?.focus(); }
       else if (!event.shiftKey && focused === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
       return;
     }
     if (event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
+    if (portraitMenu) return;
     const origin = event.composedPath()[0];
     const target = origin instanceof Element ? origin : null;
     // Keep Space usable after clicking reader controls, without stealing it from
     // the composer, retry instructions, or location picker.
-    if (event.key === " " && !target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], .location-control, .vn-settings-control, .page-jump')) {
+    if (event.key === " " && !portraitMenu && !target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], .location-control, .vn-settings-control, .page-jump, .stage-caption')) {
       event.preventDefault();
       if (!event.repeat) navigate(index + 1);
       return;
@@ -658,14 +707,27 @@
                   {:else}
                     <div class="placeholder" aria-hidden="true">{character.name.slice(0, 1)}</div>
                   {/if}
-                  <span class="stage-caption">{character.name}</span>
                 </div>
+                {#if (sceneCards.find(card => card.id === character.id)?.portraits?.length ?? 0) > 1}
+                  <button class="stage-caption" class:dimmed={$settings.novelStoryCardInstructions !== false && character.id !== speaker}
+                    disabled={!portraitChoicesLoaded} title="Choose a picture for {character.name}" aria-label="Choose a picture for {character.name}"
+                    onclick={event => { portraitButton = event.currentTarget; portraitMenu = character.id; }}>{character.name} ▾</button>
+                {:else}
+                  <span class="stage-caption" class:dimmed={$settings.novelStoryCardInstructions !== false && character.id !== speaker}>{character.name}</span>
+                {/if}
               {/key}
             {/if}
           </div>
         {/each}
       </div>
       <div class="reading-shade" aria-hidden="true"></div>
+      {#if pickerCard}
+        <NovelPortraitPicker card={pickerCard} current={displayedPortraits[pickerCard.id]?.id} choice={portraitChoices[pickerCard.id]}
+          onchoose={id => choosePortrait(id)} onlock={locked => {
+            const id = displayedPortraits[pickerCard.id]?.id;
+            if (id) choosePortrait(id, locked);
+          }} onauto={useAutomaticPortrait} onclose={closePortraitPicker} />
+      {/if}
       <div id="novel-reader-panels" class="reader-panels" inert={panelHidden} aria-hidden={panelHidden} bind:clientHeight={readerHeight}>
         {#if $settings.novelTtsEnabled}
         <aside class="voice-panel" aria-label="Narration controls" aria-describedby="novel-audio-hint">
@@ -805,7 +867,10 @@
   .stage-slot[data-edge="left"] .portrait { left: 0; transform: none; object-position: left top; }
   .stage-slot[data-edge="right"] .portrait { left: auto; right: 0; transform: none; object-position: right top; }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
-  .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + var(--bottom-inset) + 8px); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
+  .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + var(--bottom-inset) + 8px); left: 50%; transform: translateX(-50%); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
+  button.stage-caption { pointer-events: auto; }
+  button.stage-caption:hover { border-color: #64727c; }
+  .stage-caption.dimmed { filter: brightness(0.45); }
   .reader-panels { position: relative; z-index: 2; margin-top: auto; display: grid; grid-template-columns: clamp(160px, 18vw, 220px) minmax(0, 1fr) min(320px, 30vw); gap: 16px; width: 100%; max-height: 55%; flex-shrink: 0; }
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + var(--bottom-inset) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
   .scene-only .reader-panels, .scene-only .reading-shade { visibility: hidden; pointer-events: none; }

@@ -10,9 +10,12 @@
     onchange?: (images: string[]) => void;
     label?: string;
     maxImages?: number;
+    selectedIndex?: number | null;
+    onselect?: (index: number) => void;
+    onadd?: (index: number) => void;
   };
 
-  let { images = $bindable([]), onchange, label = "Image", maxImages = 6 }: Props = $props();
+  let { images = $bindable([]), onchange, label = "Image", maxImages = 6, selectedIndex = null, onselect, onadd }: Props = $props();
 
   let fileInput: HTMLInputElement;
 
@@ -73,6 +76,8 @@
     if (images.length >= maxImages) return;
     images = [...images, src];
     onchange?.(images);
+    if (onadd) onadd(images.length - 1);
+    else onselect?.(images.length - 1);
   }
 
   function submitUrl() {
@@ -240,20 +245,21 @@
     </div>
   {/if}
 
-  <div class="h-20">
+  <div>
     {#if images.length === 0}
       <div class="flex flex-col items-center justify-center h-20 text-theme-neutral-700 bg-theme-neutral-300 rounded-xl">
         <span class="font-symbol text-2xl">image</span>
         <span class="text-xs">No {label.toLowerCase()}s yet</span>
       </div>
     {:else}
-      <div class="flex gap-2">
+      <div class="image-previews" class:portrait-previews={label === "Graphic"}>
         {#each images as image, index (index)}
-          <div class="relative size-20 rounded-xl overflow-hidden bg-theme-neutral-300 group shrink-0">
+          <div class="image-preview" class:selected={selectedIndex === index}>
+            {#snippet thumbnail()}
             <img
               src={image}
               alt="{label} {index + 1}"
-              class="w-full h-full object-cover"
+              class="preview-image"
               onerror={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
                 img.style.display = "none";
@@ -266,11 +272,20 @@
             >
               <span class="font-symbol text-2xl">broken_image</span>
             </div>
+            {/snippet}
+            {#if onselect}
+              <button class="preview-select" aria-label="Edit {label.toLowerCase()} {index + 1}" aria-pressed={selectedIndex === index}
+                title={label === "Icon" ? "Click to link this icon to a graphic" : "Click to edit picture switching"} onclick={() => onselect?.(index)}>
+                {@render thumbnail()}
+              </button>
+            {:else}
+              {@render thumbnail()}
+            {/if}
             <button
               onclick={() => deleteImage(index)}
-              class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+              class="delete-pill" aria-label="Remove {label.toLowerCase()} {index + 1}" title="Remove this picture"
             >
-              <span class="font-symbol text-2xl text-pretty-red">delete</span>
+              <span class="font-symbol text-lg" aria-hidden="true">delete</span>
             </button>
           </div>
         {/each}
@@ -278,3 +293,17 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .image-previews { display: flex; flex-wrap: wrap; gap: 12px; }
+  .image-preview { position: relative; flex-shrink: 0; width: 80px; height: 80px; border: 2px solid transparent; border-radius: 12px; background: var(--color-theme-neutral-300); }
+  .portrait-previews .image-preview { width: 112px; height: 144px; }
+  .preview-image { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+  .portrait-previews .preview-image { object-fit: contain; }
+  .preview-select { display: block; width: 100%; height: 100%; padding: 0; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
+  .preview-select:hover { background: #ffffff0d; }
+  .image-preview.selected { border-color: var(--color-pretty-theme, #f8ae2c); }
+  .delete-pill { position: absolute; z-index: 1; top: 5px; right: 5px; display: flex; align-items: center; justify-content: center; width: 28px; height: 24px; padding: 0; border: 1px solid #ffffff40; border-radius: 20px; background: #10171ddd; color: #eeb8b8; cursor: pointer; }
+  .delete-pill:hover { background: #782c34; color: #fff; }
+  .preview-select:focus-visible, .delete-pill:focus-visible { outline: 2px solid var(--color-pretty-theme, #f8ae2c); outline-offset: 3px; }
+</style>
