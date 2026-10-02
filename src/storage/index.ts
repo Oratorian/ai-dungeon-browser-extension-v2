@@ -1,5 +1,5 @@
 import { websiteImageUrl } from "@/shared/card_images";
-import { readGraphicVariants } from "@/shared/portrait_variants";
+import { readGraphicVariants, readIconGraphics } from "@/shared/portrait_variants";
 import { FLOATING_BUTTON_DEFAULT_SIZE } from "@/shared/floating_button";
 import type { NarratorVoice } from "@/tts/voices";
 import type { Adventure, AudioClip, StoryCard } from "@/shared/types";
@@ -178,6 +178,7 @@ function normalizeStoryCard(card: unknown): StoryCard | null {
     lynxImageUrl: websiteImageUrl(c.lynxImageUrl),
     icons: ensureArray(c.icons),
     iconIndex: typeof c.iconIndex === "number" ? c.iconIndex : 0,
+    iconGraphics: readIconGraphics(c.iconGraphics, ensureArray(c.icons).length, ensureArray(c.graphics)),
     graphics: ensureArray(c.graphics),
     graphicIndex: typeof c.graphicIndex === "number" ? c.graphicIndex : 0,
     graphicVariants: readGraphicVariants(c.graphicVariants, ensureArray(c.graphics).length),

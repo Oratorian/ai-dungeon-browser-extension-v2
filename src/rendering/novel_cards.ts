@@ -1,7 +1,7 @@
 import type { AidCard } from "@/aid/protocol";
 import type { StoryCard } from "@/shared/types";
 import { cardImage } from "@/shared/card_images";
-import { portraitId } from "@/shared/portrait_variants";
+import { graphicIds } from "@/shared/portrait_variants";
 
 export type NovelPortrait = { id: string; image: string; name: string; triggers: string };
 export type NovelCard = Pick<StoryCard, "id" | "name" | "type" | "triggers" | "gender"> & {
@@ -19,7 +19,7 @@ export function novelCards(local: StoryCard[], native: AidCard[] = []): NovelCar
     if (match) remaining.delete(match);
     return { id: card.id, name: card.name, type: card.type, triggers: card.triggers,
       gender: card.gender ?? match?.gender,
-      portraits: card.graphics.map((image, index) => ({ id: portraitId(image), image,
+      portraits: card.graphics.map((image, index) => ({ id: graphicIds(card.graphics)[index]!, image,
         name: card.graphicVariants?.[index]?.name || `Picture ${index + 1}`,
         triggers: card.graphicVariants?.[index]?.triggers ?? "" })),
       image: cardImage(match ? { ...card, lynxImageUrl: match.lynxImageUrl } : card) };

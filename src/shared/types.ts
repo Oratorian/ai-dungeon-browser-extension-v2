@@ -24,6 +24,8 @@ export type StoryCard = {
   lynxImageUrl?: string | null;
   icons: string[];
   iconIndex: number;
+  /** Graphic identity for each icon, or null when it can be used with any graphic. */
+  iconGraphics?: (string | null)[];
   graphics: string[];
   graphicIndex: number;
   /** Optional VN labels and matching phrases, in the same order as graphics. */

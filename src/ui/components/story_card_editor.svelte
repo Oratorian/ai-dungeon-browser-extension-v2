@@ -4,7 +4,7 @@
   import { Storage } from "@/storage";
   import { AudioManager } from "@/audio/manager";
   import type { Adventure, StoryCard } from "@/shared/types";
-  import { readGraphicVariants, remapGraphicVariants } from "@/shared/portrait_variants";
+  import { graphicIds, readGraphicVariants, remapGraphicVariants, readIconGraphics, remapIconGraphics } from "@/shared/portrait_variants";
   import Field from "./field.svelte";
   import SettingsCard from "./settings_card.svelte";
   import Row from "./row.svelte";
@@ -26,6 +26,9 @@
   let type = $state("character");
   let gender = $state("none");
   let icons = $state<string[]>([]);
+  let iconIndex = $state(0);
+  let iconGraphics = $state<(string | null)[]>([]);
+  let editingIcon = $state<number | null>(null);
   let graphics = $state<string[]>([]);
   let graphicVariants = $state<NonNullable<StoryCard["graphicVariants"]>>([]);
   let graphicIndex = $state(0);
@@ -58,8 +61,11 @@
         type = card.type || "character";
         gender = card.gender ?? "none";
         icons = ensureArray(card.icons);
+        iconIndex = card.iconIndex;
         graphics = ensureArray(card.graphics);
         graphicVariants = readGraphicVariants(card.graphicVariants, graphics.length);
+        iconGraphics = readIconGraphics(card.iconGraphics, icons.length, graphics);
+        editingIcon = null;
         graphicIndex = card.graphicIndex;
         editingGraphic = null;
         colorSelection = card.useCustomColor ? "custom" : "global";
@@ -105,9 +111,10 @@
       type,
       gender: gender === "male" || gender === "female" ? gender : "none",
       icons,
+      iconGraphics,
       graphics,
       graphicVariants,
-      iconIndex: icons.length > 0 ? Math.min(storyCard?.iconIndex ?? 0, icons.length - 1) : 0,
+      iconIndex: icons.length > 0 ? Math.min(iconIndex, icons.length - 1) : 0,
       graphicIndex: graphics.length > 0 ? Math.min(graphicIndex, graphics.length - 1) : 0,
       useCustomColor: colorSelection === "custom" ? true : false,
       color: color || "#f8ae2c",
@@ -126,6 +133,11 @@
   }
 
   function handleIconsChange(newIcons: string[]) {
+    const editingImage = editingIcon === null ? undefined : icons[editingIcon];
+    const nextEditing = editingImage ? newIcons.indexOf(editingImage) : -1;
+    editingIcon = nextEditing < 0 ? null : nextEditing;
+    iconGraphics = remapIconGraphics(icons, newIcons, iconGraphics);
+    iconIndex = Math.max(0, newIcons.indexOf(icons[iconIndex] ?? ""));
     icons = newIcons;
   }
 
@@ -136,6 +148,7 @@
     graphicVariants = remapGraphicVariants(graphics, newGraphics, graphicVariants);
     graphicIndex = Math.max(0, newGraphics.indexOf(graphics[graphicIndex] ?? ""));
     graphics = newGraphics;
+    iconGraphics = readIconGraphics(iconGraphics, icons.length, graphics);
   }
 
   function handleAudioChange(newAudioClips: string[]) {
@@ -238,8 +251,19 @@
         </SettingsCard>
 <SettingsCard icon="image" label="Media" description="Choose the pictures readers will see.">
           <Field label="Icons" info="Small images shown inline in the story text.">
-            <ImageLibrary images={icons} onchange={handleIconsChange} label="Icon" maxImages={6} />
+            <ImageLibrary images={icons} onchange={handleIconsChange} label="Icon" maxImages={6}
+              selectedIndex={editingIcon} onselect={index => editingIcon = editingIcon === index ? null : index} />
+            {#if icons.length > 0}<span class="text-xs text-theme-neutral-700">Click an icon to choose which picture it belongs to.</span>{/if}
           </Field>
+          {#if editingIcon !== null && icons[editingIcon]}
+            <Field label="Icon {(editingIcon ?? 0) + 1} picture" info="This icon appears when its picture is active. Any graphic keeps it available for every picture. If a picture has no matching icon, an icon set to Any graphic is used, or the picture itself.">
+              <Select ariaLabel="Graphic for icon" allowDeselect={false}
+                bind:value={() => iconGraphics[editingIcon ?? 0] ?? "__any", value => { if (editingIcon !== null) iconGraphics[editingIcon] = value === "__any" ? null : value ?? null; }}
+                items={[{ value: "__any", label: "Any graphic" }, ...graphics.map((image, index) => ({ value: graphicIds(graphics)[index]!, label: graphicVariants[index]?.name || `Picture ${index + 1}` }))]} />
+              {@const linkedGraphic = graphics.find((image, index) => graphicIds(graphics)[index] === iconGraphics[editingIcon ?? 0])}
+              {#if linkedGraphic}<img class="linked-preview" src={linkedGraphic} alt="Linked graphic" />{/if}
+            </Field>
+          {/if}
 
           <Field label="Graphics" info="Pictures used when you focus this card and in Visual Novel Mode. For location cards, these can become the scene background.">
             <ImageLibrary images={graphics} onchange={handleGraphicsChange} label="Graphic" maxImages={4}
@@ -249,7 +273,7 @@
             {/if}
           </Field>
           {#if type.trim().toLowerCase() === "character" && editingVariant}
-            <Field label="VN picture switching" info="Click the character's name in VN to choose a picture. Optional matching phrases change it automatically when narration names this character. Spoken words do not change pictures. Separate phrases with commas, and leave them blank for manual switching only.">
+            <Field label="Picture switching" info="Matching phrases change the picture in VN and normal story mode when narration names this character. Spoken words do not change pictures. Separate phrases with commas. In VN you can also click the character's name to choose a picture manually.">
                   <div class="picture-rule">
                     <div>
                       <label>Picture {(editingGraphic ?? 0) + 1} name
@@ -320,6 +344,7 @@
 </Dialog.Root>
 
 <style>
+  .linked-preview { width: 112px; height: 144px; object-fit: contain; border-radius: 12px; background: #0003; }
   .picture-rule { display: flex; align-items: center; gap: 12px; }
   .picture-rule > div { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 6px; }
   .picture-rule label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
