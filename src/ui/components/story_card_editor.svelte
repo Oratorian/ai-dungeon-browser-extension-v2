@@ -13,7 +13,7 @@
   import Select from "./select.svelte";
   import Color from "./color.svelte";
   import AudioSelect from "./audio_select.svelte";
-  import { onDestroy, setContext } from "svelte";
+  import { onDestroy, setContext, tick } from "svelte";
   setContext("settings-inline-help", true);
 
   let isOpen = $state(false);
@@ -34,6 +34,8 @@
   let graphicIndex = $state(0);
   let editingGraphic = $state<number | null>(null);
   const editingVariant = $derived(editingGraphic === null ? undefined : graphicVariants[editingGraphic]);
+  let iconMenu = $state<HTMLDivElement>();
+  let pictureNameInput = $state<HTMLInputElement>();
   let colorSelection = $state<string>("");
   let color = $state<string>("#f8ae2c");
   let limit = $state<string>("none");
@@ -151,6 +153,21 @@
     iconGraphics = readIconGraphics(iconGraphics, icons.length, graphics);
   }
 
+  async function editAddedImage(kind: "icon" | "graphic", index: number) {
+    const adventure = adventureId;
+    const card = storyCardId;
+    if (kind === "icon") editingIcon = index;
+    else editingGraphic = index;
+    // The menu and its input only exist after Svelte has rendered the new picture.
+    await tick();
+    if (!isOpen || adventureId !== adventure || storyCardId !== card ||
+      (kind === "icon" ? editingIcon : editingGraphic) !== index) return;
+    const control = kind === "icon" ? iconMenu?.querySelector<HTMLButtonElement>("[data-select-trigger]") : pictureNameInput;
+    const menu = kind === "icon" ? iconMenu : pictureNameInput?.closest(".picture-rule");
+    menu?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    control?.focus({ preventScroll: true });
+  }
+
   function handleAudioChange(newAudioClips: string[]) {
     audioClips = newAudioClips;
   }
@@ -252,22 +269,26 @@
 <SettingsCard icon="image" label="Media" description="Choose the pictures readers will see.">
           <Field label="Icons" info="Small images shown inline in the story text.">
             <ImageLibrary images={icons} onchange={handleIconsChange} label="Icon" maxImages={6}
-              selectedIndex={editingIcon} onselect={index => editingIcon = editingIcon === index ? null : index} />
+              selectedIndex={editingIcon} onselect={index => editingIcon = editingIcon === index ? null : index}
+              onadd={index => editAddedImage("icon", index)} />
             {#if icons.length > 0}<span class="text-xs text-theme-neutral-700">Click an icon to choose which picture it belongs to.</span>{/if}
           </Field>
           {#if editingIcon !== null && icons[editingIcon]}
             <Field label="Icon {(editingIcon ?? 0) + 1} picture" info="This icon appears when its picture is active. Any graphic keeps it available for every picture. If a picture has no matching icon, an icon set to Any graphic is used, or the picture itself.">
-              <Select ariaLabel="Graphic for icon" allowDeselect={false}
-                bind:value={() => iconGraphics[editingIcon ?? 0] ?? "__any", value => { if (editingIcon !== null) iconGraphics[editingIcon] = value === "__any" ? null : value ?? null; }}
-                items={[{ value: "__any", label: "Any graphic" }, ...graphics.map((image, index) => ({ value: graphicIds(graphics)[index]!, label: graphicVariants[index]?.name || `Picture ${index + 1}` }))]} />
               {@const linkedGraphic = graphics.find((image, index) => graphicIds(graphics)[index] === iconGraphics[editingIcon ?? 0])}
-              {#if linkedGraphic}<img class="linked-preview" src={linkedGraphic} alt="Linked graphic" />{/if}
+              <div bind:this={iconMenu} class="flex flex-col gap-2">
+                <Select ariaLabel="Graphic for icon" allowDeselect={false}
+                  bind:value={() => iconGraphics[editingIcon ?? 0] ?? "__any", value => { if (editingIcon !== null) iconGraphics[editingIcon] = value === "__any" ? null : value ?? null; }}
+                  items={[{ value: "__any", label: "Any graphic" }, ...graphics.map((image, index) => ({ value: graphicIds(graphics)[index]!, label: graphicVariants[index]?.name || `Picture ${index + 1}` }))]} />
+                {#if linkedGraphic}<img class="linked-preview" src={linkedGraphic} alt="Linked graphic" />{/if}
+              </div>
             </Field>
           {/if}
 
           <Field label="Graphics" info="Pictures used when you focus this card and in Visual Novel Mode. For location cards, these can become the scene background.">
             <ImageLibrary images={graphics} onchange={handleGraphicsChange} label="Graphic" maxImages={4}
-              selectedIndex={editingGraphic} onselect={type.trim().toLowerCase() === "character" ? index => editingGraphic = editingGraphic === index ? null : index : undefined} />
+              selectedIndex={editingGraphic} onselect={type.trim().toLowerCase() === "character" ? index => editingGraphic = editingGraphic === index ? null : index : undefined}
+              onadd={type.trim().toLowerCase() === "character" ? index => editAddedImage("graphic", index) : undefined} />
             {#if type.trim().toLowerCase() === "character" && graphics.length > 0}
               <span class="text-xs text-theme-neutral-700">Click a picture to edit its switching settings.</span>
             {/if}
@@ -277,7 +298,7 @@
                   <div class="picture-rule">
                     <div>
                       <label>Picture {(editingGraphic ?? 0) + 1} name
-                        <input bind:value={editingVariant.name} placeholder="For example: Red uniform" />
+                        <input bind:this={pictureNameInput} bind:value={editingVariant.name} placeholder="For example: Red uniform" />
                       </label>
                       <label>Matching phrases
                         <input bind:value={editingVariant.triggers} placeholder="red uniform, wearing armor" />

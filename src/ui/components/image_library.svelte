@@ -12,9 +12,10 @@
     maxImages?: number;
     selectedIndex?: number | null;
     onselect?: (index: number) => void;
+    onadd?: (index: number) => void;
   };
 
-  let { images = $bindable([]), onchange, label = "Image", maxImages = 6, selectedIndex = null, onselect }: Props = $props();
+  let { images = $bindable([]), onchange, label = "Image", maxImages = 6, selectedIndex = null, onselect, onadd }: Props = $props();
 
   let fileInput: HTMLInputElement;
 
@@ -75,7 +76,8 @@
     if (images.length >= maxImages) return;
     images = [...images, src];
     onchange?.(images);
-    onselect?.(images.length - 1);
+    if (onadd) onadd(images.length - 1);
+    else onselect?.(images.length - 1);
   }
 
   function submitUrl() {
