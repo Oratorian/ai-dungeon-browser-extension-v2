@@ -99,7 +99,7 @@ export function createLynxRenderer(doc: Document = document, onFocus: (id: strin
       const name = `de-lynx-${highlighted.length}`; highlighted.push(name);
       registry().set(name, new HighlightCtor(...list));
       const color = card.useCustomColor ? card.color : options.iconColor;
-      if (doc.defaultView?.CSS.supports("color", color)) style.sheet?.insertRule(`::highlight(${name}) { color: ${color}; }`);
+      if (doc.defaultView?.CSS.supports("color", color)) style.sheet?.insertRule(`${transcript} .story-turn-copy::highlight(${name}) { color: ${color}; }`);
     }
   }
   function hover(event: MouseEvent) {

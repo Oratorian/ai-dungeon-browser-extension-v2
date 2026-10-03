@@ -1,4 +1,4 @@
-import { isLynxCat } from "@/services/site";
+import { isLynxCat, lynxRunId } from "@/services/site";
 import { followLynxStory, disconnectLynx } from "@/services/lynxcat";
 import { createLynxRenderer } from "@/rendering/lynxcat";
 import { Debug } from "#imports";
@@ -7,7 +7,7 @@ import contentStyle from "@/content.css?inline";
 import Editor from "@/ui/routes/editor.svelte";
 import { Events } from "@/shared/events";
 import { connectAidBridge } from "@/aid/bridge";
-import { autoSelectPlayedAdventure } from "@/aid/adventure";
+import { autoSelectPlayedAdventure, playedAdventureId } from "@/aid/adventure";
 import { mount, unmount } from "svelte";
 import { installErrorCapture } from "@/shared/errors";
 import { matchesHotkey } from "@/shared/hotkey";
@@ -28,11 +28,16 @@ export default defineContentScript({
     // Listen for story cards the page-world interceptor detects, and ask for any already captured.
     if (!isLynxCat()) connectAidBridge();
 
-    // Inject content styles omitting the base overrides stuff.
-    const style = document.createElement("style");
-    style.textContent = contentStyle;
-    style.id = "de-content";
-    document.head.appendChild(style);
+    // AI Dungeon's response components render into the page and need these styles.
+    // LynxCat's native mentions use scoped decorations; global Tailwind utilities
+    // collide with the site's own classes. The floating UI has its own shadow CSS.
+    if (!isLynxCat()) {
+      const style = document.createElement("style");
+      style.textContent = contentStyle;
+      style.id = "de-content";
+      document.head.appendChild(style);
+      ctx.onInvalidated(() => style.remove());
+    }
 
     // Do the startup events (loads storage).
     if (isLynxCat()) {
@@ -45,7 +50,7 @@ export default defineContentScript({
       followLynxStory();
       ctx.setInterval(followLynxStory, 1000);
       ctx.onInvalidated(disconnectLynx);
-      const renderer = createLynxRenderer(document, id => { extensionState.focusCardId = id; });
+      let renderer: ReturnType<typeof createLynxRenderer> | undefined;
       let pending: ReturnType<typeof setTimeout> | undefined;
       const observe = () => observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["src", "data-entity-id", "class"] });
       const schedule = () => {
@@ -53,17 +58,26 @@ export default defineContentScript({
         pending = setTimeout(() => {
           pending = undefined;
           observer.disconnect();
-          try { const pictures = get(storyPortraits); renderer.render(Object.values(Storage.getSelectedAdventure()?.storyCards ?? {})
-            .map(card => withCardPortrait(card, pictures[card.id])), get(Storage.settings)); }
+          try {
+            if (lynxRunId(location.pathname)) {
+              renderer ??= createLynxRenderer(document, id => { extensionState.focusCardId = id; });
+              const pictures = get(storyPortraits);
+              renderer.render(Object.values(Storage.getSelectedAdventure()?.storyCards ?? {})
+                .map(card => withCardPortrait(card, pictures[card.id])), get(Storage.settings));
+            } else {
+              renderer?.destroy();
+              renderer = undefined;
+            }
+          }
           finally { observe(); }
         }, 80);
       };
       const observer = new MutationObserver(records => {
-        if (records.some(r => (r.target as Element).closest?.('[aria-label="Story transcript"]') || [...r.addedNodes].some(n => n instanceof Element && (n.matches('[aria-label="Story transcript"]') || n.querySelector('[aria-label="Story transcript"]'))))) schedule();
+        if (records.some(r => (r.target as Element).closest?.('[aria-label="Story transcript"]') || [...r.addedNodes, ...r.removedNodes].some(n => n instanceof Element && (n.matches('[aria-label="Story transcript"]') || n.querySelector('[aria-label="Story transcript"]'))))) schedule();
       });
-      const unsubscribe = [Storage.adventures.subscribe(schedule), Storage.selectedAdventureId.subscribe(() => { extensionState.focusCardId = null; schedule(); }), Storage.settings.subscribe(schedule), storyPortraits.subscribe(schedule)];
+      const unsubscribe = [Storage.adventures.subscribe(schedule), Storage.selectedAdventureId.subscribe(() => { extensionState.focusCardId = null; schedule(); }), Storage.settings.subscribe(schedule), storyPortraits.subscribe(schedule), playedAdventureId.subscribe(schedule)];
       observe();
-      ctx.onInvalidated(() => { observer.disconnect(); clearTimeout(pending); unsubscribe.forEach(stop => stop()); renderer.destroy(); });
+      ctx.onInvalidated(() => { observer.disconnect(); clearTimeout(pending); unsubscribe.forEach(stop => stop()); renderer?.destroy(); });
     } else {
       await Events.onStart();
       startVnCardSession();
