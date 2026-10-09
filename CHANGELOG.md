@@ -7,6 +7,48 @@ tables and no HTML, since Discord renders neither.
 Each version is a `## v<version>` heading. The release workflow matches on that exact form, so keep
 it, and keep the newest version at the top.
 
+## v3.2.0
+
+### 🎭 Character picture switching
+
+- Click a character's name in VN to choose between their saved pictures when more than one is
+  available. **Lock this picture** keeps your choice, or use **Use default & automatic switching**
+  to let narration choose again. Choices and locks are saved per adventure and card set.
+- Give character pictures names and optional comma-separated **Matching phrases**, such as
+  `red uniform` or `wearing armor`. A character's name or alias and the phrase must appear together
+  in narration to switch their picture automatically.
+- Quoted dialogue does not change pictures. Unclear character references or conflicting picture
+  rules leave the current picture alone. An unlocked manual choice can change after a matching
+  phrase appears in later narration.
+- Normal story mode follows matching phrases too. Hover portraits, focused character pictures,
+  and linked inline icons follow the currently triggered picture.
+
+### 🖼️ Easier picture settings and matching icons
+
+- Character graphics have larger previews. Click a preview to edit its name and matching phrases.
+- Click an icon to choose which graphic it belongs to, or select **Any graphic** to keep it
+  available for every picture. A matching icon takes priority; otherwise an unrestricted icon
+  or the graphic itself is used.
+- Adding an icon or character graphic opens its settings, scrolls them into view, and focuses
+  the name field or graphic selector so you can finish setting it up right away.
+- Small trash buttons in the upper-right corner remove pictures separately from opening their
+  settings. Names and matching phrases stay with the remaining pictures when images are reordered
+  or removed.
+
+### 🐈 Optional LynxCatAI narration
+
+- The normal-story narrator now has a **Hide** button. You can also turn **Narration outside VN**
+  off or back on under **Settings > Voices & speech**. Your preference is saved.
+- Hiding the narrator stops playback and clears its queued narration. It remains available only
+  inside a played story and stops when you leave the story or enter VN.
+
+### 🩹 LynxCatAI page compatibility
+
+- Fixed carousel arrows, including **Lynxcat Picks** and **View all**, pointing the same way while
+  the extension was active. Extension styles no longer interfere with LynxCatAI's page controls.
+- Story decorations attach only inside `/plays/` and clean up when you leave. The floating button
+  and editor remain available elsewhere on the site, including navigation without a page refresh.
+
 ## v3.1.0
 
 ### 🐈 LynxCatAI support
