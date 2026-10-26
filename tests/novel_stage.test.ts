@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createNovelStageTracker } from "@/rendering/novel_stage";
+import { createNovelStageTracker, novelStageOrder } from "@/rendering/novel_stage";
 import { parseNovel, type NovelCharacter } from "@/rendering/novel";
 
 const cast: NovelCharacter[] = [
@@ -88,9 +88,40 @@ Sage exhales sharply. She doesn't look at you directly now; instead, she pivots 
     expect(tracker([...parseNovel("Nyx arrives."), ...parseNovel('"Hello."')]))
       .toEqual([["nyx", null, null, null], [null, null, null, null]]);
   });
-  it("caps the paragraph cast at four in mention order and keeps it stable across quotes", () => {
+  it("keeps every named character, including the fifth, stable across quotes", () => {
     expect(track('Nyx Coral Serastra Sage Faelar. "Welcome."'))
-      .toEqual([["nyx", "coral", "sera", "sage"], ["nyx", "coral", "sera", "sage"]]);
+      .toEqual([["nyx", "coral", "sera", "sage", "faelar"], ["nyx", "coral", "sera", "sage", "faelar"]]);
+  });
+  it("includes Sage alongside the four participants in the reported turn", () => {
+    const characters = [
+      { id: "elarion", name: "Elarion", triggers: "you" },
+      { id: "coral", name: "Coral", triggers: "" },
+      { id: "nyx", name: "Nyxadra", triggers: "" },
+      { id: "sera", name: "Serastra", triggers: "" },
+      { id: "sage", name: "Sage", triggers: "" },
+    ];
+    const frames = parseNovel('You say, "You think I am an advantage."\nCoral looks at you while Nyxadra hides behind a teapot, Serastra throws you angry looks and Sage starts laughing.');
+    expect(createNovelStageTracker(characters)(frames).at(-1))
+      .toEqual(["elarion", "coral", "nyx", "sera", "sage"]);
+  });
+  it("retains a larger cast through dialogue and clears unused outer slots for an unrelated scene", () => {
+    const tracker = createNovelStageTracker([...cast, { id: "absent", name: "Vespera", triggers: "" }]);
+    const stages = tracker(parseNovel('Nyx Coral Serastra Sage Faelar.\nSage: "Vespera is late."\nThe room is empty.\nCoral returns.'));
+    expect(stages.slice(0, 2)).toEqual(Array(2).fill(["nyx", "coral", "sera", "sage", "faelar"]));
+    expect(stages[2]).toEqual([null, null, null, null]);
+    expect(stages[3]).toEqual(["coral", null, null, null]);
+    expect(stages[0]).toHaveLength(5);
+  });
+  it("adds a fifth speaker without dropping the existing four listeners", () => {
+    expect(track('Nyx Coral Serastra Faelar.\nSage: "Hello."').at(-1))
+      .toEqual(["nyx", "coral", "sera", "faelar", "sage"]);
+  });
+  it("grows alternating outer positions without changing the established left-to-right order", () => {
+    expect(novelStageOrder(0)).toEqual([]);
+    expect(novelStageOrder(4)).toEqual([2, 0, 1, 3]);
+    expect(novelStageOrder(5)).toEqual([4, 2, 0, 1, 3]);
+    expect(novelStageOrder(6)).toEqual([4, 2, 0, 1, 3, 5]);
+    expect(novelStageOrder(8)).toEqual([6, 4, 2, 0, 1, 3, 5, 7]);
   });
   it("reconstructs independent snapshots after edits and handles repeated paragraph text", () => {
     const tracker = createNovelStageTracker(cast);

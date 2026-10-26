@@ -1,8 +1,12 @@
 import type { NovelCharacter, NovelFrame } from "./novel";
 import { novelSpeakers } from "./novel_speaker";
 
-// Fill alternating sides: inner left, inner right, outer left, outer right.
-export type NovelStage = [string | null, string | null, string | null, string | null];
+// Fill alternating sides, growing outward as more characters enter the scene.
+export type NovelStage = (string | null)[];
+export function novelStageOrder(count: number): number[] {
+  const slots = Array.from({ length: count }, (_, slot) => slot);
+  return [...slots.filter(slot => slot % 2 === 0).reverse(), ...slots.filter(slot => slot % 2 !== 0)];
+}
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // A pronoun at the start of narration can continue the previous paragraph's lone character.
@@ -31,6 +35,7 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
   const pattern = keys.length ? new RegExp(`(?<![\\p{L}\\p{N}_])(?:${keys.map(escape).join("|")})(?![\\p{L}\\p{N}_])`, "giu") : null;
 
   return (frames: NovelFrame[]): NovelStage[] => {
+    // Keep the original base positions; these are a minimum, not a cast limit.
     const slots: NovelStage = [null, null, null, null];
     const speakers = novelSpeakers(frames, cast);
     const dialogueParagraphs = new Set(frames.filter((_, index) => speakers[index]).map(frame => frame.paragraph));
@@ -51,7 +56,7 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
           if (owners.size !== 1) continue;
           triggered.add([...owners][0]!);
         }
-        mentioned = [...triggered].slice(0, 4);
+        mentioned = [...triggered];
         paragraphCast.set(frame.paragraph, mentioned);
       }
       if (frame.startsParagraph) {
@@ -66,18 +71,22 @@ export function createNovelStageTracker(characters: NovelCharacter[]) {
         );
         // Narration about an established participant ('Your voice is quiet...')
         // keeps listeners present. Unrelated narration or a new cast resets this.
-        // Prioritize explicit presence when all four slots are already occupied.
         currentCast = dialogue || continuesConversation
-          ? [...new Set([...mentioned, ...existing])].slice(0, 4)
+          ? [...new Set([...mentioned, ...existing])]
           : mentioned.length ? mentioned : previousNamedCharacter && continuesCharacter(frame.paragraph) ? [previousNamedCharacter] : [];
         conversation = dialogue || continuesConversation;
         // Only bridge one paragraph. A new explicit mention is needed before another carry.
         previousNamedCharacter = mentioned.length === 1 ? mentioned[0]! : null;
       }
       const visible = currentCast;
-      for (const slot of [0, 1, 2, 3] as const) if (!visible.includes(slots[slot]!)) slots[slot] = null;
-      for (const id of visible) if (!slots.includes(id)) slots[slots.indexOf(null)] = id;
-      return [...slots] as NovelStage;
+      for (let slot = 0; slot < slots.length; slot++) if (!visible.includes(slots[slot]!)) slots[slot] = null;
+      for (const id of visible) if (!slots.includes(id)) {
+        const empty = slots.indexOf(null);
+        if (empty < 0) slots.push(id);
+        else slots[empty] = id;
+      }
+      while (slots.length > 4 && slots.at(-1) === null) slots.pop();
+      return [...slots];
     });
   };
 }

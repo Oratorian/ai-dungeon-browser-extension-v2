@@ -21,9 +21,10 @@ function expectFit(width: number, height: number, ratios: number[]) {
   return placements;
 }
 
-it("fits one to four portraits on narrow, laptop, desktop and 4K stages", () => {
+it("fits small and larger casts on narrow, laptop, desktop and 4K stages", () => {
   for (const [width, height] of [[366, 480], [1302, 440], [1856, 750], [3776, 1800]]) {
-    for (let count = 1; count <= 4; count++) expectFit(width!, height!, [0.42, 0.57, 0.78, 1.12].slice(0, count));
+    const ratios = [0.42, 0.57, 0.78, 1.12, 0.62, 0.7, 0.5, 0.9];
+    for (let count = 1; count <= ratios.length; count++) expectFit(width!, height!, ratios.slice(0, count));
   }
 });
 

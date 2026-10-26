@@ -19,7 +19,7 @@
   import { extensionState } from "@/shared/state.svelte";
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
-  import { createNovelStageTracker } from "@/rendering/novel_stage";
+  import { createNovelStageTracker, novelStageOrder } from "@/rendering/novel_stage";
   import { layoutNovelPortraits } from "@/rendering/novel_layout";
   import { novelSpeakers } from "@/rendering/novel_speaker";
   import { vnCardError, syncVnCard } from "@/aid/vn_card_sync";
@@ -270,13 +270,13 @@
   const displayedPortraits = $derived.by(() => Object.fromEntries(sceneCards.map(card => [card.id,
     novelPortrait(card, portraitTimeline[index]?.[card.id], portraitChoices[card.id], frames)])));
   const pickerCard = $derived(sceneCards.find(card => card.id === portraitMenu));
-  const stageCharacters = $derived((stages[index] ?? [null, null, null, null]).map(id => {
+  const stageCharacters = $derived((stages[index] ?? []).map(id => {
     const character = characters.find(c => c.id === id);
     return character ? { ...character, portrait: displayedPortraits[character.id]?.image } : undefined;
   }));
-  // Keep the existing outer-left, inner-left, inner-right, outer-right ordering,
-  // but only divide the available space between characters who are present.
-  const visibleStage = $derived([2, 0, 1, 3].flatMap(slot => {
+  // Preserve the cast's left-to-right order as additional outer positions open.
+  // Only characters who are present share the available space.
+  const visibleStage = $derived(novelStageOrder(stageCharacters.length).flatMap(slot => {
     const character = stageCharacters[slot];
     return character ? [{ slot, character }] : [];
   }));
@@ -891,7 +891,7 @@
   .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
   .portrait { position: absolute; bottom: var(--portrait-bottom); left: 0; width: 100%; max-width: none; height: var(--portrait-height); object-fit: contain; object-position: center bottom; filter: url("#novel-portrait-depth"); mask-image: linear-gradient(to bottom, #000 clamp(55%, calc(100% - var(--reader-height) - var(--bottom-inset) - 64px + var(--portrait-bottom)), 85%), transparent clamp(88%, calc(100% - var(--reader-height) - var(--bottom-inset) + 80px + var(--portrait-bottom)), 100%)); }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
-  .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + var(--bottom-inset) + 8px); left: 50%; transform: translateX(-50%); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
+  .stage-caption { position: absolute; z-index: 3; bottom: max(calc(var(--reader-height) + var(--bottom-inset) + 8px), calc(var(--portrait-bottom) + 8px)); left: 50%; transform: translateX(-50%); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
   button.stage-caption { pointer-events: auto; }
   button.stage-caption:hover { border-color: #64727c; }
   .stage-caption.dimmed { filter: brightness(0.45); }
@@ -899,7 +899,7 @@
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + var(--bottom-inset) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
   .scene-only .reader-panels, .scene-only .reading-shade { visibility: hidden; pointer-events: none; }
   .scene-only .portrait { mask-image: none; }
-  .scene-only .stage-caption { bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
+  .scene-only .stage-caption { bottom: max(24px, env(safe-area-inset-bottom, 0px), calc(var(--portrait-bottom) + 8px)); }
   .tools > button[aria-pressed="true"] { border-color: #f8ae2c; }
   .scene-toggle { min-width: 64px; }
   .voice-panel, .action-panel { display: flex; flex-direction: column; }
