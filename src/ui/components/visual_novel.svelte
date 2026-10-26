@@ -20,6 +20,7 @@
   import { parseNovel, type NovelCharacter, type NovelFrame } from "@/rendering/novel";
   import { readNovelPassages } from "@/rendering/novel_dom";
   import { createNovelStageTracker } from "@/rendering/novel_stage";
+  import { layoutNovelPortraits } from "@/rendering/novel_layout";
   import { novelSpeakers } from "@/rendering/novel_speaker";
   import { vnCardError, syncVnCard } from "@/aid/vn_card_sync";
   import { createNovelLocationTracker, retainedLocationSeed, type NovelLocation } from "@/rendering/novel_location";
@@ -108,6 +109,20 @@
   let continueController: AbortController | undefined;
   let scene: HTMLElement | undefined = $state();
   let readerHeight = $state(220);
+  let headerHeight = $state(42);
+  let stageWidth = $state(0);
+  let stageHeight = $state(0);
+  let portraitSizes = $state<Record<string, { source: string; ratio: number }>>({});
+  function rememberPortraitSize(id: string, image: HTMLImageElement) {
+    const source = image.getAttribute("src");
+    if (!source || !image.naturalWidth || !image.naturalHeight) return;
+    // An outgoing portrait can finish loading during its fade. It must not
+    // replace the active character/variant's measurement with an old source.
+    if (stageCharacters.find(character => character?.id === id)?.portrait !== source) return;
+    const ratio = image.naturalWidth / image.naturalHeight;
+    if (portraitSizes[id]?.source === source && portraitSizes[id]?.ratio === ratio) return;
+    portraitSizes = { ...portraitSizes, [id]: { source, ratio } };
+  }
   let output: HTMLElement | null = null;
   let lastSignature = "";
   let sourceIds = new WeakMap<HTMLElement, number>();
@@ -259,6 +274,16 @@
     const character = characters.find(c => c.id === id);
     return character ? { ...character, portrait: displayedPortraits[character.id]?.image } : undefined;
   }));
+  // Keep the existing outer-left, inner-left, inner-right, outer-right ordering,
+  // but only divide the available space between characters who are present.
+  const visibleStage = $derived([2, 0, 1, 3].flatMap(slot => {
+    const character = stageCharacters[slot];
+    return character ? [{ slot, character }] : [];
+  }));
+  const portraitLayout = $derived(layoutNovelPortraits(stageWidth, stageHeight, visibleStage.map(({ character }) => {
+    const measured = portraitSizes[character.id];
+    return measured?.source === character.portrait ? measured?.ratio : undefined;
+  })));
   const speakers = $derived($settings.novelStoryCardInstructions !== false ? novelSpeakers(frames, characters) : []);
   const speechKeys = $derived(frames.map((frame, position) => {
     const card = sceneCards.find(card => card.id === speakers[position]);
@@ -599,7 +624,7 @@
   {#if historyOpen}
     <button class="resume" class:lynx-vn={isLynxCat()} onclick={() => { closeRetryHistory(); historyController?.abort(); }}>Return to visual novel</button>
   {:else}
-    <div class="novel" class:lynx-vn={isLynxCat()} class:scene-only={panelHidden} style:--reader-height={`${readerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
+    <div class="novel" class:lynx-vn={isLynxCat()} class:scene-only={panelHidden} style:--reader-height={`${readerHeight}px`} style:--header-height={`${headerHeight}px`} role="dialog" aria-modal="true" aria-label="Visual novel" tabindex="-1" bind:this={scene} onkeydown={key}>
       <svg class="portrait-filters" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
           <filter id="novel-portrait-depth" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
@@ -622,7 +647,7 @@
         {#key background}<img class="location-backdrop" class:no-blur={!$settings.novelBlur} src={background} alt="" aria-hidden="true" onerror={() => failedBackground = background ?? ""} transition:portraitFade />{/key}
         <div class="location-shade" aria-hidden="true"></div>
       {/if}
-      <header>
+      <header bind:clientHeight={headerHeight}>
         <span class="title"><span class="scenario-name" title={scenarioName}>{scenarioName}</span>{#if storyMetadata?.scenarioTitle}<small title={adventureName}>{adventureName}</small>{/if}</span>
         <div class="tools top-tools" class:menu-open={settingsOpen || locationMenuOpen || autoMenuOpen}>
           <div class="auto-control" role="group" aria-label="Automatic reading"
@@ -638,7 +663,7 @@
               </div>
             </div>
           </div>
-          <button aria-pressed={panelHidden} aria-controls="novel-reader-panels" title="Hide the reading panel and shading to see the full portraits." onclick={() => panelHidden = !panelHidden}>{panelHidden ? "Show" : "Hide"}</button>
+          <button class="scene-toggle" aria-pressed={panelHidden} aria-controls="novel-reader-panels" title="Hide the reading panel and shading to see the full portraits." onclick={() => panelHidden = !panelHidden}>{panelHidden ? "Show" : "Hide"}</button>
           <div class="vn-settings-control">
             <button bind:this={settingsButton} aria-expanded={settingsOpen} aria-controls="novel-settings-panel" onclick={() => settingsOpen = !settingsOpen}>Settings</button>
             {#if settingsOpen}
@@ -696,14 +721,15 @@
           </div>
         </div>
       </header>
-      <div class="stage" role="group" aria-label="Characters in the scene">
-        {#each stageCharacters as character, slot (slot)}
-          <div class="stage-slot" class:speaking={!!speaker && character?.id === speaker} data-edge={stageCharacters.filter(Boolean).length <= 2 ? (slot === 0 ? "left" : "right") : slot === 2 ? "left" : slot === 3 ? "right" : "middle"} style:grid-column={stageCharacters.filter(Boolean).length <= 2 ? ["1 / 3", "3 / 5", "1", "4"][slot] : String([2, 3, 1, 4][slot])}>
-            {#if character}
+      <div class="stage" role="group" aria-label="Characters in the scene" bind:clientWidth={stageWidth} bind:clientHeight={stageHeight}>
+        {#each visibleStage as { character, slot }, position (slot)}
+          {@const placement = portraitLayout[position]!}
+          <div class="stage-slot" class:speaking={!!speaker && character.id === speaker}
+            style:left={`${placement.left}px`} style:width={`${placement.width}px`} style:--portrait-height={`${placement.height}px`} style:--portrait-bottom={`${placement.bottom}px`}>
               {#key character.id}
                 <div class="stage-character" class:dimmed={$settings.novelStoryCardInstructions !== false && character.id !== speaker} transition:portraitFade>
                   {#if character.portrait}
-                    <img src={character.portrait} alt={character.name} class="portrait" />
+                    <img src={character.portrait} alt={character.name} class="portrait" onload={event => rememberPortraitSize(character.id, event.currentTarget as HTMLImageElement)} />
                   {:else}
                     <div class="placeholder" aria-hidden="true">{character.name.slice(0, 1)}</div>
                   {/if}
@@ -716,7 +742,6 @@
                   <span class="stage-caption" class:dimmed={$settings.novelStoryCardInstructions !== false && character.id !== speaker}>{character.name}</span>
                 {/if}
               {/key}
-            {/if}
           </div>
         {/each}
       </div>
@@ -813,7 +838,7 @@
   .engine-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border: 0; padding: 8px; }
   .engine-options label { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 13px; }
 
-  .novel { --scene-gap: 16px; --bottom-inset: max(30px, env(safe-area-inset-bottom, 0px)); position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: clamp(12px, 3vw, 32px) clamp(12px, 3vw, 32px) var(--bottom-inset); gap: var(--scene-gap); color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
+  .novel { --scene-gap: 16px; --scene-inset: clamp(12px, 3vw, 32px); --bottom-inset: max(30px, env(safe-area-inset-bottom, 0px)); position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; padding: var(--scene-inset) var(--scene-inset) var(--bottom-inset); gap: var(--scene-gap); color: #eee8de; background: radial-gradient(ellipse at 50% 40%, #344347, #10171d 75%); font-family: 'IBM Plex Sans', sans-serif; }
   .portrait-filters { position: absolute; pointer-events: none; }
   .vn-card-error { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 950; max-width: 90vw; padding: 10px 16px; border-radius: 8px; background: #422e16; color: #fff; }
   .stage-character { filter: brightness(1); transition: filter 180ms ease; }
@@ -855,17 +880,16 @@
   button:disabled { opacity: .4; cursor: default; }
   .accent { background: #f8ae2c; color: #191c22; border-color: #f8ae2c; }
   .accent:hover:enabled { background: #ffc761; }
-  /* Grow spacing with portrait height above 1080p instead of crowding tall sprites into 1440px. */
-  .stage { position: absolute; top: 90px; bottom: 0; left: 0; right: 0; margin-inline: auto; width: min(100%, max(1440px, 133.333dvh)); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(4px, 1vw, 16px); overflow: visible; pointer-events: none; }
-  .stage-slot { position: relative; grid-row: 1; min-width: 0; min-height: 0; }
+  /* The cast shares a fixed baseline behind the reader. Text height and Hide
+     change the fade, not the characters' size or vertical placement. */
+  .stage { position: absolute; top: calc(var(--scene-inset) + var(--header-height) + var(--scene-gap)); bottom: 0; left: var(--scene-inset); right: var(--scene-inset); overflow: visible; pointer-events: none; }
+  .stage-slot { position: absolute; bottom: 0; height: 100%; min-width: 0; min-height: 0; }
   /* Keep portrait ordering below the reading shade and controls. */
   .stage { z-index: 0; }
   .stage-slot { z-index: 0; }
   .stage-slot.speaking { z-index: 1; }
   .stage-character { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
-  .portrait { position: absolute; left: 50%; transform: translateX(-50%); width: auto; max-width: min(100vw, max(1440px, 133.333dvh)); height: 100%; object-fit: contain; object-position: center top; filter: url("#novel-portrait-depth"); mask-image: linear-gradient(to bottom, #000 calc(100% - var(--reader-height) - 40px), transparent calc(100% - var(--reader-height) + 100px)); }
-  .stage-slot[data-edge="left"] .portrait { left: 0; transform: none; object-position: left top; }
-  .stage-slot[data-edge="right"] .portrait { left: auto; right: 0; transform: none; object-position: right top; }
+  .portrait { position: absolute; bottom: var(--portrait-bottom); left: 0; width: 100%; max-width: none; height: var(--portrait-height); object-fit: contain; object-position: center bottom; filter: url("#novel-portrait-depth"); mask-image: linear-gradient(to bottom, #000 clamp(55%, calc(100% - var(--reader-height) - var(--bottom-inset) - 64px + var(--portrait-bottom)), 85%), transparent clamp(88%, calc(100% - var(--reader-height) - var(--bottom-inset) + 80px + var(--portrait-bottom)), 100%)); }
   .placeholder { font: 100px Georgia, serif; color: #a3b6b8; opacity: .6; }
   .stage-caption { position: absolute; z-index: 3; bottom: calc(var(--reader-height) + var(--bottom-inset) + 8px); left: 50%; transform: translateX(-50%); max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 16px; background: #10171dcc; border: 1px solid transparent; border-radius: 20px; }
   button.stage-caption { pointer-events: auto; }
@@ -875,8 +899,9 @@
   .reading-shade { position: absolute; z-index: 1; bottom: 0; left: 0; width: 100%; height: calc(var(--reader-height) + var(--bottom-inset) + 80px); background: linear-gradient(to bottom, transparent, #080d12e8 90px, #080d12f5); pointer-events: none; }
   .scene-only .reader-panels, .scene-only .reading-shade { visibility: hidden; pointer-events: none; }
   .scene-only .portrait { mask-image: none; }
-  .scene-only .stage-caption { bottom: 24px; }
+  .scene-only .stage-caption { bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
   .tools > button[aria-pressed="true"] { border-color: #f8ae2c; }
+  .scene-toggle { min-width: 64px; }
   .voice-panel, .action-panel { display: flex; flex-direction: column; }
   .vn-settings-panel { position: absolute; top: calc(100% + 12px); right: 0; width: min(480px, calc(100vw - 40px)); max-height: calc(100dvh - 150px); overflow: auto; box-sizing: border-box; padding: 16px; border: 1px solid #65717b; border-radius: 12px; background: #141e27fa; box-shadow: 0 12px 32px #0008; }
   .settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
@@ -918,7 +943,6 @@
   @media (max-width: 900px) {
     .auto-control { position: static; }
     .auto-panel { left: auto; right: 0; }
-    .portrait { left: -17.5%; transform: none; width: 135%; max-width: none; }
     .reader-panels { grid-template-columns: minmax(0, 1fr); max-height: 65%; }
     .dialogue, footer { grid-column: 1; }
     .voice-panel, .action-panel { bottom: calc(100% + 12px); width: calc(50% - 8px); max-height: 30vh; }
