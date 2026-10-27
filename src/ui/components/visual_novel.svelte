@@ -940,6 +940,12 @@
   .jump-panel input { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid #64727c; border-radius: 8px; padding: 8px; background: #202b34; color: #eee8de; font: inherit; }
   .jump-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .resume { position: fixed; bottom: 16px; left: 16px; z-index: 900; border-color: #f8ae2c; }
+  /* Hover menus are positioned independently. On compact screens, reserving
+     their columns for the text makes the reader unnecessarily tall. */
+  @media (max-width: 1400px) {
+    .dialogue { grid-column: 1 / -1; }
+    .reader-panels { max-height: min(55%, 25dvh); }
+  }
   @media (max-width: 900px) {
     .auto-control { position: static; }
     .auto-panel { left: auto; right: 0; }
